@@ -6,6 +6,7 @@
 import type { FactSheet, Issue } from '../checker'
 import { editsFor, whenText } from './fixes'
 import type { Household } from './households'
+import { ALERT_FIELDS } from './structured'
 
 /** The signal number for an area, if the fact sheet has one. */
 export function signalFor(sheet: FactSheet, area: string): number | undefined {
@@ -13,8 +14,8 @@ export function signalFor(sheet: FactSheet, area: string): number | undefined {
 }
 
 /**
- * The alert itself, one sentence per line, in the resident's voice. Nano can't
- * count sentences ("at most 3" gave 4 to 6 on the laptop) but follows numbered
+ * The alert itself, one sentence per field, in the resident's voice. Nano can't
+ * count sentences ("at most 3" gave 4 to 6 on the laptop) but follows given
  * sentences, and they put the landfall time where it belongs. Written so that
  * a model copying them word for word still produces a passing alert: on Nov 12
  * the cloud copied an earlier outline, "Tell them to…" and all.
@@ -31,7 +32,14 @@ export function outline(sheet: FactSheet, area: string, household: Household): s
   return lines
 }
 
-const numbered = (lines: string[]) => lines.map((l, i) => `${i + 1}. ${l}`)
+/**
+ * The outline as the answer's fields: "signal_and_landfall: Signal No. 3 is…".
+ * Both models answer in JSON with these fields (src/drafting/structured.ts),
+ * so a field can hold only its own sentence, and there is no list to number.
+ */
+const fielded = (lines: string[]) => lines.map((l, i) => `${ALERT_FIELDS[i]}: ${l}`)
+
+const ONE_EACH = 'Fill in each field with one sentence.'
 
 const RULES =
   'Do not add other numbers, places, times or dates, and do not describe how strong the storm is. No emojis, no Markdown, no brackets.'
@@ -40,8 +48,8 @@ export function buildDraftPrompt(sheet: FactSheet, area: string, household: Hous
   const place = sheet.barangays[0] ? `${area}, ${sheet.barangays[0]}` : area
   const lines = outline(sheet, area, household)
   return [
-    `Write a typhoon alert for ${household.audience} in ${place}, as these ${lines.length} sentences. You may reword them a little, but keep every name, number and time exactly as written:`,
-    ...numbered(lines),
+    `Write a typhoon alert for ${household.audience} in ${place}. ${ONE_EACH} You may reword these sentences a little, but keep every name, number and time exactly as written:`,
+    ...fielded(lines),
     RULES,
   ].join('\n')
 }
@@ -55,7 +63,7 @@ const isStructural = (i: Issue) =>
  * small on-device model follows "Remove “today”" far better than the whole
  * prompt again, and the shorter prompt runs faster on the laptop. When the
  * shape is wrong (too long, a fact missing, the time on the wrong event), it
- * gets the numbered outline instead of "use at most 3 sentences".
+ * gets the outline, field by field, instead of "use at most 3 sentences".
  */
 export function buildRetryPrompt(draft: string, issues: Issue[], sheet: FactSheet, area: string, household: Household): string {
   const structural = issues.some(isStructural)
@@ -67,11 +75,11 @@ export function buildRetryPrompt(draft: string, issues: Issue[], sheet: FactShee
     '',
     ...(structural
       ? [
-          `Rewrite it as these ${lines.length} sentences, keeping every name, number and time exactly as written:`,
-          ...numbered(lines),
+          'Rewrite it as these sentences, keeping every name, number and time exactly as written:',
+          ...fielded(lines),
           ...(edits.length ? ['Also make these changes:', ...edits.map((e) => `- ${e}`)] : []),
         ]
       : ['Rewrite it with these changes, and keep everything else the same:', ...edits.map((e) => `- ${e}`)]),
-    'Reply with only the new alert, in plain text.',
+    ONE_EACH,
   ].join('\n')
 }

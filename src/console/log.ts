@@ -36,6 +36,8 @@ export function attemptLog(households: Household[], drafts: Record<string, Draft
         'Answer:',
         a.text || '(none)',
       )
+      // The model's JSON, when it differs from the joined alert.
+      if (a.raw !== undefined && a.raw.trim() !== a.text) lines.push('Raw answer:', a.raw.trim())
       if (a.issues?.length) lines.push('Problems:', ...inReadingOrder(a.issues).map((issue) => `- ${issue.message}`))
     })
     if (draft.edited) lines.push('', 'Then edited by hand.')

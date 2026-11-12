@@ -3,7 +3,7 @@ import { checkDraft, type Issue } from '../checker'
 import { DAY1_CASES, DAY1_SHEET } from '../checker/fixtures/day1'
 import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
-import { editsFor, fixFor, whenText } from './fixes'
+import { around, editsFor, fixFor, whenText } from './fixes'
 
 const claimWords = [...CHECKER_CLAIM_WORDS]
 
@@ -75,6 +75,12 @@ describe('editsFor', () => {
     ])
   })
 
+  it('quotes the words around a stray number, so the model removes that one and no other', () => {
+    expect(edits('Signal No. 3 is raised in Purok 1, and Typhoon Sample makes landfall at 6:00 PM on Nov 14. About 25 families must go to Barangay Hall. Call 0917 555 0100.')).toEqual([
+      'Remove “25” from “About 25 families must”.',
+    ])
+  })
+
   it('asks for nothing when the draft passes', () => {
     expect(edits(GOOD_DRAFT, SAMPLE_SHEET, 'Purok Ilaya')).toEqual([])
   })
@@ -109,5 +115,23 @@ describe('whenText', () => {
   it('gives the landfall time as drafts should write it', () => {
     expect(whenText(SAMPLE_SHEET)).toBe('6:00 PM on Nov 14')
     expect(whenText({ ...SAMPLE_SHEET, landfallDate: undefined })).toBe('6:00 PM')
+  })
+})
+
+describe('around', () => {
+  const at = (text: string, part: string) => {
+    const start = text.indexOf(part)
+    return around(text, { start, end: start + part.length })
+  }
+
+  it('takes two words each side, within the sentence and the line', () => {
+    expect(at('Go now. About 25 families must leave.', '25')).toBe('About 25 families must')
+    expect(at('Leave by 6:00 PM, with 3 bags.\nNext line.', '3')).toBe('PM, with 3 bags')
+    expect(at('Bring 2.', '2')).toBe('Bring 2')
+    expect(at('7 boats', '7')).toBe('7 boats')
+  })
+
+  it('keeps a glued unit with its number', () => {
+    expect(at('Winds of 185km/h are coming.', '185')).toBe('Winds of 185km/h are')
   })
 })

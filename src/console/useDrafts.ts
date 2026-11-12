@@ -4,6 +4,7 @@ import { checkDraft, type CheckResult, type FactSheet, type Issue } from '../che
 import type { DeviceStatus } from '../ai/deviceStatus'
 import { HOUSEHOLDS, type Household, type HouseholdId } from '../drafting/households'
 import { buildDraftPrompt, buildRetryPrompt } from '../drafting/prompt'
+import { previewFromPartialJson, readAnswer } from '../drafting/structured'
 import { nextStep, type AttemptOutcome } from '../drafting/route'
 
 export type Attempt = {
@@ -16,7 +17,10 @@ export type Attempt = {
   startedAt: number
   firstTextMs?: number
   endedMs?: number
+  /** The alert: the answer's fields joined into sentences. */
   text: string
+  /** The model's answer as it came, JSON included, for the test log. */
+  raw?: string
   source?: Source
   passed?: boolean
   /** The checker's problems with this attempt's text. */
@@ -99,16 +103,18 @@ export function useDrafts(ctx: Context) {
         }
       })
       const streamed = streamDraft(models, route, prompt, {
-        onText: (text, source) => {
+        onText: (raw, source) => {
           if (!live) return
+          // The answer streams in as JSON; the officer watches the sentences.
+          const text = raw.trimStart().startsWith('{') ? previewFromPartialJson(raw) : raw
           patchAttempt(h.id, attemptId, (a) => ({ text, source, firstTextMs: a.firstTextMs ?? Date.now() - startedAt }), text)
         },
       }).then(
-        // Nano leaves blank lines at the end.
-        (r) => ({ text: r.text.trim(), source: r.source }),
+        // readAnswer also trims: Nano leaves blank lines at the end.
+        (r) => ({ text: readAnswer(r.text), raw: r.text, source: r.source }),
         (err: unknown) => ({ text: '', error: err instanceof Error ? err.message : String(err) }),
       )
-      const outcome: { text: string; source?: Source; error?: string; abandoned?: true } = await Promise.race([streamed, abandoned])
+      const outcome: { text: string; raw?: string; source?: Source; error?: string; abandoned?: true } = await Promise.race([streamed, abandoned])
       live = false
       delete abandoners.current[h.id]
       const endedMs = Date.now() - startedAt
@@ -120,7 +126,7 @@ export function useDrafts(ctx: Context) {
           ...(outcome.source ? { source: outcome.source } : {}),
           ...(outcome.error ? { error: outcome.error } : {}),
           ...(outcome.abandoned ? { abandoned: true } : {}),
-          ...(outcome.abandoned || outcome.error ? {} : { text: outcome.text }),
+          ...(outcome.abandoned || outcome.error ? {} : { text: outcome.text, raw: outcome.raw }),
         }),
         outcome.abandoned || outcome.error ? undefined : outcome.text,
       )

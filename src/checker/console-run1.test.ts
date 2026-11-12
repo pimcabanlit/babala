@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { checkDraft } from './check'
-import { CONSOLE_RUN1, CONSOLE_RUN2 } from './fixtures/console-run1'
+import { CONSOLE_RUN1, CONSOLE_RUN2, CONSOLE_RUN3 } from './fixtures/console-run1'
 import { SAMPLE_SHEET } from './fixtures/halimbawa'
 import type { RequiredFact } from './types'
 
@@ -59,5 +59,30 @@ describe('console run 2 (Nov 12, laptop, outline prompts): real Nano and cloud a
       required: required[household],
     })
     expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected2[name]].sort())
+  })
+})
+
+const expected3: Record<string, string[]> = {
+  'general 1: Nano draft': ['plain:sentences'],
+  'general 2: Nano retry': [],
+  'seniors 1: Nano draft': ['places:venue', 'plain:sentences', 'plain:words'],
+  // The list markers are formatting, reported once each, not also as the numbers 1 and 3.
+  'seniors 2: Nano retry': ['plain:format', 'plain:format', 'plain:format'],
+  'seniors 3: cloud retry': ['figures:phone', 'missing:hotline'],
+  'families 1: Nano draft': ['plain:sentences', 'plain:words'],
+  'families 2: Nano retry': ['plain:sentences'],
+  'families 3: cloud retry': [],
+  'fishers 1: Nano draft': ['plain:sentences'],
+  'fishers 2: Nano retry': [],
+}
+
+describe('console run 3 (Nov 12, laptop, outline as the alert): real Nano and cloud answers', () => {
+  it.each(CONSOLE_RUN3)('$name', ({ name, household, text }) => {
+    const { issues } = checkDraft(text, SAMPLE_SHEET, {
+      claimWords: [...CHECKER_CLAIM_WORDS],
+      area: 'Purok 1',
+      required: required[household],
+    })
+    expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected3[name]].sort())
   })
 })

@@ -55,4 +55,17 @@ describe('attemptLog', () => {
       ].join('\n'),
     )
   })
+
+  it('shows the model’s JSON under the joined alert when they differ', () => {
+    const json = '{"signal_and_landfall":"A.","what_to_do_and_where_to_go":"B."}'
+    const draft: Draft = {
+      ...failed,
+      edited: false,
+      attempts: [{ ...failed.attempts[0], text: 'A. B.', raw: `${json}\n`, issues: [] }],
+    }
+    const log = attemptLog(HOUSEHOLDS, { general: draft }, { area: 'Purok 1', cloudModel: 'm', device: 'available', warmUp: 'w' }, new Date(0))
+    expect(log).toContain(['Answer:', 'A. B.', 'Raw answer:', json].join('\n'))
+    const plain = { ...draft, attempts: [{ ...draft.attempts[0], text: 'Leave.', raw: 'Leave.\n' }] }
+    expect(attemptLog(HOUSEHOLDS, { general: plain }, { area: 'Purok 1', cloudModel: 'm', device: 'available', warmUp: 'w' })).not.toContain('Raw answer')
+  })
 })

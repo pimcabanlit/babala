@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { ALERT_SCHEMA } from '../drafting/structured'
 import { createDraftModels, prepareOnDeviceModel, warmUpOnDevice, type DraftModels, type Source } from '../ai'
 import { readDeviceStatus, type DeviceStatus } from '../ai/deviceStatus'
 import { CHECKER_CLAIM_WORDS, REMOTE_CONFIG_DEFAULTS } from '../config/defaults'
@@ -55,7 +56,7 @@ export function useHybrid() {
   useEffect(() => {
     if (firebase.ok)
       void loadTunables(firebase.app).then((t) => {
-        const m = createDraftModels(firebase.app, t.cloudModelName)
+        const m = createDraftModels(firebase.app, t.cloudModelName, ALERT_SCHEMA)
         setTunables(t)
         setModels(m)
         return refreshDevice(m)

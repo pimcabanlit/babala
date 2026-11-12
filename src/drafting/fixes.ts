@@ -82,6 +82,21 @@ export function fixFor(issue: Issue, sheet: FactSheet, area: string, centre = sh
 }
 
 /**
+ * The words around a span, within its line and sentence: "about 25 families".
+ * A bare "Remove “1”" made the cloud take every 1 out of the alert on Nov 12,
+ * including "Purok 1" and the hotline.
+ */
+export function around(draft: string, span: { start: number; end: number }, words = 2): string {
+  const before = draft.slice(0, span.start).split(/\n|[.!?;:]\s/).pop() ?? ''
+  const after = draft.slice(span.end).split(/\n|[!?;:]\s|\.(?:\s|$)/)[0] ?? ''
+  const head = before.split(/\s+/).filter(Boolean).slice(-words).join(' ')
+  const tail = after.split(/\s+/).filter(Boolean).slice(0, words).join(' ')
+  const left = head && /\s$/.test(before) ? `${head} ` : head
+  const right = tail && /^\s/.test(after) ? ` ${tail}` : tail
+  return `${left}${draft.slice(span.start, span.end)}${right}`
+}
+
+/**
  * The edit list for a retry, in reading order, then the missing facts and
  * length. A missing fact is left out when another edit already puts it in
  * (changing "7 PM" to "6:00 PM" also fixes "missing the landfall time").
@@ -99,7 +114,8 @@ export function editsFor(issues: Issue[], sheet: FactSheet, area: string, draft:
   let centres = 0
   const edits = [...placed, ...rest].map((i) => {
     const centre = sheet.evacuationCentres[centres % sheet.evacuationCentres.length]
-    const edit = fixFor(i, sheet, area, centre)
+    const bare = i.rule === 'figures' && i.subject === 'number' && i.span
+    const edit = bare ? `Remove “${i.span!.text}” from “${around(draft, i.span!)}”.` : fixFor(i, sheet, area, centre)
     if (edit.includes(`with “${centre}”`)) centres++
     return edit
   })

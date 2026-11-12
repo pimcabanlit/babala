@@ -109,6 +109,13 @@ function placeNumberSpans(text: string, sheet: FactSheet): Span[] {
   return [...findKnownPlaces(text, sheet), ...findAll(text, /\b[Pp]urok\s+\d+\b/g)]
 }
 
+/**
+ * "1." at the start of a line is a list marker, reported once by the plain
+ * rule as formatting. On Nov 12 it was also reported as the number “1”, and
+ * the retry's "Remove “1”" took the 1 out of "Purok 1" and the hotline.
+ */
+const LIST_MARKERS = /^\s*\d+\.(?=\s)/gm
+
 function result(issues: Issue[]): CheckResult {
   return { pass: issues.length === 0, issues }
 }
@@ -116,7 +123,7 @@ function result(issues: Issue[]): CheckResult {
 /** Checks an English draft against the fact sheet: rules 1 to 6. */
 export function checkDraft(draft: string, sheet: FactSheet, options: CheckOptions): CheckResult {
   const placeholders = checkPlaceholders(draft)
-  const figures = extractFigures(draft, placeNumberSpans(draft, sheet))
+  const figures = extractFigures(draft, [...placeNumberSpans(draft, sheet), ...findAll(draft, LIST_MARKERS)])
   return result([
     ...placeholders,
     ...checkFigures(figures, sheet),
