@@ -61,9 +61,20 @@ Acer Aspire 14 AI, Snapdragon X, 16 GB RAM, Windows 11, Chrome. Gemini Nano runs
 
 Added as they're created. Keep this list current.
 
+Node.js 24 LTS (see `.nvmrc`). Run from the repo root.
+
 ```
-(none yet: day 1 adds install, dev server, tests, lint, build, deploy)
+npm ci              # install exact versions from package-lock.json
+npm run dev         # dev server at http://localhost:5173
+npm run check       # typecheck, lint, Vitest, production build (what CI runs)
+npm run typecheck   # tsc -b, strict
+npm run lint        # oxlint, warnings fail
+npm run test        # Vitest, single run
+npm run build       # production build into dist/
+npm run preview     # serve dist/ locally
 ```
+
+Deploy is not set up yet. CI (`.github/workflows/ci.yml`) runs `npm ci` and `npm run check` on every pull request and on pushes to `main`. It never deploys.
 
 ## How changes land
 
