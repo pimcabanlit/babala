@@ -21,7 +21,13 @@ Core idea: the SDK falls back to the cloud only when the local model is missing.
 
 ## Key documents
 
-- `docs/build-plan.md`: screens, routing, checker rules, architecture, timeline, video storyboard, submission checklist, risks. The living version is the plan doc at https://claude.ai/artifact/KqYTL4BvU6PcF7wix61CE2. If code and plan disagree, raise it, and update the plan in the same change once agreed.
+The docs in `docs/` are the source of truth. The first plan doc (https://claude.ai/artifact/KqYTL4BvU6PcF7wix61CE2) is kept as history and is no longer updated. If code and docs disagree, raise it, and update the doc in the same change once agreed.
+
+- `docs/build-plan.md`: decisions already made, phases and timeline, video storyboard, submission checklist, risks.
+- `docs/architecture.md`: components, how one alert flows, screens, routing (on-device, cloud or no AI), sign-in and access, offline, cost plan.
+- `docs/data-schema.md`: bulletin format, fact sheet, households, the draft JSON, the checker rules, Firestore documents, Remote Config, a worked example.
+- `docs/firebase-setup.md`: the Firebase setup as it is, how to set it up and check it, laptop measurements, lessons learned, follow-ups. No secrets.
+- `docs/requirements-map.md`: every #BuildHybridAI rule and judging criterion against what is built. Update a row when its status changes.
 
 ## Non-negotiables
 
@@ -125,8 +131,8 @@ every change must be cheap to undo. This replaces the old "Definition of done" s
    Reviewers (human or AI) follow `REVIEW.md`: what counts as Important, and how to report.
 5. **Pim merges.** Claude never merges and never calls a PR ready before its CI is green.
 6. **Whoever asked for the change owns it after it lands**, including the revert if it breaks.
-   Keep `README.md`, this file and `docs/build-plan.md` in step with the code, and keep the
-   submission checklist true.
+   Keep `README.md`, this file and the docs in `docs/` in step with the code, and keep the
+   submission checklist and requirements map true.
 
 ## Working principles
 
