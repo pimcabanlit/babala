@@ -1,5 +1,5 @@
 /**
- * What to do after each draft attempt (build plan, "Routing"): on-device
+ * What to do after each draft attempt (docs/architecture.md, "Routing"): on-device
  * first, one retry on the device with the checker's reasons, then the cloud
  * when online, otherwise the officer edits by hand. At most three AI calls
  * per alert, so a failing model can't loop.

@@ -2,8 +2,8 @@
 
 Babala turns a storm bulletin into checked typhoon alerts, drafted on the device or in the cloud
 through Firebase AI Logic. Read `CLAUDE.md` (non-negotiables and architecture rules) and
-`docs/build-plan.md` (checker rules, routing) first. Review the diff against them. Be short and
-specific.
+`docs/data-schema.md` (checker rules) and `docs/architecture.md` (routing) first. Review the diff
+against them. Be short and specific.
 
 ## Report as Important
 
@@ -15,7 +15,7 @@ These are the failures that matter here. Any instance is **Important**, never a 
    to the console or a workflow log.
 2. **Unchecked alert reaches residents.** Any path that publishes, saves to Firestore for
    residents, or shows a resident an alert or translation that has not passed the checker and
-   been approved by an officer; a checker rule (build plan, "The checker") removed, weakened or
+   been approved by an officer; a checker rule (`docs/data-schema.md`, "Checker rules") removed, weakened or
    skipped; a checker test deleted or its expected result loosened.
 3. **A model vouches for itself.** A model call, or an import from `src/ai/` or `firebase/*`,
    inside `src/checker/`; a pass/fail decided by model output; a translation published without
@@ -38,8 +38,8 @@ These are the failures that matter here. Any instance is **Important**, never a 
    other than English.
 9. **Hosting breaks.** A deploy workflow or `firebase.json` change that could take the hosted
    app down before judging ends (Dec 16, 2026), or a deploy step that runs on pull requests.
-10. **Docs that lie.** `CLAUDE.md`, `README.md` or `docs/build-plan.md` stating commands, files,
-    routing, checker rules or submission checklist items that the diff makes untrue.
+10. **Docs that lie.** `CLAUDE.md`, `README.md` or a doc in `docs/` stating commands, files,
+    routing, checker rules, data fields or submission checklist items that the diff makes untrue.
 11. **Dependencies.** Changes to `package.json` or the lockfile not asked for in the PR, or a new
     framework, paid service or non-Firebase backend not flagged.
 12. **Swallowed errors.** A `catch` or `.catch()` that drops an error without showing it to the
@@ -77,7 +77,7 @@ wins**. When unsure, go **one tier up**. Every PR states its tier and the file t
 | Tier | Paths in this repo | Pim before merging |
 |---|---|---|
 | **High** | `src/checker/` and its tests, `src/ai/` (prompts, routing, hybrid modes), `firestore.rules`, `firestore.indexes.json`, `firebase.json`, `.firebaserc`, App Check, auth and Remote Config setup (and the config file with their defaults), the service worker and offline cache, `.github/workflows/`, `package.json`, `package-lock.json`, `.gitignore`, `.env.example`, anything that publishes alerts or deletes Firestore data | Read the whole diff and the pasted evidence, and run `/security-review`. A change to on-device drafting or routing also needs your laptop test (Gemini Nano). |
-| **Medium** | `CLAUDE.md`, `REVIEW.md`, `docs/build-plan.md`, `README.md`, `.github/` (non-workflow), other `src/` (UI, screens, officer console, resident view, ledger display) and `tests/` changes | Read the summary, the evidence and the review findings. UI changes need the screenshot from `CLAUDE.md`. |
+| **Medium** | `CLAUDE.md`, `REVIEW.md`, `docs/`, `README.md`, `.github/` (non-workflow), other `src/` (UI, screens, officer console, resident view, ledger display) and `tests/` changes | Read the summary, the evidence and the review findings. UI changes need the screenshot from `CLAUDE.md`. |
 | **Low** | Wording-only doc fixes (typos, links), comments, new tests that touch no code under test | Merge on green CI. |
 
 `CLAUDE.md` and `REVIEW.md` are never below Medium. Deleting a checker test or loosening its

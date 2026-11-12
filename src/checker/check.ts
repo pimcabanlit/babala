@@ -1,6 +1,6 @@
 /**
  * The checker: no alert reaches a resident unless it passes every rule here
- * and an officer approves it (build plan, "The checker"). Deterministic code,
+ * and an officer approves it (docs/data-schema.md, "Checker rules"). Deterministic code,
  * never a model: a model never vouches for its own output.
  */
 import { extractFigures, normalizeDate, normalizePhone, type Figure } from './figures'

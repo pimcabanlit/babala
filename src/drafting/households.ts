@@ -1,4 +1,4 @@
-/** The household types that each get their own alert (build plan, "Users and screens"). */
+/** The household types that each get their own alert (docs/data-schema.md, "Household types"). */
 import type { RequiredFact } from '../checker'
 
 export type HouseholdId = 'general' | 'seniors' | 'families' | 'fishers'
