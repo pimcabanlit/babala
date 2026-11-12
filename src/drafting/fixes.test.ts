@@ -3,7 +3,7 @@ import { checkDraft, type Issue } from '../checker'
 import { DAY1_CASES, DAY1_SHEET } from '../checker/fixtures/day1'
 import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
-import { around, editsFor, fixFor, whenText } from './fixes'
+import { around, editsFor, fixFor, landfallPhrase, whenText } from './fixes'
 
 const claimWords = [...CHECKER_CLAIM_WORDS]
 
@@ -133,5 +133,25 @@ describe('around', () => {
 
   it('keeps a glued unit with its number', () => {
     expect(at('Winds of 185km/h are coming.', '185')).toBe('Winds of 185km/h are')
+  })
+})
+
+describe('landfallPhrase', () => {
+  const at = (text: string) => {
+    const start = text.indexOf('6:00 PM')
+    return landfallPhrase(text, { start, end: start + 7 }, SAMPLE_SHEET)
+  }
+
+  it('quotes from the storm’s name to the time, in the same sentence', () => {
+    expect(at('Typhoon Sample has been declared at 6:00 PM on Nov 14.')).toBe('Typhoon Sample has been declared at 6:00 PM')
+    expect(at('Signal No. 3, and typhoon sample is predicted to reach the area at 6:00 PM.')).toBe(
+      'typhoon sample is predicted to reach the area at 6:00 PM',
+    )
+  })
+
+  it('gives nothing when the storm isn’t named just before the time', () => {
+    expect(at('Typhoon Sample is coming. Bring food by 6:00 PM.')).toBeUndefined()
+    expect(at('Typhoon Sample, which forecasters have been tracking closely for many days now, arrives at 6:00 PM.')).toBeUndefined()
+    expect(landfallPhrase('Leave at 6:00 PM.', { start: 9, end: 16 }, { ...SAMPLE_SHEET, stormName: '' })).toBeUndefined()
   })
 })

@@ -97,6 +97,32 @@ export function around(draft: string, span: { start: number; end: number }, word
 }
 
 /**
+ * The words that put the landfall time on the wrong event, from the storm's
+ * name to the time: “Typhoon Sample is predicted to reach the area at 6:00 PM”.
+ * Undefined when the storm isn't named just before the time in that sentence.
+ * On Nov 12 Nano, given the whole outline again, sent back the same draft
+ * word for word; a short "Change X to Y" is what it follows.
+ */
+export function landfallPhrase(draft: string, span: { start: number; end: number }, sheet: FactSheet): string | undefined {
+  const storm = sheet.stormName.trim()
+  if (!storm) return undefined
+  const before = draft.slice(0, span.start).split(/\n|[.!?;:]\s/).pop() ?? ''
+  const at = before.toLowerCase().lastIndexOf(storm.toLowerCase())
+  if (at < 0) return undefined
+  const phrase = `${before.slice(at)}${draft.slice(span.start, span.end)}`
+  // A long stretch is a different clause, not a verb to swap.
+  return phrase.split(/\s+/).length <= storm.split(/\s+/).length + 9 ? phrase : undefined
+}
+
+/** The edit for a landfall time on the wrong event, quoting the words to change when it can. */
+function landfallEdit(issue: Issue, sheet: FactSheet, area: string, draft: string): string {
+  const phrase = issue.span && landfallPhrase(draft, issue.span, sheet)
+  if (!phrase) return fixFor(issue, sheet, area)
+  const storm = phrase.slice(0, sheet.stormName.trim().length)
+  return `Change “${phrase}” to “${storm} makes landfall at ${issue.span!.text}”.`
+}
+
+/**
  * The edit list for a retry, in reading order, then the missing facts and
  * length. A missing fact is left out when another edit already puts it in
  * (changing "7 PM" to "6:00 PM" also fixes "missing the landfall time").
@@ -115,7 +141,11 @@ export function editsFor(issues: Issue[], sheet: FactSheet, area: string, draft:
   const edits = [...placed, ...rest].map((i) => {
     const centre = sheet.evacuationCentres[centres % sheet.evacuationCentres.length]
     const bare = i.rule === 'figures' && i.subject === 'number' && i.span
-    const edit = bare ? `Remove “${i.span!.text}” from “${around(draft, i.span!)}”.` : fixFor(i, sheet, area, centre)
+    const edit = bare
+      ? `Remove “${i.span!.text}” from “${around(draft, i.span!)}”.`
+      : i.subject === 'landfall'
+        ? landfallEdit(i, sheet, area, draft)
+        : fixFor(i, sheet, area, centre)
     if (edit.includes(`with “${centre}”`)) centres++
     return edit
   })

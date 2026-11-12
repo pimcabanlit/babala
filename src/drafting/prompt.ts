@@ -4,7 +4,7 @@
  * checker will compare it.
  */
 import type { FactSheet, Issue } from '../checker'
-import { editsFor, whenText } from './fixes'
+import { editsFor, landfallPhrase, whenText } from './fixes'
 import type { Household } from './households'
 import { ALERT_FIELDS } from './structured'
 
@@ -54,9 +54,16 @@ export function buildDraftPrompt(sheet: FactSheet, area: string, household: Hous
   ].join('\n')
 }
 
-/** Problems a word-level edit can't fix: the shape, a missing fact, the time's meaning. */
-const isStructural = (i: Issue) =>
-  i.rule === 'missing' || (i.rule === 'plain' && (i.subject === 'sentences' || i.subject === 'words')) || i.subject === 'landfall'
+/**
+ * Problems a word-level edit can't fix: the shape, a missing fact, or the
+ * landfall time on the wrong event when there are no words to swap ("bring
+ * food by 6:00 PM"). "Typhoon Sample is predicted to reach the area at
+ * 6:00 PM" gets a word-level edit instead.
+ */
+const isStructural = (i: Issue, draft: string, sheet: FactSheet) =>
+  i.rule === 'missing' ||
+  (i.rule === 'plain' && (i.subject === 'sentences' || i.subject === 'words')) ||
+  (i.subject === 'landfall' && !(i.span && landfallPhrase(draft, i.span, sheet)))
 
 /**
  * The retry: the failed draft back, with one concrete edit per problem. A
@@ -66,8 +73,8 @@ const isStructural = (i: Issue) =>
  * gets the outline, field by field, instead of "use at most 3 sentences".
  */
 export function buildRetryPrompt(draft: string, issues: Issue[], sheet: FactSheet, area: string, household: Household): string {
-  const structural = issues.some(isStructural)
-  const edits = editsFor(structural ? issues.filter((i) => !isStructural(i)) : issues, sheet, area, draft)
+  const structural = issues.some((i) => isStructural(i, draft, sheet))
+  const edits = editsFor(structural ? issues.filter((i) => !isStructural(i, draft, sheet)) : issues, sheet, area, draft)
   const lines = outline(sheet, area, household)
   return [
     'Here is a typhoon alert:',

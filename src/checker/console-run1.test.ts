@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { checkDraft } from './check'
-import { CONSOLE_RUN1, CONSOLE_RUN2, CONSOLE_RUN3 } from './fixtures/console-run1'
+import { CONSOLE_RUN1, CONSOLE_RUN2, CONSOLE_RUN3, CONSOLE_RUN4 } from './fixtures/console-run1'
 import { SAMPLE_SHEET } from './fixtures/halimbawa'
 import type { RequiredFact } from './types'
 
@@ -84,5 +84,25 @@ describe('console run 3 (Nov 12, laptop, outline as the alert): real Nano and cl
       required: required[household],
     })
     expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected3[name]].sort())
+  })
+})
+
+const expected4: Record<string, string[]> = {
+  'general 1: Nano draft': [],
+  // "reach the area" is not landfall: the bulletin's time is for landfall only.
+  'seniors 1: Nano draft': ['figures:landfall'],
+  'seniors 3: cloud retry': [],
+  'families 1: Nano draft': [],
+  'fishers 1: Nano draft': [],
+}
+
+describe('console run 4 (Nov 12, laptop, JSON fields): real Nano and cloud answers', () => {
+  it.each(CONSOLE_RUN4)('$name', ({ name, household, text }) => {
+    const { issues } = checkDraft(text, SAMPLE_SHEET, {
+      claimWords: [...CHECKER_CLAIM_WORDS],
+      area: 'Purok 1',
+      required: required[household],
+    })
+    expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected4[name]].sort())
   })
 })

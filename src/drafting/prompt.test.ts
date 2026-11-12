@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { checkDraft } from '../checker'
 import { SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
-import { CONSOLE_RUN1, CONSOLE_RUN3 } from '../checker/fixtures/console-run1'
+import { CONSOLE_RUN1, CONSOLE_RUN3, CONSOLE_RUN4 } from '../checker/fixtures/console-run1'
 import { HOUSEHOLDS } from './households'
 import { buildDraftPrompt, buildRetryPrompt, outline } from './prompt'
 
@@ -99,5 +99,26 @@ describe('buildRetryPrompt', () => {
     const prompt = buildRetryPrompt(draft, check(draft, seniors.required), SAMPLE_SHEET, 'Purok 1', seniors)
     expect(prompt).not.toMatch(/Remove “\d”\./)
     expect(prompt).toContain('- Remove “1.” from the start of the line.')
+  })
+
+  it('swaps the words that put the landfall time on the wrong event, as in the real round-4 seniors draft', () => {
+    const draft = CONSOLE_RUN4.find((c) => c.name === 'seniors 1: Nano draft')!.text
+    const seniors = HOUSEHOLDS.find((h) => h.id === 'seniors')!
+    expect(buildRetryPrompt(draft, check(draft, seniors.required), SAMPLE_SHEET, 'Purok 1', seniors)).toBe(
+      [
+        'Here is a typhoon alert:',
+        draft,
+        '',
+        'Rewrite it with these changes, and keep everything else the same:',
+        '- Change “Typhoon Sample is predicted to reach the area at 6:00 PM” to “Typhoon Sample makes landfall at 6:00 PM”.',
+        'Fill in each field with one sentence.',
+      ].join('\n'),
+    )
+  })
+
+  it('gives the outline when the landfall time sits in a sentence without the storm', () => {
+    const draft = 'Signal No. 3 is raised in Purok 1. Bring food by 6:00 PM on Nov 14 and go to Barangay Hall. Call the hotline, 0917 555 0100, for help.'
+    const prompt = buildRetryPrompt(draft, check(draft), SAMPLE_SHEET, 'Purok 1', general)
+    expect(prompt).toContain('Rewrite it as these sentences')
   })
 })
