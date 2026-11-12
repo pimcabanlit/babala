@@ -94,6 +94,13 @@ No alert reaches a resident unless it passes every rule below and an officer app
 6. **Plain and short.** At most 3 sentences or 60 words, with no emojis.
 7. **Translations keep the facts.** Every figure and place name in a translation is identical to the approved English alert.
 
+Built on Nov 12 in `src/checker/` (`checkDraft` for rules 1 to 6, `checkTranslation` for rule 7). Each problem comes back with the rule, a plain message and where it is in the draft, so the console can highlight it and the retry prompt can quote it. The tests start from the six real day-1 drafts, which all fail for the right reasons, and a fictional bulletin (Typhoon Sample, Barangay Halimbawa) with passing and failing cases.
+- Figures it reads: "6 PM", "6 p.m.", "six PM", "18:00", "1800H", noon, midnight, "alas-6 ng gabi" and "alas-sais ng gabi" (Filipino and Cebuano), dates such as "Nov 14" and "14 November", "Signal No. 3" in several spellings, phone numbers by digits ("+63" equals "0"), and any other number, including "185km/h" and "1,000".
+- Where to go: a venue word ("gym", "school", "church", "hall" and so on) outside a known centre name is flagged, and so is a known name with a word in front that changes it ("municipal school gym").
+- Added claims: the word list is the Remote Config parameter `checker_claim_words` (a JSON array of strings), with defaults in `src/config/defaults.ts` built from the day-1 drafts. A word is allowed when the bulletin itself uses it. Plurals match.
+- The household's area sets which signal number is required. A bulletin with no hotline doesn't require one.
+- Known limits: the claim words are English, so translations are held to exact figures and place names instead; spelled-out numbers are read only for hours and signal numbers; the only allowed time is the landfall time, so a bulletin with other times needs them added to the fact sheet first.
+
 If a draft fails, the app retries once on the device with the failure reasons added to the prompt. If it fails again, the job goes to the cloud when online; otherwise the officer edits it by hand. Every attempt goes in the ledger.
 
 ## Architecture
