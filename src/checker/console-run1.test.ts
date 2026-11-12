@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { checkDraft } from './check'
-import { CONSOLE_RUN1, CONSOLE_RUN2, CONSOLE_RUN3, CONSOLE_RUN4 } from './fixtures/console-run1'
+import { CONSOLE_RUN1, CONSOLE_RUN2, CONSOLE_RUN3, CONSOLE_RUN4, CONSOLE_RUN5 } from './fixtures/console-run1'
 import { SAMPLE_SHEET } from './fixtures/halimbawa'
 import type { RequiredFact } from './types'
 
@@ -104,5 +104,25 @@ describe('console run 4 (Nov 12, laptop, JSON fields): real Nano and cloud answe
       required: required[household],
     })
     expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected4[name]].sort())
+  })
+})
+
+const expected5: Record<string, string[]> = {
+  'general 1: Nano draft': [],
+  'seniors 1: Nano draft': [],
+  // The demo story: the checker catches an added claim, and Nano's retry fixes it.
+  'families 1: Nano draft': ['added-claims:undefined'],
+  'families 2: Nano retry': [],
+  'fishers 1: Nano draft': [],
+}
+
+describe('console run 5 (Nov 12, laptop): every alert written on the device', () => {
+  it.each(CONSOLE_RUN5)('$name', ({ name, household, text }) => {
+    const { issues } = checkDraft(text, SAMPLE_SHEET, {
+      claimWords: [...CHECKER_CLAIM_WORDS],
+      area: 'Purok 1',
+      required: required[household],
+    })
+    expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected5[name]].sort())
   })
 })

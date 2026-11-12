@@ -240,3 +240,42 @@ export const CONSOLE_RUN4: ConsoleCase[] = [
     text: 'Signal No. 3 is raised in Purok 1, Barangay Halimbawa, and Typhoon Sample will make landfall at 6:00 PM on Nov 14. Remain ashore, secure your vessels, and seek refuge at the Halimbawa Elementary School gym or Barangay Hall. For assistance, contact the hotline at 0917 555 0100.',
   },
 ]
+
+/**
+ * Pim's laptop, Nov 12, round 5: every alert written on the device. Nano
+ * passed on its first draft for 3 of 4 households; for families the checker
+ * caught "safe", an added claim, and Nano's retry removed it and passed. This
+ * is the demo story end to end.
+ */
+export const CONSOLE_RUN5: ConsoleCase[] = [
+  {
+    name: 'general 1: Nano draft',
+    household: 'general',
+    source: 'on_device',
+    text: 'Signal No. 3 is raised in Purok 1, and Typhoon Sample makes landfall at 6:00 PM on Nov 14. Residents of Purok 1 should evacuate immediately and seek refuge in the Halimbawa Elementary School gym or Barangay Hall. Those seeking assistance can reach the hotline at 0917 555 0100.',
+  },
+  {
+    name: 'seniors 1: Nano draft',
+    household: 'seniors',
+    source: 'on_device',
+    text: 'Signal No. 3 is raised in Purok 1, Barangay Halimbawa, and Typhoon Sample is expected to make landfall at 6:00 PM on Nov 14. Please depart promptly, secure your medications, and request assistance from a neighbor, evacuating to Halimbawa Elementary School gym or Barangay Hall. For assistance, please call the hotline at 0917 555 0100.',
+  },
+  {
+    name: 'families 1: Nano draft',
+    household: 'families',
+    source: 'on_device',
+    text: 'Signal No. 3 is raised in Purok 1, and Typhoon Sample makes landfall at 6:00 PM on Nov 14. Prioritize keeping your children safe with water and food, and evacuate to the Halimbawa Elementary School gym or Barangay Hall. Call the hotline at 0917 555 0100 for assistance.',
+  },
+  {
+    name: 'families 2: Nano retry',
+    household: 'families',
+    source: 'on_device',
+    text: 'Signal No. 3 is raised in Purok 1, and Typhoon Sample makes landfall at 6:00 PM on Nov 14. Prioritize keeping your children with water and food, and evacuate to the Halimbawa Elementary School gym or Barangay Hall. Call the hotline at 0917 555 0100 for assistance.',
+  },
+  {
+    name: 'fishers 1: Nano draft',
+    household: 'fishers',
+    source: 'on_device',
+    text: 'Signal No. 3 is raised in Purok 1, Barangay Halimbawa, and Typhoon Sample makes landfall at 6:00 PM on Nov 14. Do not go out to sea, tie up your boats, and go to Halimbawa Elementary School gym or Barangay Hall. Call the hotline, 0917 555 0100, for help.',
+  },
+]
