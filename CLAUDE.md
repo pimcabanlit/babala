@@ -57,6 +57,7 @@ Firebase project: `babala-hybrid` (Spark). Web app: "Babala web".
 Architecture rules:
 - **One AI module** (`src/ai/`) is the only place that imports `firebase/ai`. Everything else calls it.
 - **The checker** (`src/checker/`) has no Firebase or UI imports, so it is easy to unit test.
+- **The ledger** (`src/ledger/`): every write to a saved alert goes in one batch with a new ledger entry that records it, and the rules refuse it otherwise. Entries are never changed or deleted.
 - Model names and tunables live in Remote Config, with defaults in one config file.
 
 ## Known facts about the target laptop

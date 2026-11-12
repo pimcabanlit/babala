@@ -168,6 +168,8 @@ export type SavedAlert = {
   approvedAt: Date | undefined
   /** Saved on this laptop, not yet uploaded. */
   pending: boolean
+  /** The ledger entry that records this approval. Undefined for alerts saved before the ledger. */
+  ledgerId: string | undefined
 }
 
 /** Reads a saved alert's fields; undefined if the document isn't one. */
@@ -177,9 +179,10 @@ export function readSavedAlert(
   approvedAt: Date | undefined,
   pending: boolean,
 ): SavedAlert | undefined {
-  const { household, area, text, source, edited } = data
+  const { household, area, text, source, edited, ledgerId } = data
   if (!HOUSEHOLDS.some((h) => h.id === household)) return undefined
   if (typeof area !== 'string' || typeof text !== 'string' || typeof edited !== 'boolean') return undefined
   if (!ALERT_SOURCES.includes(source as AlertSource)) return undefined
-  return { id, household: household as HouseholdId, area, text, source: source as AlertSource, edited, approvedAt, pending }
+  if (ledgerId !== undefined && typeof ledgerId !== 'string') return undefined
+  return { id, household: household as HouseholdId, area, text, source: source as AlertSource, edited, approvedAt, pending, ledgerId }
 }

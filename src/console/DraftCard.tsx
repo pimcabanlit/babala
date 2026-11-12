@@ -3,6 +3,7 @@ import { InferenceSource } from '../ai'
 import type { SavedAlert } from '../alerts/record'
 import type { FactSheet, Rule } from '../checker'
 import type { Household } from '../drafting/households'
+import { formatTime } from './format'
 import { inReadingOrder, segments } from './segments'
 import { checkFor } from '../drafting/check'
 import type { Attempt, Draft } from './useDrafts'
@@ -36,6 +37,8 @@ type Props = {
   saveError: string | undefined
   /** Re-checks and saves the alert (OfficerConsole.approve). */
   onApprove: () => void
+  /** Opens the saved alert's entry in the ledger section. */
+  onShowLedger: (ledgerId: string) => void
 }
 
 /** One household's alert: the attempts, the checked text with highlights, approval and what is saved. */
@@ -123,7 +126,7 @@ export default function DraftCard(props: Props) {
       />
 
       {props.saveError && <p className="mt-2 rounded bg-red-50 p-2 text-sm text-red-800">{props.saveError}</p>}
-      {props.saved && <Saved saved={props.saved} current={draft.text.trim()} />}
+      {props.saved && <Saved saved={props.saved} current={draft.text.trim()} onShowLedger={props.onShowLedger} />}
 
       {result && !result.pass && !draft.running && (
         <div className="mt-2">
@@ -153,15 +156,23 @@ export default function DraftCard(props: Props) {
   )
 }
 
-/** The saved alert: when, whether it has uploaded, and its text when the card shows something else. */
-function Saved({ saved, current }: { saved: SavedAlert; current: string }) {
+/** The saved alert: when, whether it has uploaded, its ledger entry, and its text when the card shows something else. */
+function Saved({ saved, current, onShowLedger }: { saved: SavedAlert; current: string; onShowLedger: (ledgerId: string) => void }) {
   const when = saved.approvedAt ? ` at ${formatTime(saved.approvedAt)}` : ''
+  const { ledgerId } = saved
   return (
     <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-950">
       <p>
         {saved.pending
           ? `Saved on this laptop${when}. It uploads when the laptop is back online.`
-          : `Saved online${when}.`}
+          : `Saved online${when}.`}{' '}
+        {ledgerId ? (
+          <button type="button" onClick={() => onShowLedger(ledgerId)} className="font-semibold underline">
+            See its ledger entry
+          </button>
+        ) : (
+          'Saved before the ledger, so it has no entry.'
+        )}
       </p>
       {saved.text !== current && (
         <>
@@ -171,10 +182,6 @@ function Saved({ saved, current }: { saved: SavedAlert; current: string }) {
       )}
     </div>
   )
-}
-
-function formatTime(date: Date): string {
-  return date.toLocaleString('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function Status({ draft, passed }: { draft: Draft; passed: boolean | undefined }) {

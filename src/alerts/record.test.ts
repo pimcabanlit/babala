@@ -123,4 +123,18 @@ describe('readSavedAlert', () => {
   it('ignores a document whose text is not a string', () => {
     expect(readSavedAlert('x', { ...data, text: 42 }, at, false)).toBeUndefined()
   })
+
+  it('reads the ledger entry an alert points at', () => {
+    expect(readSavedAlert('x', { ...data, ledgerId: 'AbCdEfGhIjKlMnOpQrSt' }, at, false)?.ledgerId).toBe('AbCdEfGhIjKlMnOpQrSt')
+  })
+
+  it('reads an alert saved before the ledger, with no entry', () => {
+    const saved = readSavedAlert('x', data, at, false)
+    expect(saved).toBeDefined()
+    expect(saved?.ledgerId).toBeUndefined()
+  })
+
+  it('ignores a document whose ledger entry ID is not a string', () => {
+    expect(readSavedAlert('x', { ...data, ledgerId: 7 }, at, false)).toBeUndefined()
+  })
 })

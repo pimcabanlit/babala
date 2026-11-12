@@ -9,8 +9,11 @@ import { previewFromPartialJson, readAnswer } from '../drafting/structured'
 import { nextStep, type AttemptOutcome } from '../drafting/route'
 
 export type Attempt = {
+  /** Unique in the console, and increasing: a later attempt has a higher id. */
   id: number
   route: Route
+  /** The area it was drafted for. */
+  area: string
   /** The prompt was the last draft with an edit per problem. */
   retry: boolean
   /** The exact prompt, for the test log. */
@@ -41,11 +44,15 @@ export type Draft = {
   approved: boolean
   /** The officer changed the model's text. */
   edited?: boolean
+  /** The attempts of earlier rounds on this card ("Draft again"), oldest first. */
+  history: Attempt[][]
+  /** The highest attempt id already in a ledger entry; 0 before the first approval. */
+  recordedThrough: number
 }
 
 export type DraftMap = Record<HouseholdId, Draft>
 
-const emptyDraft: Draft = { text: '', attempts: [], running: false, approved: false }
+const emptyDraft: Draft = { text: '', attempts: [], running: false, approved: false, history: [], recordedThrough: 0 }
 const emptyDrafts = () => Object.fromEntries(HOUSEHOLDS.map((h) => [h.id, emptyDraft])) as DraftMap
 
 type Context = {
@@ -86,11 +93,11 @@ export function useDrafts(ctx: Context) {
 
   /** One model call, streamed into the card. Resolves early if the officer abandons it. */
   const runAttempt = useCallback(
-    async (h: Household, models: DraftModels, route: Route, prompt: string, retry: boolean) => {
+    async (h: Household, models: DraftModels, route: Route, prompt: string, retry: boolean, area: string) => {
       const attemptId = nextId.current++
       const startedAt = Date.now()
       let live = true
-      update(h.id, (d) => ({ ...d, text: '', attempts: [...d.attempts, { id: attemptId, route, retry, prompt, startedAt, text: '' }] }))
+      update(h.id, (d) => ({ ...d, text: '', attempts: [...d.attempts, { id: attemptId, route, area, retry, prompt, startedAt, text: '' }] }))
 
       const abandoned = new Promise<{ text: string; abandoned: true }>((resolve) => {
         abandoners.current[h.id] = () => {
@@ -136,7 +143,13 @@ export function useDrafts(ctx: Context) {
     async (h: Household) => {
       const { sheet, area, claimWords, models, deviceRef, warmPromise } = ctxRef.current
       if (!sheet || !models) return
-      update(h.id, () => ({ ...emptyDraft, running: true }))
+      // A new round: the last one moves to the history, which the ledger entry keeps.
+      update(h.id, (d) => ({
+        ...emptyDraft,
+        running: true,
+        history: d.attempts.length > 0 ? [...d.history, d.attempts] : d.history,
+        recordedThrough: d.recordedThrough,
+      }))
       // Only wait for the warm-up here; a failed warm-up is already shown in the Models panel (useHybrid).
       await warmPromise.current.catch(() => undefined)
 
@@ -154,7 +167,7 @@ export function useDrafts(ctx: Context) {
         const quoted = step.retry && last && last.text.trim() !== '' ? last : undefined
         const withReasons = quoted !== undefined
         const prompt = quoted ? buildRetryPrompt(quoted.text, quoted.issues, sheet, area, h) : base
-        const attempt = await runAttempt(h, models, step.route, prompt, withReasons)
+        const attempt = await runAttempt(h, models, step.route, prompt, withReasons, area)
         const ok = !attempt.error && !attempt.abandoned
         const result = ok ? checkFor(attempt.text, sheet, area, h, claimWords) : undefined
         last = ok ? { text: attempt.text, issues: result!.issues } : undefined
@@ -180,6 +193,8 @@ export function useDrafts(ctx: Context) {
     abandon: (id: HouseholdId) => abandoners.current[id]?.(),
     edit: (id: HouseholdId, text: string) => update(id, (d) => ({ ...d, text, approved: false, edited: true })),
     setApproved: (id: HouseholdId, approved: boolean) => update(id, (d) => ({ ...d, approved })),
+    /** Marks the attempts up to this id as kept in a ledger entry, or undoes that when a save fails. */
+    setRecordedThrough: (id: HouseholdId, through: number) => update(id, (d) => ({ ...d, recordedThrough: through })),
     /** The fact sheet or area changed: every approval is void. */
     unapproveAll: () => setDrafts((all) => Object.fromEntries(Object.entries(all).map(([k, d]) => [k, { ...d, approved: false }])) as DraftMap),
     reset: () => setDrafts(emptyDrafts),

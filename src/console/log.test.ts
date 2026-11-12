@@ -8,10 +8,13 @@ const failed: Draft = {
   running: false,
   approved: false,
   edited: true,
+  history: [],
+  recordedThrough: 0,
   attempts: [
     {
       id: 1,
       route: 'prefer_on_device',
+      area: 'Purok 1',
       retry: false,
       prompt: 'PROMPT 1',
       startedAt: 0,
@@ -21,7 +24,7 @@ const failed: Draft = {
       passed: false,
       issues: [{ rule: 'added-claims', message: '“tonight” is not in the bulletin.' }],
     },
-    { id: 2, route: 'only_in_cloud', retry: true, prompt: 'PROMPT 2', startedAt: 0, endedMs: 1000, text: '', error: 'boom' },
+    { id: 2, route: 'only_in_cloud', area: 'Purok 1', retry: true, prompt: 'PROMPT 2', startedAt: 0, endedMs: 1000, text: '', error: 'boom' },
   ],
 }
 
