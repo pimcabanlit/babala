@@ -59,14 +59,14 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 
    Round 5 on the laptop (Nov 12): Nano wrote all four alerts. Three passed on the first draft, and Families passed after its retry removed "safe".
 4. **Officer sign-in and saving** (PR #15). The console opens only for an officer. "Approve and save" runs the checker again on the exact text and saves the alert to Firestore. Offline, the save waits on the laptop and uploads when the connection is back. The Firestore rules are tested on the emulator in CI and published.
-5. **Ledger** (PR #19). Each approval writes a locked entry in the same batch as the alert: the fact sheet and bulletin, every draft on that card since its last approval with its model, time, verdict and problems, any hand edit, the claim words, and who approved it when. The rules refuse an alert without its entry, and nobody can change or delete an entry. The console's *Ledger* section traces each alert from the bulletin to the saved text. Drafts that never lead to an approval stay in the test log only.
+5. **Ledger** (PR #19). Each approval writes a locked entry in the same batch as the alert: the fact sheet and bulletin, every draft on that card since its last approval with its model, time, verdict and problems, any hand edit, the claim words, and who approved it when. The rules refuse an alert without its entry, and nobody can change or delete an entry. The console's *Ledger* section traces each alert from the bulletin to the saved text. Drafts that never lead to an approval stay in the test log only. Rules published Nov 12. The first real trace on the laptop: Nano wrote the General alert for Purok Ilaya in 14.9 s, it passed on the first draft, and the entry shows it (9:09 PM).
 6. **Still to build:**
    - withdrawing a saved alert, which adds a `withdrawn` entry to the ledger in the same batch as the alert's update;
    - a test officer login for judges.
 
 Translations add a `translated` ledger entry in Phase 3.
 
-**Done when:** the core loop (bulletin, draft, check, approve) works end to end on the laptop. On Nov 12 it does, with saving, and the ledger is on a branch (PR #19). Withdrawing is next. If the gate slips, the resident view shrinks to a saved alert with text search.
+**Done when:** the core loop (bulletin, draft, check, approve) works end to end on the laptop. On Nov 12 it does, with saving and the ledger. Withdrawing is next. If the gate slips, the resident view shrinks to a saved alert with text search.
 
 ### Phase 3 — Resident view, offline pack and translations (Nov 21–23)
 

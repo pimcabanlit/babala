@@ -12,7 +12,7 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | Web app | "Babala web" | Its config lives in `.env.local` and, for hosting, GitHub secrets |
 | AI Logic | Gemini Developer API backend | The app calls it with limited-use App Check tokens (`src/ai/index.ts`) |
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, registered for "Babala web" | **Enforced on AI Logic.** Not yet enforced on Firestore (turn on near the end). A debug token is registered for local work and kept in `.env.local` |
-| Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15). PR #19 adds the ledger: publish its rules right after it merges. The `officers` documents are added by hand |
+| Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12). The `officers` documents are added by hand |
 | Authentication | Google and Anonymous sign-in enabled | The app uses Google for officers. Anonymous is for residents, not used yet |
 | Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name` and `checker_claim_words` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
 | Hosting | Not set up | Planned for Phase 4, deployed by GitHub Actions |
@@ -75,7 +75,7 @@ These match what is in place now. Console menu names drift: when the console dis
 ### 6. Firestore
 
 1. Database `(default)`, **Standard** edition, location **asia-southeast1**, started in production mode.
-2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15.
+2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15 and PR #19.
 
    Publish right after the PR that changes them merges, not before. The app and the rules change together: for PR #19, the app on `main` before the merge saves alerts without a ledger entry, which the new rules refuse, and the new app saves a ledger entry, which the old rules refuse. To try a rules change before merging, use the emulators (`npm run emulators`), which load `firestore.rules` from the branch.
 3. **Add an officer:**
@@ -153,7 +153,7 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 - [x] Project, web app, AI Logic (Gemini Developer API), App Check enforced on AI Logic, Firestore, Google and Anonymous sign-in, Remote Config budget (Nov 12).
 - [x] Firestore rules from PR #15 published; officer sign-in and saving tested on the laptop.
 - [x] Purok 1 General alert, saved before PR #16 with "कृपया" in it, redrafted and re-approved (Nov 12).
-- [ ] Publish the ledger rules from PR #19 right after it merges. Alerts saved before then stay readable and show "Saved before the ledger" until their next approval.
+- [x] Ledger rules from PR #19 published right after it merged, and checked on the laptop with a real Nano approval (Nov 12, 9:09 PM). Alerts saved before then stay readable and show "Saved before the ledger" until their next approval.
 - [ ] Optional: publish `cloud_model_name` in Remote Config, so the cloud model can be switched during judging without a redeploy.
 - [ ] Resident read access in `firestore.rules`, with anonymous sign-in (Phase 3).
 - [ ] Hosting, GitHub secrets, and the hosted domain in Authentication's authorized domains (Phase 4).
