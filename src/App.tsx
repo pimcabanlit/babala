@@ -1,3 +1,5 @@
+import SetupStatus from './SetupStatus'
+
 export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -12,9 +14,7 @@ export default function App() {
         <p className="mt-2 text-slate-700">
           Checked typhoon alerts that still work when the signal drops.
         </p>
-        <p className="mt-6 text-sm text-slate-500">
-          App skeleton. The officer console and resident view come in later steps.
-        </p>
+        <SetupStatus />
       </main>
     </div>
   )
