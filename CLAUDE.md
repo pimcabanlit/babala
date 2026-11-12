@@ -87,7 +87,8 @@ every change must be cheap to undo. This replaces the old "Definition of done" s
      data only.
    - **On-device (Gemini Nano) changes:** the cloud session can't run Nano. Say so in the PR,
      and Pim tests it on the laptop before merging.
-3. **Open a PR** with Summary, Testing (the output above), Risk tier, and How to revert.
+3. **Open a PR** with Summary, Testing (the output above), Risk tier (with the file that set it;
+   see "Risk tiers" in `REVIEW.md`), and How to revert.
 4. **Answer every review finding:** fix it, or reply with why not. None left silent.
    Reviewers (human or AI) follow `REVIEW.md`: what counts as Important, and how to report.
 5. **Pim merges.** Claude never merges and never calls a PR ready before its CI is green.
