@@ -51,6 +51,12 @@ export default function SetupStatus() {
       <Row label="Firebase" check={{ state: 'ok', detail: `project ${firebase.app.options.projectId}` }} />
       <Row label="App Check" check={appCheck} />
       <Row label="Remote Config" check={rc} />
+      {firebase.emulators && (
+        <Row
+          label="Emulators"
+          check={{ state: 'ok', detail: 'on: sign-in and saved alerts use local test copies, not the real project' }}
+        />
+      )}
       {appCheck.state === 'error' && import.meta.env.DEV && (
         <p className="mt-3 text-sm text-slate-700">
           Running locally? Open the browser console, copy the App Check debug token it printed, and

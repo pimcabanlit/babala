@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { REQUIRED_ENV_KEYS, appCheckDebugSetting, readFirebaseEnv } from './env'
+import { REQUIRED_ENV_KEYS, appCheckDebugSetting, readFirebaseEnv, wantsEmulators } from './env'
 
 // Fake, obviously non-real values: never put real config in tests.
 const complete = Object.fromEntries(REQUIRED_ENV_KEYS.map((k) => [k, `test-${k}`]))
@@ -42,5 +42,20 @@ describe('appCheckDebugSetting', () => {
 
   it('asks the SDK to print a new token in development when none is set', () => {
     expect(appCheckDebugSetting({ DEV: true, VITE_APPCHECK_DEBUG_TOKEN: '' })).toBe(true)
+  })
+})
+
+describe('wantsEmulators', () => {
+  it('is on in development when .env.local asks for it', () => {
+    expect(wantsEmulators({ DEV: true, VITE_FIREBASE_EMULATORS: 'true' })).toBe(true)
+  })
+
+  it('is off in production builds, even if .env.local asks for it', () => {
+    expect(wantsEmulators({ DEV: false, VITE_FIREBASE_EMULATORS: 'true' })).toBe(false)
+  })
+
+  it('is off in development unless the value is exactly "true"', () => {
+    expect(wantsEmulators({ DEV: true, VITE_FIREBASE_EMULATORS: '1' })).toBe(false)
+    expect(wantsEmulators({ DEV: true })).toBe(false)
   })
 })

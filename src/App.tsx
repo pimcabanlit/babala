@@ -1,4 +1,5 @@
 import OfficerConsole from './console/OfficerConsole'
+import OfficerGate from './officer/OfficerGate'
 import SetupStatus from './SetupStatus'
 
 export default function App() {
@@ -16,7 +17,7 @@ export default function App() {
           Checked typhoon alerts that still work when the signal drops.
         </p>
         <SetupStatus />
-        <OfficerConsole />
+        <OfficerGate>{(session) => <OfficerConsole session={session} />}</OfficerGate>
       </main>
     </div>
   )

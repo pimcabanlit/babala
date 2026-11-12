@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
 import { InferenceSource } from '../ai'
+import type { SavedAlert } from '../alerts/record'
 import type { FactSheet, Rule } from '../checker'
 import type { Household } from '../drafting/households'
 import { inReadingOrder, segments } from './segments'
-import { checkFor, type Attempt, type Draft } from './useDrafts'
+import { checkFor } from '../drafting/check'
+import type { Attempt, Draft } from './useDrafts'
 
 const RULE_LABEL: Record<Rule, string> = {
   figures: 'Figure',
@@ -29,10 +31,14 @@ type Props = {
   onDraft: () => void
   onAbandon: () => void
   onEdit: (text: string) => void
-  onApprove: (approved: boolean) => void
+  /** The alert saved for this household and area, if any. */
+  saved: SavedAlert | undefined
+  saveError: string | undefined
+  /** Re-checks and saves the alert (OfficerConsole.approve). */
+  onApprove: () => void
 }
 
-/** One household's alert: the attempts, the checked text with highlights, and approval. */
+/** One household's alert: the attempts, the checked text with highlights, approval and what is saved. */
 export default function DraftCard(props: Props) {
   const { household, draft, sheet, area, claimWords, now, budgetSeconds, cloudModel, online } = props
   const result = useMemo(
@@ -59,11 +65,11 @@ export default function DraftCard(props: Props) {
           </button>
           <button
             type="button"
-            onClick={() => props.onApprove(!draft.approved)}
-            disabled={draft.running || (!draft.approved && !result?.pass)}
+            onClick={props.onApprove}
+            disabled={draft.running || draft.approved || !result?.pass}
             className="rounded bg-emerald-700 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-600 disabled:bg-slate-300"
           >
-            {draft.approved ? 'Undo approval' : 'Approve'}
+            {draft.approved ? 'Approved' : 'Approve and save'}
           </button>
         </div>
       </header>
@@ -116,6 +122,9 @@ export default function DraftCard(props: Props) {
         className="mt-1 w-full rounded border border-slate-300 p-2 text-sm"
       />
 
+      {props.saveError && <p className="mt-2 rounded bg-red-50 p-2 text-sm text-red-800">{props.saveError}</p>}
+      {props.saved && <Saved saved={props.saved} current={draft.text.trim()} />}
+
       {result && !result.pass && !draft.running && (
         <div className="mt-2">
           <p className="whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm leading-6">
@@ -142,6 +151,30 @@ export default function DraftCard(props: Props) {
       )}
     </article>
   )
+}
+
+/** The saved alert: when, whether it has uploaded, and its text when the card shows something else. */
+function Saved({ saved, current }: { saved: SavedAlert; current: string }) {
+  const when = saved.approvedAt ? ` at ${formatTime(saved.approvedAt)}` : ''
+  return (
+    <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-950">
+      <p>
+        {saved.pending
+          ? `Saved on this laptop${when}. It uploads when the laptop is back online.`
+          : `Saved online${when}.`}
+      </p>
+      {saved.text !== current && (
+        <>
+          <p className="mt-1 text-emerald-900">The saved alert stays until you approve a new one:</p>
+          <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-emerald-300 pl-2">{saved.text}</blockquote>
+        </>
+      )}
+    </div>
+  )
+}
+
+function formatTime(date: Date): string {
+  return date.toLocaleString('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function Status({ draft, passed }: { draft: Draft; passed: boolean | undefined }) {
