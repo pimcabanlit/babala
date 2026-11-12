@@ -50,6 +50,17 @@ export function checkAddedClaims(text: string, bulletinText: string, claimWords:
 const EMOJI = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}]️?/gu
 const MARKDOWN = /\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|^\s*(?:#{1,6}\s|[-*+]\s|\d+\.\s)/gm
 
+/**
+ * A run of letters or digits outside the Latin script: Nano wrote the Hindi
+ * “कृपया” into an English alert on Nov 12 and it passed. English, Filipino
+ * and Cebuano use Latin letters (ñ and accents included) and the digits 0 to
+ * 9, and the figures rule reads only 0 to 9, so “२००” would pass it unread.
+ * A run starts with a letter or digit, so an accent typed as a combining
+ * mark after a Latin letter ("a" + U+0301) passes.
+ */
+const OTHER_SCRIPT =
+  /(?:(?!\p{Script=Latin})\p{L}|(?![0-9])\p{Nd})(?:(?!\p{Script=Latin})[\p{L}\p{M}]|(?![0-9])\p{Nd})*/gu
+
 export function checkPlain(text: string, maxSentences: number, maxWords: number, { length = true } = {}): Issue[] {
   const issues: Issue[] = []
   if (length) {
@@ -61,6 +72,8 @@ export function checkPlain(text: string, maxSentences: number, maxWords: number,
   }
   for (const span of findAll(text, EMOJI))
     issues.push({ rule: 'plain', subject: 'emoji', message: `Emoji “${span.text}” is not allowed.`, span })
+  for (const span of findAll(text, OTHER_SCRIPT))
+    issues.push({ rule: 'plain', subject: 'script', message: `“${span.text}” is in another script; alerts use Latin letters and the digits 0 to 9.`, span })
   for (const span of findAll(text, MARKDOWN))
     issues.push({ rule: 'plain', subject: 'format', message: `Formatting “${span.text.trim()}” is not allowed; alerts are plain text.`, span })
   return issues
