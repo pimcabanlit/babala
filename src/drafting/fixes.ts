@@ -54,6 +54,7 @@ export function fixFor(issue: Issue, sheet: FactSheet, area: string, centre = sh
               : issue.subject === 'phone'
                 ? sheet.hotline || undefined
                 : undefined
+      if (issue.subject === 'landfall') return `Say that ${sheet.stormName || 'the typhoon'} makes landfall at ${whenText(sheet)}.`
       return right ? `Change “${found}” to “${right}”.` : `Remove “${found}”.`
     }
     case 'places':

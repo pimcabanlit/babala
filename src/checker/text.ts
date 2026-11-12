@@ -60,3 +60,21 @@ export function countWords(text: string): number {
   const t = text.trim()
   return t === '' ? 0 : t.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
 }
+
+/**
+ * The sentence (or line) around each offset, as a span. Abbreviations such as
+ * "No." and decimals don't end a sentence; offsets match the original text.
+ */
+export function sentenceAt(text: string, index: number): Span {
+  const protectedText = text
+    .replace(ABBREVIATIONS, (m) => m.replace(/\./g, '_'))
+    .replace(/\b([aApP])\.[mM]\.(?!\s+\p{Lu}|\s*$)/gu, (m) => m.replace(/\./g, '_'))
+    .replace(/(\d)\.(\d)/g, '$1_$2')
+  let start = 0
+  for (const m of protectedText.matchAll(/[.!?]+(?=\s|$)|\n/g)) {
+    const end = m.index + m[0].length
+    if (end > index) return { start, end, text: text.slice(start, end) }
+    start = end
+  }
+  return { start, end: text.length, text: text.slice(start) }
+}

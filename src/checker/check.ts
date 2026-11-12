@@ -6,7 +6,7 @@
 import { extractFigures, normalizeDate, normalizePhone, type Figure } from './figures'
 import { checkPlaces, findCentres, findKnownPlaces, knownPlaces } from './places'
 import { checkAddedClaims, checkPlaceholders, checkPlain } from './rules'
-import { findAll, mask, phrasePattern } from './text'
+import { findAll, mask, phrasePattern, sentenceAt } from './text'
 import type { CheckOptions, CheckResult, FactSheet, Issue, RequiredFact, Span } from './types'
 
 export const DEFAULT_REQUIRED: RequiredFact[] = ['signal', 'time', 'place', 'hotline']
@@ -45,6 +45,26 @@ function checkFigures(figures: Figure[], sheet: FactSheet): Issue[] {
       rule: 'figures' as const,
       subject: f.kind,
       message: `${KIND_LABEL[f.kind]} “${f.span.text}” is not in the fact sheet.`,
+      span: f.span,
+    }))
+}
+
+/** Words that say the time is when the storm arrives. */
+const LANDFALL_WORDS = /\b(?:landfall|make(?:s)?\s+land|hit(?:s|ting)?|strike(?:s)?|striking)\b/i
+
+/**
+ * Rule 1, the meaning of the time: the bulletin's only time is the landfall
+ * time, so a draft may use it only in a sentence about landfall. "Declared at
+ * 6:00 PM" or "bring food by 6:00 PM" has the right figure and the wrong fact.
+ */
+function checkTimeMeaning(text: string, figures: Figure[], sheet: FactSheet): Issue[] {
+  return figures
+    .filter((f) => f.kind === 'time' && f.value === sheet.landfallTime)
+    .filter((f) => !LANDFALL_WORDS.test(sentenceAt(text, f.span.start).text))
+    .map((f) => ({
+      rule: 'figures' as const,
+      subject: 'landfall' as const,
+      message: `“${f.span.text}” is the landfall time: say it in a sentence about landfall.`,
       span: f.span,
     }))
 }
@@ -100,6 +120,7 @@ export function checkDraft(draft: string, sheet: FactSheet, options: CheckOption
   return result([
     ...placeholders,
     ...checkFigures(figures, sheet),
+    ...checkTimeMeaning(draft, figures, sheet),
     // Placeholders are reported once, not again as unknown places.
     ...checkPlaces(mask(draft, placeholders.flatMap((i) => (i.span ? [i.span] : []))), sheet),
     ...checkMissing(draft, figures, sheet, options),

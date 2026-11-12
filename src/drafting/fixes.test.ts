@@ -31,7 +31,7 @@ describe('editsFor', () => {
   })
 
   it('changes another area’s signal number instead of adding a second one', () => {
-    expect(edits('Signal No. 2 for Purok 1 at 6 PM on Nov 14. Go to Barangay Hall and call 0917 555 0100.')).toEqual([
+    expect(edits('Signal No. 2 for Purok 1, landfall at 6 PM on Nov 14. Go to Barangay Hall and call 0917 555 0100.')).toEqual([
       'Change “Signal No. 2” to “Signal No. 3”.',
     ])
   })
@@ -69,7 +69,7 @@ describe('editsFor', () => {
   })
 
   it('names a different centre for each place it replaces', () => {
-    expect(edits('Signal No. 3 for Purok 1 at 6 PM. Go to the municipal gym or [Evacuation Centre]. Call 0917 555 0100.')).toEqual([
+    expect(edits('Signal No. 3 for Purok 1, landfall at 6 PM. Go to the municipal gym or [Evacuation Centre]. Call 0917 555 0100.')).toEqual([
       'Replace “municipal gym” with “Halimbawa Elementary School gym”.',
       'Replace “[Evacuation Centre]” with “Barangay Hall”.',
     ])
@@ -80,9 +80,9 @@ describe('editsFor', () => {
   })
 
   it('shortens a long draft and strips Markdown', () => {
-    const long = 'Leave now. '.repeat(4) + 'Signal No. 3 for Purok 1 at 6 PM on Nov 14; go to Barangay Hall or call 0917 555 0100.'
+    const long = 'Leave now. '.repeat(4) + 'Signal No. 3 for Purok 1, landfall at 6 PM on Nov 14; go to Barangay Hall or call 0917 555 0100.'
     expect(edits(long)).toEqual(['Use at most 3 sentences.'])
-    expect(edits('## Alert\nSignal No. 3 for Purok 1 at 6 PM on Nov 14. Go to Barangay Hall. Call 0917 555 0100.')).toEqual([
+    expect(edits('## Alert\nSignal No. 3 for Purok 1, landfall at 6 PM on Nov 14. Go to Barangay Hall. Call 0917 555 0100.')).toEqual([
       'Remove “##” from the start of the line.',
     ])
   })

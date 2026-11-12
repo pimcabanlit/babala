@@ -44,6 +44,7 @@ export type Span = { start: number; end: number; text: string }
  */
 export type IssueSubject =
   | 'time'
+  | 'landfall'
   | 'date'
   | 'signal'
   | 'phone'

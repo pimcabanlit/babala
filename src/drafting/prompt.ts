@@ -12,41 +12,65 @@ export function signalFor(sheet: FactSheet, area: string): number | undefined {
   return sheet.signals.find((s) => s.area === area)?.signal
 }
 
-export function buildDraftPrompt(sheet: FactSheet, area: string, household: Household): string {
+/**
+ * The alert's shape, one line per sentence. Nano can't count sentences
+ * ("at most 3" gave 4 to 6 on the laptop) but follows a numbered outline, and
+ * the outline puts the landfall time where it belongs.
+ */
+export function outline(sheet: FactSheet, area: string, household: Household): string[] {
   const signal = signalFor(sheet, area)
+  const storm = sheet.stormName || 'the typhoon'
+  const lines = [
+    signal !== undefined
+      ? `Say that Signal No. ${signal} is raised in ${area} and that ${storm} makes landfall at ${whenText(sheet)}.`
+      : `Say that ${storm} makes landfall at ${whenText(sheet)}.`,
+    `${household.advice}, and to go to ${sheet.evacuationCentres.join(' or ')}.`,
+  ]
+  if (sheet.hotline) lines.push(`Tell them to call the hotline, ${sheet.hotline}, for help.`)
+  return lines
+}
+
+const numbered = (lines: string[]) => lines.map((l, i) => `${i + 1}. ${l}`)
+
+const RULES =
+  'Use only these facts, written exactly as here. Do not add other numbers, places, times or dates, and do not describe how strong the storm is. No emojis, no Markdown, no brackets.'
+
+export function buildDraftPrompt(sheet: FactSheet, area: string, household: Household): string {
   const place = sheet.barangays[0] ? `${area}, ${sheet.barangays[0]}` : area
-  const when = whenText(sheet)
-  const facts = [
-    sheet.stormName && `Storm: ${sheet.stormName}`,
-    signal !== undefined && `Signal No. ${signal} in ${area}`,
-    `Landfall: ${when}`,
-    `Evacuation centre: ${sheet.evacuationCentres.join(' or ')}`,
-    sheet.hotline && `Hotline: ${sheet.hotline}`,
-  ].filter(Boolean)
+  const lines = outline(sheet, area, household)
   return [
-    `Write a typhoon alert for ${household.audience} in ${place}.`,
-    'Use these facts exactly as written, and no other facts:',
-    ...facts.map((f) => `- ${f}`),
-    household.advice,
-    `Say when as “${when}”, with no other time words.`,
-    'Write at most 3 short sentences in plain English. No emojis, no Markdown, no brackets, no placeholders.',
-    'Do not add any other numbers, places, times or dates, and do not describe how strong the storm is.',
+    `Write a typhoon alert for ${household.audience} in ${place}, in exactly ${lines.length} sentences of plain English:`,
+    ...numbered(lines),
+    RULES,
   ].join('\n')
 }
 
+/** Problems a word-level edit can't fix: the shape, a missing fact, the time's meaning. */
+const isStructural = (i: Issue) =>
+  i.rule === 'missing' || (i.rule === 'plain' && (i.subject === 'sentences' || i.subject === 'words')) || i.subject === 'landfall'
+
 /**
- * The retry: the failed draft back, with one concrete edit per problem.
- * A small on-device model follows "Remove “today”" far better than the whole
- * prompt again, and the shorter prompt runs faster on the laptop.
+ * The retry: the failed draft back, with one concrete edit per problem. A
+ * small on-device model follows "Remove “today”" far better than the whole
+ * prompt again, and the shorter prompt runs faster on the laptop. When the
+ * shape is wrong (too long, a fact missing, the time on the wrong event), it
+ * gets the numbered outline instead of "use at most 3 sentences".
  */
-export function buildRetryPrompt(draft: string, issues: Issue[], sheet: FactSheet, area: string): string {
-  const edits = editsFor(issues, sheet, area, draft)
+export function buildRetryPrompt(draft: string, issues: Issue[], sheet: FactSheet, area: string, household: Household): string {
+  const structural = issues.some(isStructural)
+  const edits = editsFor(structural ? issues.filter((i) => !isStructural(i)) : issues, sheet, area, draft)
+  const lines = outline(sheet, area, household)
   return [
     'Here is a typhoon alert:',
     draft.trim(),
     '',
-    'Rewrite it with these changes, and keep everything else the same:',
-    ...edits.map((e) => `- ${e}`),
+    ...(structural
+      ? [
+          `Rewrite it as exactly ${lines.length} sentences:`,
+          ...numbered(lines),
+          ...(edits.length ? ['Also make these changes:', ...edits.map((e) => `- ${e}`)] : []),
+        ]
+      : ['Rewrite it with these changes, and keep everything else the same:', ...edits.map((e) => `- ${e}`)]),
     'Reply with only the new alert, in plain text.',
   ].join('\n')
 }

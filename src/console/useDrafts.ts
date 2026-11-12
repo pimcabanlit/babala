@@ -104,7 +104,8 @@ export function useDrafts(ctx: Context) {
           patchAttempt(h.id, attemptId, (a) => ({ text, source, firstTextMs: a.firstTextMs ?? Date.now() - startedAt }), text)
         },
       }).then(
-        (r) => ({ text: r.text, source: r.source }),
+        // Nano leaves blank lines at the end.
+        (r) => ({ text: r.text.trim(), source: r.source }),
         (err: unknown) => ({ text: '', error: err instanceof Error ? err.message : String(err) }),
       )
       const outcome: { text: string; source?: Source; error?: string; abandoned?: true } = await Promise.race([streamed, abandoned])
@@ -148,7 +149,7 @@ export function useDrafts(ctx: Context) {
         // After an error or an abandoned attempt there is no draft to quote, so start fresh.
         const quoted = step.retry && last && last.text.trim() !== '' ? last : undefined
         const withReasons = quoted !== undefined
-        const prompt = quoted ? buildRetryPrompt(quoted.text, quoted.issues, sheet, area) : base
+        const prompt = quoted ? buildRetryPrompt(quoted.text, quoted.issues, sheet, area, h) : base
         const attempt = await runAttempt(h, models, step.route, prompt, withReasons)
         const ok = !attempt.error && !attempt.abandoned
         const result = ok ? checkFor(attempt.text, sheet, area, h, claimWords) : undefined
