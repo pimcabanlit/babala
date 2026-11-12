@@ -73,6 +73,7 @@ export function checkPlaces(text: string, sheet: FactSheet): Issue[] {
   for (const venue of reported)
     issues.push({
       rule: 'places',
+      subject: 'venue',
       message: `“${phraseAround(text, venue)}” is not an evacuation centre in the fact sheet.`,
       span: venue,
     })
@@ -83,7 +84,7 @@ export function checkPlaces(text: string, sheet: FactSheet): Issue[] {
     // "Barangay Captain" is a person, not a place (the claim-word list covers it).
     if (BARANGAY_ROLES.test(m[0])) continue
     if (known.some((k) => inside(span, k)) || reported.some((r) => inside(r, span))) continue
-    issues.push({ rule: 'places', message: `“${m[0]}” is not a purok or barangay in the fact sheet.`, span })
+    issues.push({ rule: 'places', subject: 'area', message: `“${m[0]}” is not a purok or barangay in the fact sheet.`, span })
   }
 
   // A modifier in front of a known name changes the place.
@@ -95,6 +96,7 @@ export function checkPlaces(text: string, sheet: FactSheet): Issue[] {
     const start = k.start - before[0].length
     issues.push({
       rule: 'places',
+      subject: 'modifier',
       message: `“${before[1]} ${k.text}” changes the place name; the fact sheet says “${k.text}”.`,
       span: { start, end: k.end, text: text.slice(start, k.end) },
     })

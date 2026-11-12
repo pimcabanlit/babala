@@ -23,3 +23,9 @@ export function segments(text: string, issues: Issue[]): Segment[] {
   if (at < text.length) out.push({ text: text.slice(at) })
   return out
 }
+
+/** Problems in reading order, then the ones with no place in the text (missing facts, length). */
+export function inReadingOrder(issues: Issue[]): Issue[] {
+  const placed = issues.filter((i) => i.span).sort((a, b) => a.span!.start - b.span!.start)
+  return [...placed, ...issues.filter((i) => !i.span)]
+}

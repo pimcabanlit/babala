@@ -13,6 +13,8 @@ const PLACEHOLDER_PATTERNS: RegExp[] = [
   /_{3,}/g, // ____
   /\binsert\s+(?:\w+\s+){0,2}(?:here|name|address|date|time|number)\b/gi,
   /\blorem ipsum\b/gi,
+  // Prompt wording copied into the alert (seen from the cloud model on Nov 12).
+  /\b(?:tell|ask|remind) them\b|\bsay that\b/gi,
   /\((?:name|address|location|date|time|number|barangay|purok|school|phone|hotline)[^)]*\)/gi,
 ]
 
@@ -53,13 +55,13 @@ export function checkPlain(text: string, maxSentences: number, maxWords: number,
   if (length) {
     const sentences = countSentences(text)
     if (sentences > maxSentences)
-      issues.push({ rule: 'plain', message: `${sentences} sentences; the limit is ${maxSentences}.` })
+      issues.push({ rule: 'plain', subject: 'sentences', message: `${sentences} sentences; the limit is ${maxSentences}.` })
     const words = countWords(text)
-    if (words > maxWords) issues.push({ rule: 'plain', message: `${words} words; the limit is ${maxWords}.` })
+    if (words > maxWords) issues.push({ rule: 'plain', subject: 'words', message: `${words} words; the limit is ${maxWords}.` })
   }
   for (const span of findAll(text, EMOJI))
-    issues.push({ rule: 'plain', message: `Emoji “${span.text}” is not allowed.`, span })
+    issues.push({ rule: 'plain', subject: 'emoji', message: `Emoji “${span.text}” is not allowed.`, span })
   for (const span of findAll(text, MARKDOWN))
-    issues.push({ rule: 'plain', message: `Formatting “${span.text.trim()}” is not allowed; alerts are plain text.`, span })
+    issues.push({ rule: 'plain', subject: 'format', message: `Formatting “${span.text.trim()}” is not allowed; alerts are plain text.`, span })
   return issues
 }

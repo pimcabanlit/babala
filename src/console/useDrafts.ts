@@ -4,20 +4,27 @@ import { checkDraft, type CheckResult, type FactSheet, type Issue } from '../che
 import type { DeviceStatus } from '../ai/deviceStatus'
 import { HOUSEHOLDS, type Household, type HouseholdId } from '../drafting/households'
 import { buildDraftPrompt, buildRetryPrompt } from '../drafting/prompt'
+import { previewFromPartialJson, readAnswer } from '../drafting/structured'
 import { nextStep, type AttemptOutcome } from '../drafting/route'
 
 export type Attempt = {
   id: number
   route: Route
-  /** The prompt quoted the last draft and the checker's reasons. */
+  /** The prompt was the last draft with an edit per problem. */
   retry: boolean
+  /** The exact prompt, for the test log. */
+  prompt: string
   startedAt: number
   firstTextMs?: number
   endedMs?: number
+  /** The alert: the answer's fields joined into sentences. */
   text: string
+  /** The model's answer as it came, JSON included, for the test log. */
+  raw?: string
   source?: Source
   passed?: boolean
-  issueCount?: number
+  /** The checker's problems with this attempt's text. */
+  issues?: Issue[]
   error?: string
   /** The officer moved on to the cloud after the on-device budget. */
   abandoned?: boolean
@@ -87,7 +94,7 @@ export function useDrafts(ctx: Context) {
       const attemptId = nextId.current++
       const startedAt = Date.now()
       let live = true
-      update(h.id, (d) => ({ ...d, text: '', attempts: [...d.attempts, { id: attemptId, route, retry, startedAt, text: '' }] }))
+      update(h.id, (d) => ({ ...d, text: '', attempts: [...d.attempts, { id: attemptId, route, retry, prompt, startedAt, text: '' }] }))
 
       const abandoned = new Promise<{ text: string; abandoned: true }>((resolve) => {
         abandoners.current[h.id] = () => {
@@ -96,15 +103,18 @@ export function useDrafts(ctx: Context) {
         }
       })
       const streamed = streamDraft(models, route, prompt, {
-        onText: (text, source) => {
+        onText: (raw, source) => {
           if (!live) return
+          // The answer streams in as JSON; the officer watches the sentences.
+          const text = raw.trimStart().startsWith('{') ? previewFromPartialJson(raw) : raw
           patchAttempt(h.id, attemptId, (a) => ({ text, source, firstTextMs: a.firstTextMs ?? Date.now() - startedAt }), text)
         },
       }).then(
-        (r) => ({ text: r.text, source: r.source }),
+        // readAnswer also trims: Nano leaves blank lines at the end.
+        (r) => ({ text: readAnswer(r.text), raw: r.text, source: r.source }),
         (err: unknown) => ({ text: '', error: err instanceof Error ? err.message : String(err) }),
       )
-      const outcome: { text: string; source?: Source; error?: string; abandoned?: true } = await Promise.race([streamed, abandoned])
+      const outcome: { text: string; raw?: string; source?: Source; error?: string; abandoned?: true } = await Promise.race([streamed, abandoned])
       live = false
       delete abandoners.current[h.id]
       const endedMs = Date.now() - startedAt
@@ -116,6 +126,7 @@ export function useDrafts(ctx: Context) {
           ...(outcome.source ? { source: outcome.source } : {}),
           ...(outcome.error ? { error: outcome.error } : {}),
           ...(outcome.abandoned ? { abandoned: true } : {}),
+          ...(outcome.abandoned || outcome.error ? {} : { text: outcome.text, raw: outcome.raw }),
         }),
         outcome.abandoned || outcome.error ? undefined : outcome.text,
       )
@@ -145,13 +156,13 @@ export function useDrafts(ctx: Context) {
         // After an error or an abandoned attempt there is no draft to quote, so start fresh.
         const quoted = step.retry && last && last.text.trim() !== '' ? last : undefined
         const withReasons = quoted !== undefined
-        const prompt = quoted ? buildRetryPrompt(base, quoted.text, quoted.issues) : base
+        const prompt = quoted ? buildRetryPrompt(quoted.text, quoted.issues, sheet, area, h) : base
         const attempt = await runAttempt(h, models, step.route, prompt, withReasons)
         const ok = !attempt.error && !attempt.abandoned
         const result = ok ? checkFor(attempt.text, sheet, area, h, claimWords) : undefined
         last = ok ? { text: attempt.text, issues: result!.issues } : undefined
         const passed = result?.pass ?? false
-        patchAttempt(h.id, attempt.attemptId, () => ({ passed, issueCount: result?.issues.length }))
+        patchAttempt(h.id, attempt.attemptId, () => ({ passed, ...(result ? { issues: result.issues } : {}) }))
         outcomes.push({ route: step.route, passed, ...(attempt.abandoned ? { abandoned: true } : {}) })
       }
       // Show the last real draft for hand editing, not an empty abandoned one.

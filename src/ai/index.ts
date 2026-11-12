@@ -24,17 +24,32 @@ export type DraftModels = Record<Route, GenerativeModel>
  * Two models for drafting: "prefer on-device" (Nano when Chrome has it ready,
  * otherwise the cloud) and "only in cloud". The cloud model name comes from
  * Remote Config.
+ *
+ * With `jsonSchema`, both models answer in JSON that fits it: Nano through
+ * Chrome's response constraint (onDeviceParams.promptOptions.responseConstraint)
+ * and the cloud through responseJsonSchema, the same schema on both paths
+ * (https://firebase.google.com/docs/ai-logic/hybrid/web/generate-structured-output).
  */
-export function createDraftModels(app: FirebaseApp, cloudModelName: string): DraftModels {
+export function createDraftModels(
+  app: FirebaseApp,
+  cloudModelName: string,
+  jsonSchema?: Record<string, unknown>,
+): DraftModels {
   // Limited-use App Check tokens: required by newer models for replay protection
   // (Firebase AI Logic agent skill, web usage patterns).
   const ai = getAI(app, { backend: new GoogleAIBackend(), useLimitedUseAppCheckTokens: true })
-  const generationConfig = { temperature: 0.2 }
+  const generationConfig = {
+    temperature: 0.2,
+    ...(jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: jsonSchema } : {}),
+  }
   return {
     prefer_on_device: getGenerativeModel(ai, {
       mode: InferenceMode.PREFER_ON_DEVICE,
       inCloudParams: { model: cloudModelName, generationConfig },
-      onDeviceParams: { createOptions: { ...ON_DEVICE_IO } },
+      onDeviceParams: {
+        createOptions: { ...ON_DEVICE_IO },
+        ...(jsonSchema ? { promptOptions: { responseConstraint: jsonSchema } } : {}),
+      },
     }),
     only_in_cloud: getGenerativeModel(ai, {
       mode: InferenceMode.ONLY_IN_CLOUD,
@@ -90,6 +105,7 @@ export async function streamDraft(
  * in memory.
  */
 export async function warmUpOnDevice(models: DraftModels): Promise<Source | undefined> {
-  const result = await models.prefer_on_device.generateContent('Reply with one word: ready')
+  // The model may have a JSON schema; a one-word answer fits any string field.
+  const result = await models.prefer_on_device.generateContent('Fill every field with the word "ready".')
   return result.response.inferenceSource
 }

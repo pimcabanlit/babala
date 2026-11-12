@@ -8,7 +8,7 @@ export type Household = {
   label: string
   /** Who the alert speaks to, in the prompt. */
   audience: string
-  /** One extra instruction for this household, with no figures or claim words. */
+  /** What this household should do, spoken to them, with no full stop, no figures and no claim words. */
   advice: string
   /** Facts the checker requires in this household's alert. */
   required: RequiredFact[]
@@ -19,28 +19,28 @@ export const HOUSEHOLDS: Household[] = [
     id: 'general',
     label: 'General',
     audience: 'all residents',
-    advice: 'Tell them to leave now.',
+    advice: 'Leave now',
     required: ['signal', 'time', 'place', 'hotline'],
   },
   {
     id: 'seniors',
     label: 'Seniors',
     audience: 'older residents and people with disabilities',
-    advice: 'Tell them to leave early, bring their medicines, and ask a neighbour for help.',
+    advice: 'Leave early, bring your medicines and ask a neighbour for help',
     required: ['signal', 'time', 'place', 'hotline'],
   },
   {
     id: 'families',
     label: 'Families with kids',
     audience: 'families with young children',
-    advice: 'Tell them to keep their children close and bring water and food.',
+    advice: 'Keep your children close and bring water and food',
     required: ['signal', 'time', 'place', 'hotline'],
   },
   {
     id: 'fishers',
     label: 'Fishers',
     audience: 'fishers and boat owners',
-    advice: 'Tell them not to go out to sea and to tie up their boats.',
+    advice: 'Do not go out to sea, tie up your boats',
     required: ['signal', 'time', 'hotline'],
   },
 ]
