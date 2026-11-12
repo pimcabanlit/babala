@@ -1,4 +1,4 @@
-import HybridTest from './hybrid/HybridTest'
+import OfficerConsole from './console/OfficerConsole'
 import SetupStatus from './SetupStatus'
 
 export default function App() {
@@ -10,13 +10,13 @@ export default function App() {
       >
         Demo, not official guidance. The storm and barangay are fictional.
       </div>
-      <main className="mx-auto max-w-2xl px-4 py-10">
+      <main className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-3xl font-bold">Babala</h1>
         <p className="mt-2 text-slate-700">
           Checked typhoon alerts that still work when the signal drops.
         </p>
         <SetupStatus />
-        <HybridTest />
+        <OfficerConsole />
       </main>
     </div>
   )

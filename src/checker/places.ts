@@ -60,13 +60,22 @@ export function checkPlaces(text: string, sheet: FactSheet): Issue[] {
   const reported: Span[] = []
   for (const venue of venues.sort((a, b) => a.start - b.start)) {
     if (known.some((k) => inside(venue, k)) || reported.some((r) => inside(venue, r) || inside(r, venue))) continue
+    // "the evacuation centre at Barangay Hall" names no new place; the named centre is checked.
+    if (/^cent(?:re|er)s?$/i.test(venue.text) && /\bevacuation\s+$/i.test(text.slice(0, venue.start))) continue
+    // "school gym" is one place: join venue words with only a space between them.
+    const last = reported.at(-1)
+    if (last && /^[\s-]+$/.test(text.slice(last.end, venue.start))) {
+      reported[reported.length - 1] = { start: last.start, end: venue.end, text: text.slice(last.start, venue.end) }
+      continue
+    }
     reported.push(venue)
+  }
+  for (const venue of reported)
     issues.push({
       rule: 'places',
       message: `“${phraseAround(text, venue)}” is not an evacuation centre in the fact sheet.`,
       span: venue,
     })
-  }
 
   // "Purok …" and "Barangay …" must be ones the fact sheet covers.
   for (const m of text.matchAll(/\b(?:[Pp]urok|PUROK|[Bb]arangay|BARANGAY|[Bb]rgy\.?)\s+(?:\d+|\p{Lu}[\p{L}-]*)/gu)) {
