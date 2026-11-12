@@ -89,6 +89,7 @@ every change must be cheap to undo. This replaces the old "Definition of done" s
      and Pim tests it on the laptop before merging.
 3. **Open a PR** with Summary, Testing (the output above), Risk tier, and How to revert.
 4. **Answer every review finding:** fix it, or reply with why not. None left silent.
+   Reviewers (human or AI) follow `REVIEW.md`: what counts as Important, and how to report.
 5. **Pim merges.** Claude never merges and never calls a PR ready before its CI is green.
 6. **Whoever asked for the change owns it after it lands**, including the revert if it breaks.
    Keep `README.md`, this file and `docs/build-plan.md` in step with the code, and keep the
