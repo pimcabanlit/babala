@@ -57,6 +57,23 @@ Architecture rules:
 
 Acer Aspire 14 AI, Snapdragon X, 16 GB RAM, Windows 11, Chrome. Gemini Nano runs, performance class **Low**: about 15 s for a 3-sentence alert. On-device output supports only de, en, es, fr and ja. Keep on-device jobs to 3 sentences or fewer, stream output, and offer the cloud after the 30 s budget. The cloud session can't run Nano, so on-device behaviour is tested by Pim on the laptop.
 
+## Firebase agent skills
+
+Firebase's official agent skills are vendored in `.claude/skills/` (see its `README.md` for the
+source commit and the list). Read the matching skill before working on AI Logic, App Check, Auth,
+Firestore, rules, Remote Config or Hosting. Where a skill and this file differ, this file wins:
+
+- **No deploys or console changes from an agent.** Skip any skill step that deploys
+  (`firebase deploy`, `--only auth`, `--only firestore:rules`, `--only remoteconfig`), creates
+  projects or databases, or runs `init ailogic`. AI Logic is already set up. Propose the change
+  in a PR and Pim applies it.
+- **Spark plan only.** Ignore anything that needs Blaze (Agent Platform / Vertex AI backend, image
+  generation, and so on).
+- **Model names:** follow the skill. Use a current Gemini 3+ model for the cloud, never Gemini 1.x
+  or 2.x, and keep the name in Remote Config with its default in the one config file.
+- **App Check:** use `useLimitedUseAppCheckTokens: true` in `getAI`, and load the debug token from
+  `.env.local` only, as the AI Logic skill shows.
+
 ## Commands
 
 Added as they're created. Keep this list current.
