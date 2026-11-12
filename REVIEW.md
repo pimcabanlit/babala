@@ -42,6 +42,15 @@ These are the failures that matter here. Any instance is **Important**, never a 
     routing, checker rules or submission checklist items that the diff makes untrue.
 11. **Dependencies.** Changes to `package.json` or the lockfile not asked for in the PR, or a new
     framework, paid service or non-Firebase backend not flagged.
+12. **Swallowed errors.** A `catch` or `.catch()` that drops an error without showing it to the
+    officer or resident, or recording it in the attempt or test log. For a warning app, a silent
+    failure is an alert that never goes out. A deliberate ignore needs a comment saying why.
+13. **Slow regexes on outside text.** A regex run on model output, a pasted bulletin or the
+    officer's textarea (the checker runs on every keystroke) with nested or overlapping
+    quantifiers that can backtrack badly, such as `(a+)+` or `(\w+\s?)*`. A hung tab shows no
+    alert.
+14. **Unsafe text sinks.** `eval`, `new Function`, `innerHTML` or `dangerouslySetInnerHTML` used
+    with model output, bulletin text or anything a user typed.
 
 ## How to report
 

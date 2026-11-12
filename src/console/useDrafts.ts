@@ -141,6 +141,7 @@ export function useDrafts(ctx: Context) {
       const { sheet, area, claimWords, models, deviceRef, warmPromise } = ctxRef.current
       if (!sheet || !models) return
       update(h.id, () => ({ ...emptyDraft, running: true }))
+      // Only wait for the warm-up here; a failed warm-up is already shown in the Models panel (useHybrid).
       await warmPromise.current.catch(() => undefined)
 
       const base = buildDraftPrompt(sheet, area, h)
