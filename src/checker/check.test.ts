@@ -137,6 +137,24 @@ describe('checkDraft on the fictional bulletin', () => {
     expect(flagged(checkDraft(four, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ plain: ['4 sentences; the limit is 3.'] })
   })
 
+  it('accepts "evacuation centre" as a common noun next to a known name', () => {
+    const draft = GOOD_DRAFT.replace('evacuate now to Halimbawa', 'go now to the evacuation centre at Halimbawa')
+    expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
+    // It still names no centre on its own.
+    const vague = GOOD_DRAFT.replace('evacuate now to Halimbawa Elementary School gym', 'go to the nearest evacuation center')
+    expect(flagged(checkDraft(vague, SAMPLE_SHEET, OPTIONS).issues)).toEqual({
+      missing: ['Missing where to go: name an evacuation centre from the fact sheet.'],
+    })
+  })
+
+  it('reports "municipal school gym" once, as one place', () => {
+    const draft = GOOD_DRAFT.replace('Halimbawa Elementary School gym', 'the municipal school gym')
+    const places = checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues.filter((i) => i.rule === 'places')
+    expect(places.map((i) => [i.span?.text, i.message])).toEqual([
+      ['school gym', '“the municipal school gym” is not an evacuation centre in the fact sheet.'],
+    ])
+  })
+
   it('ends a sentence at "p.m." when a new sentence follows', () => {
     const draft = 'Signal No. 3 over Purok Ilaya. Landfall at 6 p.m. Go to the Barangay Hall. Call 0917 555 0100.'
     expect(flagged(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ plain: ['4 sentences; the limit is 3.'] })

@@ -52,6 +52,12 @@ Two users share one web app: a barangay disaster officer on a laptop running Chr
 4. **Approve and publish.** The officer approves. The cloud then translates each alert into Filipino and the chosen local languages, the checker re-checks the figures, and the alerts are published.
 5. **Ledger.** Every draft, check, approval and translation is logged with the model that made it and when.
 
+Console built so far (Nov 12, `src/console/`, replacing the hello-hybrid test page):
+- Bulletin in: "Read bulletin" turns the demo bulletin format into a fact sheet with plain code (`src/factsheet/`), lists any fact it couldn't find, and the officer edits and ticks "I checked every fact" before any draft. Editing a fact or changing the area voids every approval.
+- Draft: the officer picks an area (its signal number is the one required) and drafts the four household alerts one after another. Prompts are in `src/drafting/prompt.ts`; each states every fact once, in the spelling the checker accepts.
+- Check: problems are highlighted in the text and listed in reading order. The officer can edit any draft; it is re-checked on every keystroke (code only, no AI). Approve stays off until the alert passes.
+- Not yet: sign-in, saving to Firestore, publishing, translations and the ledger. Approvals live only in the page for now.
+
 **Resident view (phone)**
 
 1. **My alert.** The resident picks their purok and household type once; the choice is saved on the phone. They see their alert in their language, with a "last updated" time.
@@ -101,7 +107,7 @@ Built on Nov 12 in `src/checker/` (`checkDraft` for rules 1 to 6, `checkTranslat
 - The household's area sets which signal number is required. A bulletin with no hotline doesn't require one.
 - Known limits: the claim words are English, so translations are held to exact figures and place names instead; spelled-out numbers are read only for hours and signal numbers; the only allowed time is the landfall time, so a bulletin with other times needs them added to the fact sheet first.
 
-If a draft fails, the app retries once on the device with the failure reasons added to the prompt. If it fails again, the job goes to the cloud when online; otherwise the officer edits it by hand. Every attempt goes in the ledger.
+If a draft fails, the app retries once on the device with the failure reasons added to the prompt. If it fails again, the job goes to the cloud when online; otherwise the officer edits it by hand. Every attempt goes in the ledger. As built (`src/drafting/route.ts`): at most three AI calls per alert (on-device, one on-device retry, one cloud call), and never a second cloud call. A retry quotes the failed draft and the checker's messages; after an error or an abandoned call it starts from the plain prompt. If an on-device draft passes the 30 s budget, the officer can press "Use the cloud instead" (online only); offline it keeps waiting. Nano is warmed up with a one-word prompt when the console opens and Chrome reports it downloaded, and drafts wait for the warm-up to finish.
 
 ## Architecture
 

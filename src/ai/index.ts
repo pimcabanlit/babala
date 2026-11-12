@@ -80,3 +80,16 @@ export async function streamDraft(
   }
   return { text, source }
 }
+
+/**
+ * Loads Gemini Nano into memory before the first real draft: on the laptop the
+ * first on-device call took 32 s, later ones about 7 s. Call it only when
+ * Chrome reports the model "available", so "prefer on-device" answers on the
+ * device and the warm-up never uses the cloud. It uses the same model object
+ * as the drafts, because the SDK keeps that object's session (and so the model)
+ * in memory.
+ */
+export async function warmUpOnDevice(models: DraftModels): Promise<Source | undefined> {
+  const result = await models.prefer_on_device.generateContent('Reply with one word: ready')
+  return result.response.inferenceSource
+}
