@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { checkDraft } from './check'
-import { CONSOLE_RUN1 } from './fixtures/console-run1'
+import { CONSOLE_RUN1, CONSOLE_RUN2 } from './fixtures/console-run1'
 import { SAMPLE_SHEET } from './fixtures/halimbawa'
 import type { RequiredFact } from './types'
 
@@ -35,5 +35,29 @@ describe('console run 1 (Nov 12, laptop): real Nano and cloud answers', () => {
       required: required[household],
     })
     expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected[name]].sort())
+  })
+})
+
+const expected2: Record<string, string[]> = {
+  'general 1: Nano draft': ['missing:time'],
+  'general 2: Nano retry': [],
+  'seniors 1: Nano draft': ['missing:time', 'plain:words'],
+  'seniors 2: Nano retry': ['missing:time'],
+  // The cloud copied the prompt's outline, "Tell them to…" and all.
+  'seniors 3: cloud retry': ['placeholders:undefined', 'placeholders:undefined'],
+  // "in effect landing at 6:00 PM" ties the time to the signal, not to landfall.
+  'families 1: Nano draft': ['figures:landfall', 'plain:words'],
+  'families 2: Nano retry': [],
+  'fishers 1: Nano draft': [],
+}
+
+describe('console run 2 (Nov 12, laptop, outline prompts): real Nano and cloud answers', () => {
+  it.each(CONSOLE_RUN2)('$name', ({ name, household, text }) => {
+    const { issues } = checkDraft(text, SAMPLE_SHEET, {
+      claimWords: [...CHECKER_CLAIM_WORDS],
+      area: 'Purok 1',
+      required: required[household],
+    })
+    expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected2[name]].sort())
   })
 })

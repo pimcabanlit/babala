@@ -13,6 +13,8 @@ const PLACEHOLDER_PATTERNS: RegExp[] = [
   /_{3,}/g, // ____
   /\binsert\s+(?:\w+\s+){0,2}(?:here|name|address|date|time|number)\b/gi,
   /\blorem ipsum\b/gi,
+  // Prompt wording copied into the alert (seen from the cloud model on Nov 12).
+  /\b(?:tell|ask|remind) them\b|\bsay that\b/gi,
   /\((?:name|address|location|date|time|number|barangay|purok|school|phone|hotline)[^)]*\)/gi,
 ]
 

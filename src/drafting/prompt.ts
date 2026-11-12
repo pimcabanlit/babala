@@ -13,33 +13,34 @@ export function signalFor(sheet: FactSheet, area: string): number | undefined {
 }
 
 /**
- * The alert's shape, one line per sentence. Nano can't count sentences
- * ("at most 3" gave 4 to 6 on the laptop) but follows a numbered outline, and
- * the outline puts the landfall time where it belongs.
+ * The alert itself, one sentence per line, in the resident's voice. Nano can't
+ * count sentences ("at most 3" gave 4 to 6 on the laptop) but follows numbered
+ * sentences, and they put the landfall time where it belongs. Written so that
+ * a model copying them word for word still produces a passing alert: on Nov 12
+ * the cloud copied an earlier outline, "Tell them to…" and all.
  */
 export function outline(sheet: FactSheet, area: string, household: Household): string[] {
   const signal = signalFor(sheet, area)
-  const storm = sheet.stormName || 'the typhoon'
+  const storm = sheet.stormName || 'The typhoon'
+  const landfall = `${storm} makes landfall at ${whenText(sheet)}`
   const lines = [
-    signal !== undefined
-      ? `Say that Signal No. ${signal} is raised in ${area} and that ${storm} makes landfall at ${whenText(sheet)}.`
-      : `Say that ${storm} makes landfall at ${whenText(sheet)}.`,
-    `${household.advice}, and to go to ${sheet.evacuationCentres.join(' or ')}.`,
+    signal !== undefined ? `Signal No. ${signal} is raised in ${area}, and ${landfall}.` : `${landfall}.`,
+    `${household.advice}, and go to ${sheet.evacuationCentres.join(' or ')}.`,
   ]
-  if (sheet.hotline) lines.push(`Tell them to call the hotline, ${sheet.hotline}, for help.`)
+  if (sheet.hotline) lines.push(`Call the hotline, ${sheet.hotline}, for help.`)
   return lines
 }
 
 const numbered = (lines: string[]) => lines.map((l, i) => `${i + 1}. ${l}`)
 
 const RULES =
-  'Use only these facts, written exactly as here. Do not add other numbers, places, times or dates, and do not describe how strong the storm is. No emojis, no Markdown, no brackets.'
+  'Do not add other numbers, places, times or dates, and do not describe how strong the storm is. No emojis, no Markdown, no brackets.'
 
 export function buildDraftPrompt(sheet: FactSheet, area: string, household: Household): string {
   const place = sheet.barangays[0] ? `${area}, ${sheet.barangays[0]}` : area
   const lines = outline(sheet, area, household)
   return [
-    `Write a typhoon alert for ${household.audience} in ${place}, in exactly ${lines.length} sentences of plain English:`,
+    `Write a typhoon alert for ${household.audience} in ${place}, as these ${lines.length} sentences. You may reword them a little, but keep every name, number and time exactly as written:`,
     ...numbered(lines),
     RULES,
   ].join('\n')
@@ -66,7 +67,7 @@ export function buildRetryPrompt(draft: string, issues: Issue[], sheet: FactShee
     '',
     ...(structural
       ? [
-          `Rewrite it as exactly ${lines.length} sentences:`,
+          `Rewrite it as these ${lines.length} sentences, keeping every name, number and time exactly as written:`,
           ...numbered(lines),
           ...(edits.length ? ['Also make these changes:', ...edits.map((e) => `- ${e}`)] : []),
         ]

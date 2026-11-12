@@ -120,6 +120,7 @@ export function useDrafts(ctx: Context) {
           ...(outcome.source ? { source: outcome.source } : {}),
           ...(outcome.error ? { error: outcome.error } : {}),
           ...(outcome.abandoned ? { abandoned: true } : {}),
+          ...(outcome.abandoned || outcome.error ? {} : { text: outcome.text }),
         }),
         outcome.abandoned || outcome.error ? undefined : outcome.text,
       )
