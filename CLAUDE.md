@@ -65,13 +65,34 @@ Added as they're created. Keep this list current.
 (none yet: day 1 adds install, dev server, tests, lint, build, deploy)
 ```
 
-## Definition of done for any change
+## How changes land
 
-- Tests added or updated, and passing; lint and type check pass.
-- No secrets, real agency branding or other model APIs introduced.
-- README and this file updated when behaviour or commands change.
-- The submission checklist in `docs/build-plan.md` still holds.
-- Small, focused commits with clear messages.
+Human attention is the scarce resource: checks do most of the reading, Pim reads by risk, and
+every change must be cheap to undo. This replaces the old "Definition of done" section.
+
+1. **Branch.** Work on a branch. Never push to `main`.
+2. **Verify before opening a PR**, and paste the real command output into the PR description.
+   The commands below are added by the day-1 scaffold; until then, say they don't exist yet.
+   - `npm ci` then `npm run check` (typecheck, lint, Vitest, production build): everything passes.
+     New or changed checker or routing logic comes with Vitest cases, hand-written from a
+     bulletin and fact sheet.
+   - **Secrets check:** `git status` shows no `.env.local` or other env file, and
+     `git grep -nE "AIza[0-9A-Za-z_-]{35}"` finds nothing. Never commit Firebase config,
+     reCAPTCHA keys or App Check debug tokens (non-negotiable 3).
+   - **Rules check:** no model API other than Firebase AI Logic, `firebase/ai` imported only in
+     `src/ai/`, no Firebase or UI imports in `src/checker/`, no real agency names, logos or storm
+     names.
+   - **UI changes:** run `npm run dev`, open the page in Chrome, exercise the change (offline
+     too, if it touches the resident view or the cache) and attach a screenshot with fictional
+     data only.
+   - **On-device (Gemini Nano) changes:** the cloud session can't run Nano. Say so in the PR,
+     and Pim tests it on the laptop before merging.
+3. **Open a PR** with Summary, Testing (the output above), Risk tier, and How to revert.
+4. **Answer every review finding:** fix it, or reply with why not. None left silent.
+5. **Pim merges.** Claude never merges and never calls a PR ready before its CI is green.
+6. **Whoever asked for the change owns it after it lands**, including the revert if it breaks.
+   Keep `README.md`, this file and `docs/build-plan.md` in step with the code, and keep the
+   submission checklist true.
 
 ## Working principles
 
