@@ -14,7 +14,7 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, registered for "Babala web" | **Enforced on AI Logic.** Not yet enforced on Firestore (turn on near the end). A debug token is registered for local work and kept in `.env.local` |
 | Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15). The `officers` documents are added by hand |
 | Authentication | Google and Anonymous sign-in enabled | The app uses Google for officers. Anonymous is for residents, not used yet |
-| Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name` and `checker_claim_words`: to confirm. Without them the app uses the defaults in `src/config/defaults.ts`, and *Setup status* shows each value's source |
+| Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name` and `checker_claim_words` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
 | Hosting | Not set up | Planned for Phase 4, deployed by GitHub Actions |
 | GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets used yet |
 | Agent skills | Firebase's official skills in `.claude/skills/`, commit `99954a3` (Nov 9) | See `.claude/skills/README.md`. `CLAUDE.md` wins where they differ |
@@ -92,8 +92,8 @@ Parameters, with their in-app defaults in `src/config/defaults.ts`:
 | Parameter | Type | Value |
 | --- | --- | --- |
 | `ondevice_budget_seconds` | Number | `30` (published) |
-| `cloud_model_name` | String | `gemini-3.5-flash-lite`. Gemini 3 or later only, never 1.x or 2.x |
-| `checker_claim_words` | String, a JSON array of strings | The list in `CHECKER_CLAIM_WORDS` |
+| `cloud_model_name` | String | Not published; the default is `gemini-3.5-flash-lite`. Optional: publishing it lets the cloud model be switched without a redeploy. Gemini 3 or later only, never 1.x or 2.x |
+| `checker_claim_words` | String, a JSON array of strings | Not published; the default is the list in `CHECKER_CLAIM_WORDS`. Changes to the list are better made in a reviewed PR |
 
 Publish after each change. The app fetches at most once an hour, so a change can take up to an hour to show.
 
@@ -140,7 +140,7 @@ Every draft in the first runs, on-device and cloud, added claims or placeholders
 | 7 | (Caught before it happened.) Firestore would send requests without App Check tokens | Firestore attaches tokens only if App Check started before it | `getFirebase()` starts App Check first |
 | 8 | (Caught before it happened.) Emulator test users and data could mix with the real project's in the browser | The emulators use the real project's ID, and the persistent cache is keyed by it | With the emulators, Auth and Firestore keep everything in memory |
 | 9 | Firestore refuses a document with an `undefined` field | A fact sheet with no landfall date | `approvedAlert()` leaves the field out |
-| 10 | An alert with the Hindi word "कृपया" passed and was saved (Purok 1, General) | No rule checked the script | Rule 6 now flags letters and digits from other scripts (PR #16). Re-approving that saved alert: to confirm |
+| 10 | An alert with the Hindi word "कृपया" passed and was saved (Purok 1, General) | No rule checked the script | Rule 6 now flags letters and digits from other scripts (PR #16). The alert was redrafted, passed and re-approved on Nov 12, 8:31 PM |
 
 ## Cost and usage
 
@@ -150,8 +150,8 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 
 - [x] Project, web app, AI Logic (Gemini Developer API), App Check enforced on AI Logic, Firestore, Google and Anonymous sign-in, Remote Config budget (Nov 12).
 - [x] Firestore rules from PR #15 published; officer sign-in and saving tested on the laptop.
-- [ ] Confirm `cloud_model_name` and `checker_claim_words` are published (*Setup status* shows `remote`).
-- [ ] Re-approve the Purok 1 General alert saved before PR #16, if it still contains "कृपया".
+- [x] Purok 1 General alert, saved before PR #16 with "कृपया" in it, redrafted and re-approved (Nov 12).
+- [ ] Optional: publish `cloud_model_name` in Remote Config, so the cloud model can be switched during judging without a redeploy.
 - [ ] Resident read access in `firestore.rules`, with anonymous sign-in (Phase 3).
 - [ ] Hosting, GitHub secrets, and the hosted domain in Authentication's authorized domains (Phase 4).
 - [ ] App Check enforced on Firestore (Phase 4).
