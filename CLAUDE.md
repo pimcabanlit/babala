@@ -42,7 +42,7 @@ Core idea: the SDK falls back to the cloud only when the local model is missing.
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, enforced on AI Logic; debug token locally |
 | Data | Firestore (`(default)`, asia-southeast1) with offline cache |
 | Auth | Google sign-in for officers, anonymous sign-in for residents |
-| Config | Remote Config (`ondevice_budget_seconds` = 30, cloud model name, checker word lists) |
+| Config | Remote Config (`ondevice_budget_seconds` = 30, `cloud_model_name`, `checker_claim_words`) |
 | Hosting | Firebase Hosting, deployed by GitHub Actions |
 | Tests | Vitest for the checker and routing logic |
 
