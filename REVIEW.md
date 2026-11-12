@@ -60,7 +60,23 @@ These are the failures that matter here. Any instance is **Important**, never a 
 Lock and generated files (`package-lock.json`, `dist/`, `coverage/`), and test fixtures such as
 sample bulletins, except to check them for secrets (rule 1) and real names (rule 7).
 
+## Risk tiers
+
+The tier is set by what the change touches, not by who wrote it. The **highest tier touched
+wins**. When unsure, go **one tier up**. Every PR states its tier and the file that set it.
+
+| Tier | Paths in this repo | Pim before merging |
+|---|---|---|
+| **High** | `src/checker/` and its tests, `src/ai/` (prompts, routing, hybrid modes), `firestore.rules`, `firestore.indexes.json`, `firebase.json`, `.firebaserc`, App Check, auth and Remote Config setup (and the config file with their defaults), the service worker and offline cache, `.github/workflows/`, `package.json`, `package-lock.json`, `.gitignore`, `.env.example`, anything that publishes alerts or deletes Firestore data | Read the whole diff and the pasted evidence, and run `/security-review`. A change to on-device drafting or routing also needs your laptop test (Gemini Nano). |
+| **Medium** | `CLAUDE.md`, `REVIEW.md`, `docs/build-plan.md`, `README.md`, `.github/` (non-workflow), other `src/` (UI, screens, officer console, resident view, ledger display) and `tests/` changes | Read the summary, the evidence and the review findings. UI changes need the screenshot from `CLAUDE.md`. |
+| **Low** | Wording-only doc fixes (typos, links), comments, new tests that touch no code under test | Merge on green CI. |
+
+`CLAUDE.md` and `REVIEW.md` are never below Medium. Deleting a checker test or loosening its
+expected result is High.
+
 ## Summary
 
-Start the summary with the PR's risk tier and the count, e.g. `Medium · 2 Important, 1 nit`,
-then the findings. If there are none, write exactly `No issues found.` after the tier.
+Start the summary with the risk tier from the table above and the count, e.g.
+`Medium · 2 Important, 1 nit`, then the findings. If there are none, write exactly
+`No issues found.` after the tier.
+If the PR states a lower tier than the table gives, say so first, with the file that sets it.
