@@ -75,7 +75,7 @@ These match what is in place now. Console menu names drift: when the console dis
 ### 6. Firestore
 
 1. Database `(default)`, **Standard** edition, location **asia-southeast1**, started in production mode.
-2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15 and PR #19.
+2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15 and PR #19. Withdrawals need the rules from the withdrawal PR.
 
    Publish right after the PR that changes them merges, not before. The app and the rules change together: for PR #19, the app on `main` before the merge saves alerts without a ledger entry, which the new rules refuse, and the new app saves a ledger entry, which the old rules refuse. To try a rules change before merging, use the emulators (`npm run emulators`), which load `firestore.rules` from the branch.
 3. **Add an officer:**
@@ -154,6 +154,7 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 - [x] Firestore rules from PR #15 published; officer sign-in and saving tested on the laptop.
 - [x] Purok 1 General alert, saved before PR #16 with "कृपया" in it, redrafted and re-approved (Nov 12).
 - [x] Ledger rules from PR #19 published right after it merged, and checked on the laptop with a real Nano approval (Nov 12, 9:09 PM). Alerts saved before then stay readable and show "Saved before the ledger" until their next approval.
+- [ ] Publish the rules from the withdrawal PR right after it merges, then withdraw a test alert on the laptop and check the ledger shows the reason. Until then the server refuses withdrawals, and the console shows "Not withdrawn".
 - [ ] Optional: publish `cloud_model_name` in Remote Config, so the cloud model can be switched during judging without a redeploy.
 - [ ] Resident read access in `firestore.rules`, with anonymous sign-in (Phase 3).
 - [ ] Hosting, GitHub secrets, and the hosted domain in Authentication's authorized domains (Phase 4).

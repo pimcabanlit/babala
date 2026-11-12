@@ -8,7 +8,7 @@ The data contract for Babala: bulletin, fact sheet, draft, check result, saved a
 - **The checker compares, it doesn't judge.** Every figure and place in a draft must be in the fact sheet. Words that add severity, safety, timing or authority are allowed only when the bulletin itself uses them.
 - **One normalized form per figure.** "6 PM", "6:00 p.m.", "18:00" and "alas-6 ng gabi" are the same time. "+63 917…" is the same phone number as "0917…".
 - **The saved alert carries its own evidence.** It is saved with the confirmed fact sheet, the bulletin text included, so it can be re-checked later. It also records which model wrote it, whether the officer edited it, and who approved it when.
-- **No alert without its record.** Each approval also writes a locked ledger entry with the drafts behind it, in the same batch. The rules refuse one without the other, and nobody can change or delete an entry.
+- **No alert without its record.** Each approval also writes a locked ledger entry with the drafts behind it, in the same batch, and so does each withdrawal, with its reason. The rules refuse one without the other, and nobody can change or delete an entry.
 - **Same documents from the app and the rules tests.** `approvedAlert()` and `approvalWrites()` build the Firestore documents, and `tests/rules/` saves exactly those documents against `firestore.rules`.
 
 ## Conventions
@@ -190,6 +190,7 @@ Each signed-in user may read only their own entry. Nobody writes the list from t
 | approvedBy | string | Must equal the signed-in officer's user ID. No name or email |
 | approvedAt | timestamp | Must equal the server's time of the write (`serverTimestamp()`) |
 | ledgerId | string | The ID of the ledger entry written in the same batch, which must record this alert exactly (below) |
+| withdrawal | map, optional | Added when an officer withdraws the alert (below). A new approval replaces the whole document, which clears it |
 
 `factSheet` limits:
 
@@ -208,15 +209,26 @@ Each signed-in user may read only their own entry. Nobody writes the list from t
 
 Rules can't loop over list items, so lists are limited in number only. Firestore's 1 MiB document limit bounds the rest. `approvedAlert()` refuses anything over these limits before saving, with a message the officer can act on.
 
+**Withdrawing an alert** adds only the `withdrawal` map, and nothing else on the alert may change in that write. The alert keeps its text and approval fields, so the record of what was withdrawn stays on the alert too. An alert that is already withdrawn can't be withdrawn again; approving a new alert for the same household and area replaces it, withdrawn or not.
+
+| `withdrawal` field | Type | Rule |
+| --- | --- | --- |
+| ledgerId | string | The ID of the `withdrawn` ledger entry written in the same batch |
+| by | string | Must equal the signed-in officer's user ID |
+| at | timestamp | Must equal the server's time of the write |
+
+The reason is never on the alert. Residents will read alerts, and the reason never passes the checker, so it lives only in the ledger entry.
+
 **Access:**
 
 - Officers may read alerts, and create or update them with exactly these fields, together with a new ledger entry.
+- Officers may withdraw an alert as above, together with a new `withdrawn` entry. Any officer may withdraw any alert, not only the one who approved it.
 - Nobody may delete an alert from the app.
 - Residents have no access yet. They get read access with the resident view (Phase 3).
 
-**In the console** a saved alert is read back as `SavedAlert`: id, household, area, text, source, edited, approval time (the laptop's estimate while the save waits to upload), `pending` (saved on the laptop, not yet uploaded) and `ledgerId`. Alerts saved before the ledger have no `ledgerId`; they stay readable, and the next approval adds one. A document the app can't read is listed by ID as unreadable.
+**In the console** a saved alert is read back as `SavedAlert`: id, household, area, text, source, edited, approval time (the laptop's estimate while the save waits to upload), `pending` (saved on the laptop, not yet uploaded) `ledgerId`, and `withdrawn` (the withdrawal's entry, who and when) once it is withdrawn. Alerts saved before the ledger have no `ledgerId`; they stay readable, they can be withdrawn, and the next approval adds one. A document the app can't read is listed by ID as unreadable.
 
-**`ledger/{entryId}`.** A locked record of every change to a saved alert. Today the only kind of entry is `approved`. Written by `src/ledger/record.ts` (`approvalWrites()`) and `src/alerts/store.ts` (`saveApprovedAlert()`). The limits are the same in `LEDGER_LIMITS` in `src/ledger/record.ts` and in the rules.
+**`ledger/{entryId}`.** A locked record of every change to a saved alert: an `approved` entry for each approval and a `withdrawn` entry for each withdrawal. Written by `src/ledger/record.ts` (`approvalWrites()`, `withdrawalWrites()`) and `src/alerts/store.ts` (`saveApprovedAlert()`, `withdrawAlert()`). The limits are the same in `LEDGER_LIMITS` in `src/ledger/record.ts` and in the rules.
 
 An approval writes the alert and its entry in one batch:
 
@@ -258,11 +270,30 @@ Each item of `drafts` is one model call (`LedgerDraft`). Rules can't look inside
 
 Which drafts an entry keeps: every model call on that household's card since the card's last approval, including earlier rounds the officer replaced with "Draft again". An approval after only a hand edit has no new drafts; the earlier entry has them. Drafts that never lead to an approval aren't saved, and stay in "Copy test log". Reading a new bulletin starts every card afresh.
 
-**Access:** officers may read the ledger, and create an `approved` entry only as above. Nobody may update or delete an entry. Residents never read it: it holds prompts and officers' user IDs.
+A withdrawal writes the alert's `withdrawal` and its entry in one batch, checked the same way in both directions:
+
+- the alert's rules require the entry, as it will be after the batch, to record this alert as it was: same alert ID, household, area and text, the approval it withdraws equal to the alert's `ledgerId` (or empty for an alert saved before the ledger), and the same officer and time as the withdrawal;
+- the entry's rules require the alert's `withdrawal` to point at this entry, with this request's time.
+
+So a withdrawal made offline against an alert that another officer has since replaced is refused when it uploads: its entry names the old approval. The console shows "Not withdrawn" with the error.
+
+Fields of a `withdrawn` entry:
+
+| Field | Type | Limit or rule |
+| --- | --- | --- |
+| kind | string | `withdrawn` |
+| alertId | string | The alert withdrawn, `{household}__{areaKey}` |
+| household, area, text | as in `alerts` | Equal to the alert's: the text that residents stop getting |
+| approvalId | string | The alert's `ledgerId` before the withdrawal: the approval it withdraws. Empty for an alert saved before the ledger |
+| reason | string | 1 to 300 characters, trimmed. The officer's reason, for the record only |
+| by | string | Must equal the signed-in officer's user ID |
+| at | timestamp | Must equal the server's time of the write |
+
+**Access:** officers may read the ledger, and create an `approved` or `withdrawn` entry only as above. Nobody may update or delete an entry. Residents never read it: it holds prompts, reasons and officers' user IDs.
 
 **Known limit:** the rules prove that an entry was written with its alert, by that officer, at that time, and that nobody changed it since. They can't prove what a model wrote: the drafts are what the officer's app reported, the same trust as the alert's `source`.
 
-**Later kinds of entry.** Withdrawing an alert (the next Phase 2 step) adds a `withdrawn` entry, written in the same batch as the alert's update, the same way. Translations (Phase 3) add a `translated` entry for each published translation.
+**Later kinds of entry.** Translations (Phase 3) add a `translated` entry for each published translation, written in the same batch as the translation, the same way.
 
 ## Remote Config
 
@@ -294,7 +325,7 @@ These get a schema when they are built. Nothing is stored for them today.
 
 | Data | Phase |
 | --- | --- |
-| Ledger entries for withdrawals and translations | 2 (withdrawals) and 3 (translations) |
+| Ledger entries for translations | 3 |
 | Translations of an approved alert, per language | 3 |
 | The resident's saved choice of purok and household, and the offline alert pack | 3 |
 

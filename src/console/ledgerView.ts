@@ -2,20 +2,23 @@
  * What the ledger section says about an entry, as plain functions so the
  * wording is tested without a browser.
  */
-import type { AlertSource } from '../alerts/record'
+import type { AlertSource, SavedAlert } from '../alerts/record'
 import type { LedgerDraft, LedgerEntry } from '../ledger/record'
 
-/** Whether this approval is what the alert says now. */
-export type EntryStatus = 'current' | 'replaced' | 'unknown'
-
 /**
- * "current" when the saved alert points at this entry, "replaced" when it
- * points at another one, and "unknown" while the saved alerts haven't loaded
- * or the alert isn't among them.
+ * Whether this entry is what the alert says now: "current" (for a withdrawal,
+ * the alert is still withdrawn), "withdrawn" (an approval whose alert was then
+ * withdrawn), "replaced" by a later approval, or "unknown" while the saved
+ * alerts haven't loaded or the alert isn't among them.
  */
-export function entryStatus(entry: LedgerEntry, savedLedgerIds: ReadonlyMap<string, string | undefined> | undefined): EntryStatus {
-  if (!savedLedgerIds || !savedLedgerIds.has(entry.alertId)) return 'unknown'
-  return savedLedgerIds.get(entry.alertId) === entry.id ? 'current' : 'replaced'
+export type EntryStatus = 'current' | 'withdrawn' | 'replaced' | 'unknown'
+
+export function entryStatus(entry: LedgerEntry, saved: ReadonlyMap<string, SavedAlert> | undefined): EntryStatus {
+  const alert = saved?.get(entry.alertId)
+  if (!alert) return 'unknown'
+  if (entry.kind === 'withdrawn') return alert.withdrawn?.ledgerId === entry.id ? 'current' : 'replaced'
+  if (alert.ledgerId !== entry.id) return 'replaced'
+  return alert.withdrawn ? 'withdrawn' : 'current'
 }
 
 /**

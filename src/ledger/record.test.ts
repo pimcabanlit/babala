@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { approvedAlert } from '../alerts/record'
+import { approvedAlert, type SavedAlert } from '../alerts/record'
 import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { HOUSEHOLDS } from '../drafting/households'
-import { LEDGER_LIMITS, approvalWrites, clip, readLedgerEntry, type LedgerDraft, type Trail } from './record'
+import { LEDGER_LIMITS, approvalWrites, clip, readLedgerEntry, withdrawalWrites, type LedgerDraft, type Trail } from './record'
 
 const general = HOUSEHOLDS.find((h) => h.id === 'general')!
 const LEDGER_ID = 'AbCdEfGhIjKlMnOpQrSt'
@@ -124,7 +124,7 @@ describe('readLedgerEntry', () => {
   })
 
   it('ignores a kind of entry this app doesn’t write yet', () => {
-    expect(readLedgerEntry(LEDGER_ID, { ...data, kind: 'withdrawn' }, at, false)).toBeUndefined()
+    expect(readLedgerEntry(LEDGER_ID, { ...data, kind: 'translated' }, at, false)).toBeUndefined()
   })
 
   it('ignores an entry with a draft it can’t read', () => {
@@ -134,5 +134,113 @@ describe('readLedgerEntry', () => {
   it('ignores an entry with no fact sheet', () => {
     const { factSheet: _sheet, ...noSheet } = data
     expect(readLedgerEntry(LEDGER_ID, noSheet, at, false)).toBeUndefined()
+  })
+})
+
+describe('withdrawalWrites', () => {
+  const WITHDRAWAL_ID = 'WithdrawWithdraw0001'
+  const saved: SavedAlert = {
+    id: 'general__purok-ilaya',
+    household: 'general',
+    area: 'Purok Ilaya',
+    text: GOOD_DRAFT,
+    source: 'on_device',
+    edited: false,
+    approvedAt: new Date('2026-11-14T08:00:00Z'),
+    pending: false,
+    ledgerId: LEDGER_ID,
+    withdrawn: undefined,
+  }
+
+  it('points the alert at the withdrawal’s entry and nothing else', () => {
+    const writes = withdrawalWrites(saved, WITHDRAWAL_ID, 'Wrong area.')
+    if (!writes.ok) throw new Error(writes.reason)
+    expect(writes.alertId).toBe('general__purok-ilaya')
+    expect(writes.withdrawal).toEqual({ ledgerId: WITHDRAWAL_ID })
+  })
+
+  it('records the withdrawn text, the approval it withdraws and the reason', () => {
+    const writes = withdrawalWrites(saved, WITHDRAWAL_ID, 'Wrong area.')
+    if (!writes.ok) throw new Error(writes.reason)
+    expect(writes.ledgerId).toBe(WITHDRAWAL_ID)
+    expect(writes.entry).toEqual({
+      kind: 'withdrawn',
+      alertId: 'general__purok-ilaya',
+      household: 'general',
+      area: 'Purok Ilaya',
+      text: GOOD_DRAFT,
+      approvalId: LEDGER_ID,
+      reason: 'Wrong area.',
+    })
+  })
+
+  it('trims spaces around the reason', () => {
+    const writes = withdrawalWrites(saved, WITHDRAWAL_ID, '  Wrong area.\n')
+    expect(writes.ok && writes.entry.reason).toBe('Wrong area.')
+  })
+
+  it('records an empty approval for an alert saved before the ledger', () => {
+    const writes = withdrawalWrites({ ...saved, ledgerId: undefined }, WITHDRAWAL_ID, 'Old alert.')
+    expect(writes.ok && writes.entry.approvalId).toBe('')
+  })
+
+  it('refuses an alert that is already withdrawn', () => {
+    const withdrawn = { ...saved, withdrawn: { ledgerId: 'OldWithdrawal0000001', by: 'officer-1', at: undefined } }
+    expect(withdrawalWrites(withdrawn, WITHDRAWAL_ID, 'Again.')).toEqual({ ok: false, reason: 'This alert is already withdrawn.' })
+  })
+
+  it('refuses a reason that is only spaces', () => {
+    const writes = withdrawalWrites(saved, WITHDRAWAL_ID, '   ')
+    expect(writes.ok).toBe(false)
+    expect(!writes.ok && writes.reason).toContain('Say why')
+  })
+
+  it('refuses a reason over the limit', () => {
+    const writes = withdrawalWrites(saved, WITHDRAWAL_ID, 'x'.repeat(LEDGER_LIMITS.reason + 1))
+    expect(!writes.ok && writes.reason).toContain('too long')
+  })
+
+  it('accepts a reason exactly at the limit', () => {
+    expect(withdrawalWrites(saved, WITHDRAWAL_ID, 'x'.repeat(LEDGER_LIMITS.reason)).ok).toBe(true)
+  })
+})
+
+describe('readLedgerEntry for a withdrawal', () => {
+  const data = {
+    kind: 'withdrawn',
+    alertId: 'general__purok-ilaya',
+    household: 'general',
+    area: 'Purok Ilaya',
+    text: GOOD_DRAFT,
+    approvalId: LEDGER_ID,
+    reason: 'Wrong area.',
+    by: 'officer-1',
+    at: 'server time',
+  }
+  const at = new Date('2026-11-14T09:00:00Z')
+
+  it('reads a withdrawal entry with its reason, time and upload state', () => {
+    expect(readLedgerEntry('WithdrawWithdraw0001', data, at, false)).toEqual({
+      id: 'WithdrawWithdraw0001',
+      kind: 'withdrawn',
+      alertId: 'general__purok-ilaya',
+      household: 'general',
+      area: 'Purok Ilaya',
+      text: GOOD_DRAFT,
+      approvalId: LEDGER_ID,
+      reason: 'Wrong area.',
+      by: 'officer-1',
+      at,
+      pending: false,
+    })
+  })
+
+  it('ignores a withdrawal entry with no reason', () => {
+    const { reason: _reason, ...noReason } = data
+    expect(readLedgerEntry('WithdrawWithdraw0001', noReason, at, false)).toBeUndefined()
+  })
+
+  it('ignores a withdrawal entry with an unknown household', () => {
+    expect(readLedgerEntry('WithdrawWithdraw0001', { ...data, household: 'tourists' }, at, false)).toBeUndefined()
   })
 })

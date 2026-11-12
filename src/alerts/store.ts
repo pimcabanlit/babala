@@ -13,7 +13,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore'
-import { LEDGER, approvalWrites, type Trail } from '../ledger/record'
+import { LEDGER, approvalWrites, type Trail, type WithdrawalWrites } from '../ledger/record'
 import { ALERTS, readSavedAlert, type Approval, type SavedAlert } from './record'
 
 type Approved = Extract<Approval, { ok: true }>
@@ -28,11 +28,31 @@ type Approved = Extract<Approval, { ok: true }>
  * time on both.
  */
 export function saveApprovedAlert(db: Firestore, uid: string, approval: Approved, trail: Trail): Promise<void> {
-  const ledgerId = doc(collection(db, LEDGER)).id
-  const writes = approvalWrites(approval, ledgerId, trail)
+  const writes = approvalWrites(approval, newLedgerId(db), trail)
   const at = serverTimestamp()
   const batch = writeBatch(db)
   batch.set(doc(db, ALERTS, writes.alertId), { ...writes.alert, approvedBy: uid, approvedAt: at })
+  batch.set(doc(db, LEDGER, writes.ledgerId), { ...writes.entry, by: uid, at })
+  return batch.commit()
+}
+
+/** A new ledger entry ID, made on the laptop so it works offline. */
+export function newLedgerId(db: Firestore): string {
+  return doc(collection(db, LEDGER)).id
+}
+
+/**
+ * Withdraws a saved alert: adds the withdrawal field to it and writes the
+ * withdrawal's ledger entry, in one batch. Nothing else on the alert changes,
+ * and a new approval later replaces the whole alert. Like saving, offline it
+ * waits on the laptop and the promise settles when it uploads.
+ * firestore.rules refuses one write without the other, a second withdrawal,
+ * and any other change to the alert.
+ */
+export function withdrawAlert(db: Firestore, uid: string, writes: WithdrawalWrites): Promise<void> {
+  const at = serverTimestamp()
+  const batch = writeBatch(db)
+  batch.update(doc(db, ALERTS, writes.alertId), { withdrawal: { ...writes.withdrawal, by: uid, at } })
   batch.set(doc(db, LEDGER, writes.ledgerId), { ...writes.entry, by: uid, at })
   return batch.commit()
 }
@@ -58,7 +78,9 @@ export function watchSavedAlerts(
       for (const d of snap.docs) {
         const data = d.data({ serverTimestamps: 'estimate' })
         const approvedAt = data.approvedAt instanceof Timestamp ? data.approvedAt.toDate() : undefined
-        const saved = readSavedAlert(d.id, data, approvedAt, d.metadata.hasPendingWrites)
+        const w: unknown = data.withdrawal
+        const withdrawnAt = typeof w === 'object' && w !== null && 'at' in w && w.at instanceof Timestamp ? w.at.toDate() : undefined
+        const saved = readSavedAlert(d.id, data, approvedAt, d.metadata.hasPendingWrites, withdrawnAt)
         if (saved) byId.set(d.id, saved)
         else unreadable.push(d.id)
       }

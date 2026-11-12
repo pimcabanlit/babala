@@ -1,10 +1,10 @@
 /**
  * The ledger: a locked record of every change to a saved alert, in Firestore
- * at `ledger/{entryId}`. Today the only change is an approval. Withdrawals and
- * translations add their own kinds of entry later.
+ * at `ledger/{entryId}`. Two kinds of change today: an approval and a
+ * withdrawal. Translations add their own kind of entry later.
  *
- * An approval writes the alert and its entry in one batch, and firestore.rules
- * refuses either one without the other, so no alert is saved without its
+ * Each change writes the alert and its entry in one batch, and firestore.rules
+ * refuses either one without the other, so no alert changes without its
  * record. Entries can't be changed or deleted, so a later approval replaces the
  * alert but never its history.
  *
@@ -13,7 +13,7 @@
  */
 import type { Route } from '../ai'
 import type { Rule } from '../checker'
-import { ALERT_SOURCES, type AlertRecord, type AlertSource, type Approval } from '../alerts/record'
+import { ALERT_SOURCES, type AlertRecord, type AlertSource, type Approval, type SavedAlert } from '../alerts/record'
 import { HOUSEHOLDS } from '../drafting/households'
 
 export const LEDGER = 'ledger'
@@ -32,6 +32,7 @@ export const LEDGER_LIMITS = {
   issues: 30,
   issueMessage: 300,
   error: 500,
+  reason: 300,
 } as const
 
 /** How a model call ended: the checker passed or failed its text, it threw, or the officer stopped waiting. */
@@ -133,9 +134,71 @@ export function clip(text: string, max: number): string {
   return text.length <= max ? text : text.slice(0, max - CUT.length) + CUT
 }
 
-/** A ledger entry as the console shows it. */
-export type LedgerEntry = {
+/**
+ * The record of a withdrawal: which alert, the text that was withdrawn, the
+ * approval it cancels and why. The reason stays here, never on the alert,
+ * because residents will read alerts and the reason never passes the checker.
+ */
+export type WithdrawnEntry = {
+  kind: 'withdrawn'
+  alertId: string
+  household: AlertRecord['household']
+  area: string
+  /** The alert's text as it was withdrawn. */
+  text: string
+  /** The ledger entry of the approval it withdraws; empty for an alert saved before the ledger. */
+  approvalId: string
+  /** The officer's reason, for the record. */
+  reason: string
+}
+
+/** The withdrawal field the alert gets. The store adds by and at. */
+export type AlertWithdrawal = { ledgerId: string }
+
+export type WithdrawalWrites = { alertId: string; withdrawal: AlertWithdrawal; ledgerId: string; entry: WithdrawnEntry }
+
+export type Withdrawal = ({ ok: true } & WithdrawalWrites) | { ok: false; reason: string }
+
+/**
+ * The two writes that withdraw a saved alert, or why it can't be withdrawn.
+ * The store adds who withdrew it and the server's time to both.
+ */
+export function withdrawalWrites(saved: SavedAlert, ledgerId: string, reason: string): Withdrawal {
+  const why = reason.trim()
+  if (saved.withdrawn) return { ok: false, reason: 'This alert is already withdrawn.' }
+  if (why === '') return { ok: false, reason: 'Say why you are withdrawing it. The reason goes in the ledger.' }
+  if (why.length > LEDGER_LIMITS.reason)
+    return { ok: false, reason: `The reason is too long (at most ${LEDGER_LIMITS.reason} characters).` }
+  return {
+    ok: true,
+    alertId: saved.id,
+    withdrawal: { ledgerId },
+    ledgerId,
+    entry: {
+      kind: 'withdrawn',
+      alertId: saved.id,
+      household: saved.household,
+      area: saved.area,
+      text: saved.text,
+      approvalId: saved.ledgerId ?? '',
+      reason: why,
+    },
+  }
+}
+
+/** What every entry has, as the console shows it. */
+type EntryMeta = {
   id: string
+  /** The officer's user ID. */
+  by: string
+  /** The server's time, or the laptop's estimate while the entry waits to upload. */
+  at: Date | undefined
+  /** Saved on this laptop, not yet uploaded. */
+  pending: boolean
+}
+
+/** An approval's entry as the console shows it. */
+export type ApprovedLedgerEntry = EntryMeta & {
   kind: 'approved'
   alertId: string
   household: AlertRecord['household']
@@ -148,13 +211,12 @@ export type LedgerEntry = {
   cloudModel: string
   drafts: LedgerDraft[]
   draftsOmitted: number
-  /** The officer's user ID. */
-  by: string
-  /** The server's time, or the laptop's estimate while the entry waits to upload. */
-  at: Date | undefined
-  /** Saved on this laptop, not yet uploaded. */
-  pending: boolean
 }
+
+/** A withdrawal's entry as the console shows it. */
+export type WithdrawnLedgerEntry = EntryMeta & WithdrawnEntry
+
+export type LedgerEntry = ApprovedLedgerEntry | WithdrawnLedgerEntry
 
 /** Reads an entry's fields; undefined if the document isn't one this app wrote. */
 export function readLedgerEntry(
@@ -163,31 +225,21 @@ export function readLedgerEntry(
   at: Date | undefined,
   pending: boolean,
 ): LedgerEntry | undefined {
-  const { kind, alertId, household, area, signal, text, source, edited, factSheet, cloudModel, drafts, draftsOmitted, by } = data
-  if (kind !== 'approved') return undefined
+  const { kind, alertId, household, area, text, by } = data
   if (typeof alertId !== 'string' || typeof area !== 'string' || typeof text !== 'string' || typeof by !== 'string') return undefined
   if (!HOUSEHOLDS.some((h) => h.id === household)) return undefined
+  const common = { id, alertId, household: household as AlertRecord['household'], area, text, by, at, pending }
+  if (kind === 'withdrawn') {
+    const { approvalId, reason } = data
+    if (typeof approvalId !== 'string' || typeof reason !== 'string') return undefined
+    return { ...common, kind, approvalId, reason }
+  }
+  if (kind !== 'approved') return undefined
+  const { signal, source, edited, factSheet, cloudModel, drafts, draftsOmitted } = data
   if (typeof signal !== 'number' || typeof edited !== 'boolean' || typeof cloudModel !== 'string') return undefined
   if (typeof draftsOmitted !== 'number' || !ALERT_SOURCES.includes(source as AlertSource)) return undefined
   if (!isFactSheet(factSheet) || !Array.isArray(drafts) || !drafts.every(isLedgerDraft)) return undefined
-  return {
-    id,
-    kind,
-    alertId,
-    household: household as AlertRecord['household'],
-    area,
-    signal,
-    text,
-    source: source as AlertSource,
-    edited,
-    factSheet,
-    cloudModel,
-    drafts,
-    draftsOmitted,
-    by,
-    at,
-    pending,
-  }
+  return { ...common, kind, signal, source: source as AlertSource, edited, factSheet, cloudModel, drafts, draftsOmitted }
 }
 
 function isFactSheet(v: unknown): v is AlertRecord['factSheet'] {
