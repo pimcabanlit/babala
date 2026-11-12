@@ -71,6 +71,7 @@ export function fixFor(issue: Issue, sheet: FactSheet, area: string, centre = sh
       if (issue.subject === 'sentences') return `Use at most ${DEFAULT_MAX_SENTENCES} sentences.`
       if (issue.subject === 'words') return `Use at most ${DEFAULT_MAX_WORDS} words.`
       if (issue.subject === 'emoji') return `Remove the emoji “${found}”.`
+      if (issue.subject === 'script') return `Remove “${found}”.`
       if (issue.subject === 'format') {
         const words = found.replace(/[*_`#]|^\s*[-+]\s|^\s*\d+\.\s/g, '').trim()
         return words ? `Write “${words}” as plain text, without * or # marks.` : `Remove “${found.trim()}” from the start of the line.`

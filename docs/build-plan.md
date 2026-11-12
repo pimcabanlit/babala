@@ -97,7 +97,7 @@ No alert reaches a resident unless it passes every rule below and an officer app
 3. **Nothing missing.** Each household type's alert includes its required facts: signal number, time, where to go and hotline.
 4. **No placeholders.** Rejects brackets, "TBD", "XXX" and similar.
 5. **No added claims.** Flags severity and safety words that aren't in the bulletin, such as "severe", "super typhoon", "safe" or "no threat".
-6. **Plain and short.** At most 3 sentences or 60 words, with no emojis.
+6. **Plain and short.** At most 3 sentences or 60 words, with no emojis, no Markdown, and only Latin letters and the digits 0 to 9. Added Nov 12 after Nano wrote the Hindi word "कृपया" into an English alert on the laptop and it passed; Filipino and Cebuano use Latin letters too, so translations are held to the same rule.
 7. **Translations keep the facts.** Every figure and place name in a translation is identical to the approved English alert.
 
 Built on Nov 12 in `src/checker/` (`checkDraft` for rules 1 to 6, `checkTranslation` for rule 7). Each problem comes back with the rule, a plain message and where it is in the draft, so the console can highlight it and the retry prompt can quote it. The tests start from the six real day-1 drafts, which all fail for the right reasons, and a fictional bulletin (Typhoon Sample, Barangay Halimbawa) with passing and failing cases.

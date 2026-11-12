@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { checkDraft, checkTranslation } from './check'
 import { DAY1_CASES, DAY1_SHEET } from './fixtures/day1'
-import { GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET } from './fixtures/halimbawa'
+import { GOOD_DRAFT, GOOD_FILIPINO, NANO_HINDI_DRAFT, SAMPLE_SHEET } from './fixtures/halimbawa'
 import type { CheckOptions, Issue, Rule } from './types'
 
 const OPTIONS: CheckOptions = { claimWords: [...CHECKER_CLAIM_WORDS], area: 'Purok Ilaya' }
@@ -200,6 +200,50 @@ describe('checkDraft on the fictional bulletin', () => {
     for (const issue of result.issues) {
       if (issue.span) expect(text.slice(issue.span.start, issue.span.end)).toBe(issue.span.text)
     }
+  })
+})
+
+describe('plain: other scripts', () => {
+  const purok1 = { ...OPTIONS, area: 'Purok 1' }
+
+  it('flags the Hindi word Nano wrote into the Purok 1 alert', () => {
+    const { issues } = checkDraft(NANO_HINDI_DRAFT, SAMPLE_SHEET, purok1)
+    expect(issues.map((i) => [i.rule, i.subject, i.span?.text])).toEqual([['plain', 'script', 'कृपया']])
+  })
+
+  it('passes the same alert once the word is removed', () => {
+    expect(checkDraft(NANO_HINDI_DRAFT.replace('कृपया ', ''), SAMPLE_SHEET, purok1).issues).toEqual([])
+  })
+
+  it('flags a Cyrillic letter that looks like a Latin one', () => {
+    const draft = GOOD_DRAFT.replace('evacuate now', 'evacuate nоw') // Cyrillic о
+    expect(flagged(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ plain: ['о'] })
+  })
+
+  it('flags digits from another script, which the figures rule cannot read', () => {
+    const draft = GOOD_DRAFT.replace('For help,', 'Winds reach २०० km/h. For help,')
+    const result = checkDraft(draft, SAMPLE_SHEET, { ...OPTIONS, maxSentences: 4 })
+    expect(flagged(result.issues)).toEqual({ plain: ['२००'] })
+  })
+
+  it('reports each word in another script once, with its exact span', () => {
+    const draft = GOOD_DRAFT.replace('For help,', 'कृपया ध्यान दें. For help,')
+    const plain = checkDraft(draft, SAMPLE_SHEET, { ...OPTIONS, maxSentences: 4 }).issues.filter((i) => i.subject === 'script')
+    expect(plain.map((i) => i.span?.text)).toEqual(['कृपया', 'ध्यान', 'दें'])
+    for (const i of plain) expect(draft.slice(i.span!.start, i.span!.end)).toBe(i.span!.text)
+  })
+
+  it.each([
+    ['ñ and á', GOOD_FILIPINO.replace('lumikas na', 'lumikás na').replace('Para sa tulong', 'Para sa tulong, mga señor at señora')],
+    ['an accent written as a combining mark', GOOD_FILIPINO.replace('lumikas na', 'lumika\u0301s na')],
+  ])('passes a Filipino translation with %s', (_, translation) => {
+    expect(checkTranslation(GOOD_DRAFT, translation, SAMPLE_SHEET)).toEqual({ pass: true, issues: [] })
+  })
+
+  it('flags a word in another script in a translation', () => {
+    const translation = GOOD_FILIPINO.replace('Para sa tulong', 'Para sa tulong, कृपया')
+    const { issues } = checkTranslation(GOOD_DRAFT, translation, SAMPLE_SHEET)
+    expect(issues.map((i) => [i.rule, i.subject, i.span?.text])).toEqual([['plain', 'script', 'कृपया']])
   })
 })
 

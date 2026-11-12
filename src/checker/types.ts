@@ -58,6 +58,7 @@ export type IssueSubject =
   | 'words'
   | 'emoji'
   | 'format'
+  | 'script'
 
 export type Issue = { rule: Rule; message: string; span?: Span; subject?: IssueSubject }
 

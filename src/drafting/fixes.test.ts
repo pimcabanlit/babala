@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { checkDraft, type Issue } from '../checker'
 import { DAY1_CASES, DAY1_SHEET } from '../checker/fixtures/day1'
-import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
+import { GOOD_DRAFT, NANO_HINDI_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { around, editsFor, fixFor, landfallPhrase, whenText } from './fixes'
 
@@ -91,6 +91,10 @@ describe('editsFor', () => {
     expect(edits('## Alert\nSignal No. 3 for Purok 1, landfall at 6 PM on Nov 14. Go to Barangay Hall. Call 0917 555 0100.')).toEqual([
       'Remove “##” from the start of the line.',
     ])
+  })
+
+  it('removes a word in another script', () => {
+    expect(edits(NANO_HINDI_DRAFT)).toEqual(['Remove “कृपया”.'])
   })
 })
 
