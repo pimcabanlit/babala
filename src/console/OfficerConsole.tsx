@@ -7,18 +7,26 @@ import { fromForm, toForm, type FactSheetForm } from '../factsheet/form'
 import { parseBulletin } from '../factsheet/parse'
 import { HOUSEHOLDS, type Household, type HouseholdId } from '../drafting/households'
 import type { OfficerSession } from '../officer/OfficerGate'
-import { writtenBy } from './approval'
+import { unrecordedDrafts, writtenBy } from './approval'
 import DraftCard from './DraftCard'
 import FactSheetEditor from './FactSheetEditor'
+import Ledger from './Ledger'
 import { attemptLog } from './log'
 import { useDrafts } from './useDrafts'
 import { useHybrid } from './useHybrid'
+import { useLedger } from './useLedger'
 import { useSavedAlerts } from './useSavedAlerts'
 
-/** The officer console: bulletin in, fact sheet confirmed, drafts checked, approved and saved. */
+/** The officer console: bulletin in, fact sheet confirmed, drafts checked, approved and saved, and the ledger. */
 export default function OfficerConsole({ session }: { session: OfficerSession }) {
   const hybrid = useHybrid()
   const savedAlerts = useSavedAlerts(session.db)
+  const ledger = useLedger(session.db)
+  const [openEntry, setOpenEntry] = useState<string>()
+  const savedLedgerIds = useMemo(
+    () => (savedAlerts.saved ? new Map([...savedAlerts.saved.byId].map(([id, a]) => [id, a.ledgerId])) : undefined),
+    [savedAlerts.saved],
+  )
   const [saveErrors, setSaveErrors] = useState<Partial<Record<HouseholdId, string>>>({})
   const [bulletin, setBulletin] = useState('')
   const [form, setForm] = useState<FactSheetForm>()
@@ -44,7 +52,8 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
 
   /**
    * Approving saves: approvedAlert() runs the checker again on the exact text,
-   * then the alert replaces the last one saved for this household and area.
+   * then the alert replaces the last one saved for this household and area,
+   * together with its ledger entry, which keeps the drafts behind it.
    * Offline it waits on the laptop; the card shows that from the saved alerts.
    */
   function approve(h: Household) {
@@ -65,9 +74,14 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
       return
     }
     showError(undefined)
+    const trail = unrecordedDrafts(draft)
     drafts.setApproved(h.id, true)
-    saveApprovedAlert(session.db, session.uid, approval).catch((err: unknown) => {
+    // These drafts are in this approval's entry, so the next approval of the card doesn't repeat them.
+    drafts.setRecordedThrough(h.id, trail.through)
+    const cloudModel = hybrid.tunables?.cloudModelName ?? ''
+    saveApprovedAlert(session.db, session.uid, approval, { drafts: trail.drafts, cloudModel, claimWords }).catch((err: unknown) => {
       drafts.setApproved(h.id, false)
+      drafts.setRecordedThrough(h.id, draft.recordedThrough)
       showError(`Not saved: ${err instanceof Error ? err.message : String(err)}`)
     })
   }
@@ -249,6 +263,7 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
                 saved={areaSaveKey ? savedAlerts.saved?.byId.get(alertDocId(h.id, areaSaveKey)) : undefined}
                 saveError={saveErrors[h.id]}
                 onApprove={() => approve(h)}
+                onShowLedger={setOpenEntry}
               />
             ))}
           </div>
@@ -267,6 +282,17 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
           )}
         </Section>
       )}
+
+      <Section title="4. Ledger">
+        <Ledger
+          view={ledger.view}
+          error={ledger.error}
+          savedLedgerIds={savedLedgerIds}
+          uid={session.uid}
+          openId={openEntry}
+          onOpen={setOpenEntry}
+        />
+      </Section>
     </div>
   )
 }

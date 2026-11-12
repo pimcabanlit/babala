@@ -1,6 +1,6 @@
 # Data Schema v1
 
-The data contract for Babala: bulletin, fact sheet, draft, check result, saved alert. Every alert is checked against one fact sheet, which the officer confirms from the bulletin. All data is fictional: the storm, barangay, puroks, evacuation centres and hotline in the demo don't exist.
+The data contract for Babala: bulletin, fact sheet, draft, check result, saved alert and ledger. Every alert is checked against one fact sheet, which the officer confirms from the bulletin. All data is fictional: the storm, barangay, puroks, evacuation centres and hotline in the demo don't exist.
 
 ## Design principles
 
@@ -8,7 +8,8 @@ The data contract for Babala: bulletin, fact sheet, draft, check result, saved a
 - **The checker compares, it doesn't judge.** Every figure and place in a draft must be in the fact sheet. Words that add severity, safety, timing or authority are allowed only when the bulletin itself uses them.
 - **One normalized form per figure.** "6 PM", "6:00 p.m.", "18:00" and "alas-6 ng gabi" are the same time. "+63 917…" is the same phone number as "0917…".
 - **The saved alert carries its own evidence.** It is saved with the confirmed fact sheet, the bulletin text included, so it can be re-checked later. It also records which model wrote it, whether the officer edited it, and who approved it when.
-- **Same document from the app and the rules tests.** `approvedAlert()` builds the Firestore document, and `tests/rules/` saves exactly that document against `firestore.rules`.
+- **No alert without its record.** Each approval also writes a locked ledger entry with the drafts behind it, in the same batch. The rules refuse one without the other, and nobody can change or delete an entry.
+- **Same documents from the app and the rules tests.** `approvedAlert()` and `approvalWrites()` build the Firestore documents, and `tests/rules/` saves exactly those documents against `firestore.rules`.
 
 ## Conventions
 
@@ -19,6 +20,7 @@ The data contract for Babala: bulletin, fact sheet, draft, check result, saved a
 | Phone | Compared by digits only. A 12-digit number starting `63` equals the same number with a leading `0` |
 | Area key | The area in lower case with accents dropped, and every other run of characters turned into one dash: `Purok Niño 2` becomes `purok-nino-2` |
 | Alert ID | `{household}__{areaKey}`, two underscores: `general__purok-ilaya` |
+| Ledger ID | A 20-character Firestore auto ID made on the laptop, so it works offline: `AbCdEfGhIjKlMnOpQrSt` |
 | Household IDs | `general`, `seniors`, `families`, `fishers` |
 | Source | Which model wrote the approved text: `on_device`, `in_cloud`, `none` (the officer typed it) or `unknown` (the SDK didn't say) |
 | Decimals | A decimal uses a point, as in the Philippines; thousands may use commas (`1,000`) |
@@ -187,6 +189,7 @@ Each signed-in user may read only their own entry. Nobody writes the list from t
 | edited | bool | The officer changed the model's text, or typed it |
 | approvedBy | string | Must equal the signed-in officer's user ID. No name or email |
 | approvedAt | timestamp | Must equal the server's time of the write (`serverTimestamp()`) |
+| ledgerId | string | The ID of the ledger entry written in the same batch, which must record this alert exactly (below) |
 
 `factSheet` limits:
 
@@ -207,11 +210,59 @@ Rules can't loop over list items, so lists are limited in number only. Firestore
 
 **Access:**
 
-- Officers may read alerts, and create or update them with exactly these fields.
+- Officers may read alerts, and create or update them with exactly these fields, together with a new ledger entry.
 - Nobody may delete an alert from the app.
 - Residents have no access yet. They get read access with the resident view (Phase 3).
 
-**In the console** a saved alert is read back as `SavedAlert`: id, household, area, text, source, edited, approval time (the laptop's estimate while the save waits to upload) and `pending` (saved on the laptop, not yet uploaded). A document the app can't read is listed by ID as unreadable.
+**In the console** a saved alert is read back as `SavedAlert`: id, household, area, text, source, edited, approval time (the laptop's estimate while the save waits to upload), `pending` (saved on the laptop, not yet uploaded) and `ledgerId`. Alerts saved before the ledger have no `ledgerId`; they stay readable, and the next approval adds one. A document the app can't read is listed by ID as unreadable.
+
+**`ledger/{entryId}`.** A locked record of every change to a saved alert. Today the only kind of entry is `approved`. Written by `src/ledger/record.ts` (`approvalWrites()`) and `src/alerts/store.ts` (`saveApprovedAlert()`). The limits are the same in `LEDGER_LIMITS` in `src/ledger/record.ts` and in the rules.
+
+An approval writes the alert and its entry in one batch:
+
+- the alert's rules read the entry as it will be after the batch (`getAfter`), and require it to record this alert: same household, area, area key, signal, text, fact sheet, source and edited flag, with the approver as `by` and this request's time as `at`. An entry stamped with this request's time can only be a new one, so an alert can't point at an old entry;
+- the entry's rules require the alert to be saved in the same batch (its `approvedAt` is this request's time) and to point at this entry;
+- an entry can't be updated or deleted, so a later approval replaces the alert but keeps every earlier entry.
+
+Fields of an `approved` entry:
+
+| Field | Type | Limit or rule |
+| --- | --- | --- |
+| kind | string | `approved` |
+| alertId | string | The alert this approval saved, `{household}__{areaKey}` |
+| household, area, areaKey, signal, text, factSheet, source, edited | as in `alerts` | Equal to the alert's |
+| cloudModel | string | Up to 100. The cloud model the console used (Remote Config `cloud_model_name`) |
+| claimWords | list of strings | 1 to 500. The checker's rule 5 word list at approval, so the check can be repeated |
+| drafts | list of maps | Up to 20. The model calls on the card since its last approval, oldest first (below) |
+| draftsOmitted | int | 0 or more. Older drafts left out to stay within 20 |
+| by | string | Must equal the signed-in officer's user ID. No name or email |
+| at | timestamp | Must equal the server's time of the write |
+
+Each item of `drafts` is one model call (`LedgerDraft`). Rules can't look inside list items, so the app clips the long text fields itself:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| round | int | 1 for the card's first "Draft", 2 after "Draft again", and so on |
+| route | string | `prefer_on_device` or `only_in_cloud` |
+| retry | bool | The prompt quoted the last draft with an edit per problem |
+| area | string | The area it was drafted for, usually the alert's own |
+| source | string | `on_device`, `in_cloud` or `unknown`, as the SDK reported it |
+| prompt | string | The exact prompt, cut at 6,000 characters |
+| text | string | The answer's fields joined into the alert, as the checker saw it, cut at 2,000 |
+| outcome | string | `passed` or `failed` (the checker's verdict), `error`, or `stopped` (the officer moved to the cloud after the budget) |
+| issues | list of {rule, message} | The checker's problems in reading order, at most 30 |
+| error | string | The error when the call threw, otherwise empty. Cut at 500 |
+| startedAtMs | number | When the call started, by the laptop's clock |
+| firstTextMs | number or null | Time to the first streamed text |
+| totalMs | number | Time to the end of the call |
+
+Which drafts an entry keeps: every model call on that household's card since the card's last approval, including earlier rounds the officer replaced with "Draft again". An approval after only a hand edit has no new drafts; the earlier entry has them. Drafts that never lead to an approval aren't saved, and stay in "Copy test log". Reading a new bulletin starts every card afresh.
+
+**Access:** officers may read the ledger, and create an `approved` entry only as above. Nobody may update or delete an entry. Residents never read it: it holds prompts and officers' user IDs.
+
+**Known limit:** the rules prove that an entry was written with its alert, by that officer, at that time, and that nobody changed it since. They can't prove what a model wrote: the drafts are what the officer's app reported, the same trust as the alert's `source`.
+
+**Later kinds of entry.** Withdrawing an alert (the next Phase 2 step) adds a `withdrawn` entry, written in the same batch as the alert's update, the same way. Translations (Phase 3) add a `translated` entry for each published translation.
 
 ## Remote Config
 
@@ -235,7 +286,7 @@ Each model call in the console is an attempt (`Attempt` in `src/console/useDraft
 - pass or fail, with the checker's issues;
 - an error, or whether the officer abandoned it for the cloud.
 
-Attempts are not saved to Firestore. "Copy test log" turns them into plain text. The ledger (Phase 2) will keep them.
+Each attempt also records the area it was drafted for. "Copy test log" turns them into plain text. When the officer approves, the attempts on that card since its last approval are saved in the ledger entry (`drafts`, above), without the raw JSON.
 
 ## Not defined yet
 
@@ -243,7 +294,7 @@ These get a schema when they are built. Nothing is stored for them today.
 
 | Data | Phase |
 | --- | --- |
-| Ledger entries: each draft, check, approval and translation, with the model and time | 2 |
+| Ledger entries for withdrawals and translations | 2 (withdrawals) and 3 (translations) |
 | Translations of an approved alert, per language | 3 |
 | The resident's saved choice of purok and household, and the offline alert pack | 3 |
 
@@ -311,7 +362,40 @@ Approved as written from an on-device draft, it is saved as `alerts/general__pur
   "source": "on_device",
   "edited": false,
   "approvedBy": "<the officer's user ID>",
-  "approvedAt": "<server time>"
+  "approvedAt": "<server time>",
+  "ledgerId": "<the entry's ID>"
+}
+```
+
+In the same batch, its entry `ledger/<the entry's ID>` records the same fields, plus the draft behind it:
+
+```json
+{
+  "kind": "approved",
+  "alertId": "general__purok-ilaya",
+  "…": "household, area, areaKey, signal, text, factSheet, source and edited, as in the alert",
+  "cloudModel": "gemini-3.5-flash-lite",
+  "claimWords": ["…the checker's word list…"],
+  "drafts": [
+    {
+      "round": 1,
+      "route": "prefer_on_device",
+      "retry": false,
+      "area": "Purok Ilaya",
+      "source": "on_device",
+      "prompt": "Write a typhoon alert for all residents in Purok Ilaya, Barangay Halimbawa. …",
+      "text": "Signal No. 3 is raised over Purok Ilaya. …",
+      "outcome": "passed",
+      "issues": [],
+      "error": "",
+      "startedAtMs": 1794700000000,
+      "firstTextMs": 900,
+      "totalMs": 15200
+    }
+  ],
+  "draftsOmitted": 0,
+  "by": "<the officer's user ID>",
+  "at": "<server time>"
 }
 ```
 

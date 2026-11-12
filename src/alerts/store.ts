@@ -1,6 +1,7 @@
 /**
  * Saving approved alerts to Firestore and watching what is saved. Only
- * approvedAlert() in record.ts makes the document, after the checker passes it.
+ * approvedAlert() in record.ts makes the alert, after the checker passes it,
+ * and approvalWrites() in src/ledger/record.ts pairs it with its ledger entry.
  */
 import {
   Timestamp,
@@ -8,23 +9,32 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
-  setDoc,
+  writeBatch,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore'
+import { LEDGER, approvalWrites, type Trail } from '../ledger/record'
 import { ALERTS, readSavedAlert, type Approval, type SavedAlert } from './record'
 
 type Approved = Extract<Approval, { ok: true }>
 
 /**
- * Saves an approved alert, replacing the last one for its household and area.
- * Offline, the write is kept on the laptop and the promise settles only when
+ * Saves an approved alert and its ledger entry in one batch, replacing the
+ * last alert for its household and area. Earlier ledger entries stay.
+ * Offline, the batch is kept on the laptop and the promise settles only when
  * it uploads, so callers show progress from watchSavedAlerts, not from this.
- * firestore.rules requires approvedBy to be the signed-in officer and
- * approvedAt to be the server's time.
+ * firestore.rules refuses the alert without its entry and the entry without
+ * its alert, requires the signed-in officer as the approver, and the server's
+ * time on both.
  */
-export function saveApprovedAlert(db: Firestore, uid: string, approval: Approved): Promise<void> {
-  return setDoc(doc(db, ALERTS, approval.id), { ...approval.record, approvedBy: uid, approvedAt: serverTimestamp() })
+export function saveApprovedAlert(db: Firestore, uid: string, approval: Approved, trail: Trail): Promise<void> {
+  const ledgerId = doc(collection(db, LEDGER)).id
+  const writes = approvalWrites(approval, ledgerId, trail)
+  const at = serverTimestamp()
+  const batch = writeBatch(db)
+  batch.set(doc(db, ALERTS, writes.alertId), { ...writes.alert, approvedBy: uid, approvedAt: at })
+  batch.set(doc(db, LEDGER, writes.ledgerId), { ...writes.entry, by: uid, at })
+  return batch.commit()
 }
 
 export type SavedAlerts = {
