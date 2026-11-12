@@ -71,7 +71,16 @@ Short English jobs run on the device, languages and long documents go to the clo
 | Summarise a long bulletin | Cloud | Too long for the laptop's model in time |
 | Answer a resident's question | On-device if available, cloud if online, otherwise no-AI search of the saved alert | Always some answer, even with no signal |
 
-All AI calls go through Firebase AI Logic, as the rules require. Drafts use "prefer on-device" mode and translations use "only in cloud". The app reads Chrome's model availability to show its badge and offline state, but never prompts Nano directly. On day 1, confirm in the Firebase docs whether each response says which model answered.
+All AI calls go through Firebase AI Logic, as the rules require. Drafts use "prefer on-device" mode and translations use "only in cloud". The app reads Chrome's model availability to show its offline state, but never prompts Nano directly.
+
+Confirmed on day 1 from the SDK (`firebase` 13.3.0) and the hello-hybrid test:
+- Every response says which model answered (`inferenceSource`: `on_device` or `in_cloud`). The badge reads it.
+- "Prefer on-device" uses Nano only when Chrome reports it fully downloaded; otherwise it silently uses the cloud. The download starts only from a click (`initializeDeviceModel()`), so the console has a "Prepare on-device model" button.
+- The SDK falls back to the cloud only when Nano is unavailable at the start, not when an on-device call fails, so Babala catches that itself.
+- The SDK can't cancel an on-device call. When the 30 s budget passes, the app stops waiting and makes a separate cloud-only call.
+- Laptop timings (Nov 12, prefer on-device, same prompt): the first draft after opening the page took 32.0 s (first text at 26.1 s), almost all of it loading Nano. Warm drafts took 6.5 to 7.2 s with first text under 1 s, including with Wi-Fi off. So the console warms Nano up when the officer opens it, before the first real draft. A cloud-only draft on the laptop took 19.5 s right after Wi-Fi came back (about 1 s from the cloud session).
+- Every draft, on-device or cloud, added claims or placeholders ("severe", "imminent", "[Village Name]", "[School Name]", "this evening", emojis, Markdown bold). The checker is not optional.
+- Cloud model: `gemini-3.5-flash-lite` by default (Remote Config `cloud_model_name`). On Nov 12, `gemini-3.8-flash` returned "high demand" errors while flash-lite answered in 1 to 5 s.
 
 ## The checker
 
