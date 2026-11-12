@@ -9,15 +9,18 @@ import { nextStep, type AttemptOutcome } from '../drafting/route'
 export type Attempt = {
   id: number
   route: Route
-  /** The prompt quoted the last draft and the checker's reasons. */
+  /** The prompt was the last draft with an edit per problem. */
   retry: boolean
+  /** The exact prompt, for the test log. */
+  prompt: string
   startedAt: number
   firstTextMs?: number
   endedMs?: number
   text: string
   source?: Source
   passed?: boolean
-  issueCount?: number
+  /** The checker's problems with this attempt's text. */
+  issues?: Issue[]
   error?: string
   /** The officer moved on to the cloud after the on-device budget. */
   abandoned?: boolean
@@ -87,7 +90,7 @@ export function useDrafts(ctx: Context) {
       const attemptId = nextId.current++
       const startedAt = Date.now()
       let live = true
-      update(h.id, (d) => ({ ...d, text: '', attempts: [...d.attempts, { id: attemptId, route, retry, startedAt, text: '' }] }))
+      update(h.id, (d) => ({ ...d, text: '', attempts: [...d.attempts, { id: attemptId, route, retry, prompt, startedAt, text: '' }] }))
 
       const abandoned = new Promise<{ text: string; abandoned: true }>((resolve) => {
         abandoners.current[h.id] = () => {
@@ -145,13 +148,13 @@ export function useDrafts(ctx: Context) {
         // After an error or an abandoned attempt there is no draft to quote, so start fresh.
         const quoted = step.retry && last && last.text.trim() !== '' ? last : undefined
         const withReasons = quoted !== undefined
-        const prompt = quoted ? buildRetryPrompt(base, quoted.text, quoted.issues) : base
+        const prompt = quoted ? buildRetryPrompt(quoted.text, quoted.issues, sheet, area) : base
         const attempt = await runAttempt(h, models, step.route, prompt, withReasons)
         const ok = !attempt.error && !attempt.abandoned
         const result = ok ? checkFor(attempt.text, sheet, area, h, claimWords) : undefined
         last = ok ? { text: attempt.text, issues: result!.issues } : undefined
         const passed = result?.pass ?? false
-        patchAttempt(h.id, attempt.attemptId, () => ({ passed, issueCount: result?.issues.length }))
+        patchAttempt(h.id, attempt.attemptId, () => ({ passed, ...(result ? { issues: result.issues } : {}) }))
         outcomes.push({ route: step.route, passed, ...(attempt.abandoned ? { abandoned: true } : {}) })
       }
       // Show the last real draft for hand editing, not an empty abandoned one.

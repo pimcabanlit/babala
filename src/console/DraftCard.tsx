@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { InferenceSource } from '../ai'
 import type { FactSheet, Rule } from '../checker'
 import type { Household } from '../drafting/households'
-import { segments } from './segments'
+import { inReadingOrder, segments } from './segments'
 import { checkFor, type Attempt, type Draft } from './useDrafts'
 
 const RULE_LABEL: Record<Rule, string> = {
@@ -42,9 +42,6 @@ export default function DraftCard(props: Props) {
   const current = draft.running ? draft.attempts.at(-1) : undefined
   const elapsed = current && current.endedMs === undefined ? now - current.startedAt : 0
   const overBudget = current?.route === 'prefer_on_device' && current.endedMs === undefined && elapsed > budgetSeconds * 1000
-  // Problems in reading order, then the ones with no place in the text (missing facts, length).
-  const placed = result?.issues.filter((i) => i.span).sort((a, b) => a.span!.start - b.span!.start) ?? []
-  const unplaced = result?.issues.filter((i) => !i.span) ?? []
 
   return (
     <article aria-label={`${household.label} alert`} className="rounded border border-slate-200 p-3">
@@ -76,6 +73,17 @@ export default function DraftCard(props: Props) {
           {draft.attempts.map((a, i) => (
             <li key={a.id}>
               {i + 1}. <SourceBadge attempt={a} cloudModel={cloudModel} /> {attemptText(a, a === current ? elapsed : undefined)}
+              {a.passed === false && a.issues && a.issues.length > 0 && (
+                <details className="ml-4 mt-1">
+                  <summary className="cursor-pointer text-slate-700 underline">Why it failed</summary>
+                  <p className="mt-1 whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm text-slate-800">{a.text}</p>
+                  <ul className="mt-1 list-disc pl-5 text-red-800">
+                    {inReadingOrder(a.issues).map((issue, j) => (
+                      <li key={j}>{issue.message}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </li>
           ))}
           {draft.edited && <li>Then edited by hand.</li>}
@@ -123,7 +131,7 @@ export default function DraftCard(props: Props) {
           </p>
           {result.issues.length > 0 && (
             <ul className="mt-2 space-y-0.5 text-sm text-red-800">
-              {[...placed, ...unplaced].map((issue, i) => (
+              {inReadingOrder(result.issues).map((issue, i) => (
                 <li key={i}>
                   <span className="font-semibold">{RULE_LABEL[issue.rule]}:</span> {issue.message}
                 </li>
@@ -162,11 +170,11 @@ function SourceBadge({ attempt, cloudModel }: { attempt: Attempt; cloudModel: st
 }
 
 function attemptText(a: Attempt, runningMs: number | undefined): string {
-  const kind = a.retry ? 'retry with the checker’s reasons' : 'draft'
+  const kind = a.retry ? 'retry with an edit per problem' : 'draft'
   if (a.endedMs === undefined) return `${kind} · ${((runningMs ?? 0) / 1000).toFixed(0)} s`
   const time = `${(a.endedMs / 1000).toFixed(1)} s`
   if (a.abandoned) return `${kind} · stopped waiting after ${time}`
   if (a.error) return `${kind} · error after ${time}: ${a.error}`
   if (a.passed === undefined) return `${kind} · ${time}`
-  return `${kind} · ${time} · ${a.passed ? 'passed' : `failed (${a.issueCount} problem${a.issueCount === 1 ? '' : 's'})`}`
+  return `${kind} · ${time} · ${a.passed ? 'passed' : `failed (${a.issues?.length ?? 0} problem${a.issues?.length === 1 ? '' : 's'})`}`
 }

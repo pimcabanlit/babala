@@ -6,6 +6,7 @@ import { parseBulletin } from '../factsheet/parse'
 import { HOUSEHOLDS } from '../drafting/households'
 import DraftCard from './DraftCard'
 import FactSheetEditor from './FactSheetEditor'
+import { attemptLog } from './log'
 import { useDrafts } from './useDrafts'
 import { useHybrid } from './useHybrid'
 
@@ -202,8 +203,47 @@ export default function OfficerConsole() {
               />
             ))}
           </div>
+          {HOUSEHOLDS.some((h) => drafts.drafts[h.id].attempts.length > 0) && !busy && (
+            <TestLog
+              text={attemptLog(HOUSEHOLDS, drafts.drafts, {
+                area,
+                cloudModel: hybrid.tunables?.cloudModelName ?? 'none',
+                device: hybrid.device,
+                warmUp:
+                  hybrid.warmUp.state === 'warm'
+                    ? `warmed up in ${hybrid.warmUp.seconds.toFixed(1)} s (${hybrid.warmUp.source ?? 'unknown source'})`
+                    : `warm-up ${hybrid.warmUp.state}`,
+              })}
+            />
+          )}
         </Section>
       )}
+    </div>
+  )
+}
+
+/** Every attempt as plain text, to paste into the thread or a PR. */
+function TestLog({ text }: { text: string }) {
+  const [copiedText, setCopiedText] = useState('')
+  const copied = copiedText === text
+  return (
+    <div className="mt-4 text-sm">
+      <button
+        type="button"
+        onClick={() =>
+          navigator.clipboard.writeText(text).then(
+            () => setCopiedText(text),
+            () => setCopiedText(''),
+          )
+        }
+        className="rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium hover:bg-slate-100"
+      >
+        {copied ? 'Copied: paste it into the chat' : 'Copy test log'}
+      </button>
+      <details className="mt-2">
+        <summary className="cursor-pointer text-slate-700">Show the test log (prompts, answers and problems)</summary>
+        <textarea readOnly value={text} rows={12} className="mt-2 w-full rounded border border-slate-300 p-2 font-mono text-xs" />
+      </details>
     </div>
   )
 }

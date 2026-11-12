@@ -19,6 +19,7 @@ describe('buildDraftPrompt', () => {
         '- Evacuation centre: Halimbawa Elementary School gym or Barangay Hall',
         '- Hotline: 0917 555 0100',
         'Tell them to leave now.',
+        'Say when as “6:00 PM on Nov 14”, with no other time words.',
         'Write at most 3 short sentences in plain English. No emojis, no Markdown, no brackets, no placeholders.',
         'Do not add any other numbers, places, times or dates, and do not describe how strong the storm is.',
       ].join('\n'),
@@ -42,23 +43,17 @@ describe('buildDraftPrompt', () => {
 })
 
 describe('buildRetryPrompt', () => {
-  it('quotes the failed draft and each reason once', () => {
-    const prompt = buildRetryPrompt('BASE', ' Bad draft. ', [
-      { rule: 'added-claims', message: '“severe” is not in the bulletin.' },
-      { rule: 'added-claims', message: '“severe” is not in the bulletin.' },
-      { rule: 'placeholders', message: 'Placeholder “[School]” must be replaced with a real fact.' },
-    ])
-    expect(prompt).toBe(
+  it('gives the failed draft back with one edit per problem, and no other facts', () => {
+    const draft = ' Typhoon Sample hits Purok 1 at 6 PM tonight. '
+    const { issues } = checkDraft(draft, SAMPLE_SHEET, { claimWords: [...CHECKER_CLAIM_WORDS], area: 'Purok 1', required: [] })
+    expect(buildRetryPrompt(draft, issues, SAMPLE_SHEET, 'Purok 1')).toBe(
       [
-        'BASE',
+        'Here is a typhoon alert:',
+        'Typhoon Sample hits Purok 1 at 6 PM tonight.',
         '',
-        'Your last draft was:',
-        'Bad draft.',
-        '',
-        'It broke these rules:',
-        '- “severe” is not in the bulletin.',
-        '- Placeholder “[School]” must be replaced with a real fact.',
-        'Write a new alert that fixes every problem.',
+        'Rewrite it with these changes, and keep everything else the same:',
+        '- Remove “tonight”; the bulletin doesn’t say it.',
+        'Reply with only the new alert, in plain text.',
       ].join('\n'),
     )
   })

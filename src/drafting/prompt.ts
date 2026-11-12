@@ -4,7 +4,7 @@
  * checker will compare it.
  */
 import type { FactSheet, Issue } from '../checker'
-import { to12h } from '../factsheet/form'
+import { editsFor, whenText } from './fixes'
 import type { Household } from './households'
 
 /** The signal number for an area, if the fact sheet has one. */
@@ -15,7 +15,7 @@ export function signalFor(sheet: FactSheet, area: string): number | undefined {
 export function buildDraftPrompt(sheet: FactSheet, area: string, household: Household): string {
   const signal = signalFor(sheet, area)
   const place = sheet.barangays[0] ? `${area}, ${sheet.barangays[0]}` : area
-  const when = sheet.landfallDate ? `${to12h(sheet.landfallTime)} on ${sheet.landfallDate}` : to12h(sheet.landfallTime)
+  const when = whenText(sheet)
   const facts = [
     sheet.stormName && `Storm: ${sheet.stormName}`,
     signal !== undefined && `Signal No. ${signal} in ${area}`,
@@ -28,22 +28,25 @@ export function buildDraftPrompt(sheet: FactSheet, area: string, household: Hous
     'Use these facts exactly as written, and no other facts:',
     ...facts.map((f) => `- ${f}`),
     household.advice,
+    `Say when as “${when}”, with no other time words.`,
     'Write at most 3 short sentences in plain English. No emojis, no Markdown, no brackets, no placeholders.',
     'Do not add any other numbers, places, times or dates, and do not describe how strong the storm is.',
   ].join('\n')
 }
 
-/** The same prompt, plus the failed draft and the checker's reasons. */
-export function buildRetryPrompt(base: string, draft: string, issues: Issue[]): string {
-  const reasons = [...new Set(issues.map((i) => i.message))]
+/**
+ * The retry: the failed draft back, with one concrete edit per problem.
+ * A small on-device model follows "Remove “today”" far better than the whole
+ * prompt again, and the shorter prompt runs faster on the laptop.
+ */
+export function buildRetryPrompt(draft: string, issues: Issue[], sheet: FactSheet, area: string): string {
+  const edits = editsFor(issues, sheet, area, draft)
   return [
-    base,
-    '',
-    'Your last draft was:',
+    'Here is a typhoon alert:',
     draft.trim(),
     '',
-    'It broke these rules:',
-    ...reasons.map((r) => `- ${r}`),
-    'Write a new alert that fixes every problem.',
+    'Rewrite it with these changes, and keep everything else the same:',
+    ...edits.map((e) => `- ${e}`),
+    'Reply with only the new alert, in plain text.',
   ].join('\n')
 }

@@ -43,6 +43,7 @@ function checkFigures(figures: Figure[], sheet: FactSheet): Issue[] {
     .filter((f) => !(f.kind === 'number' && f.value === hotline))
     .map((f) => ({
       rule: 'figures' as const,
+      subject: f.kind,
       message: `${KIND_LABEL[f.kind]} “${f.span.text}” is not in the fact sheet.`,
       span: f.span,
     }))
@@ -60,6 +61,7 @@ function checkMissing(text: string, figures: Figure[], sheet: FactSheet, options
     if (!ok)
       issues.push({
         rule: 'missing',
+        subject: 'signal',
         message:
           areaSignal !== undefined
             ? `Missing the signal number for ${options.area} (Signal No. ${areaSignal}).`
@@ -67,14 +69,14 @@ function checkMissing(text: string, figures: Figure[], sheet: FactSheet, options
       })
   }
   if (required.includes('time') && !has('time', sheet.landfallTime))
-    issues.push({ rule: 'missing', message: `Missing the landfall time (${sheet.landfallTime}).` })
+    issues.push({ rule: 'missing', subject: 'time', message: `Missing the landfall time (${sheet.landfallTime}).` })
   if (required.includes('place') && findCentres(text, sheet).length === 0)
-    issues.push({ rule: 'missing', message: 'Missing where to go: name an evacuation centre from the fact sheet.' })
+    issues.push({ rule: 'missing', subject: 'place', message: 'Missing where to go: name an evacuation centre from the fact sheet.' })
   // A bulletin without a hotline can't require one.
   if (required.includes('hotline') && sheet.hotline.trim() !== '') {
     const hotline = normalizePhone(sheet.hotline)
     if (!figures.some((f) => (f.kind === 'phone' || f.kind === 'number') && f.value === hotline))
-      issues.push({ rule: 'missing', message: `Missing the hotline (${sheet.hotline}).` })
+      issues.push({ rule: 'missing', subject: 'hotline', message: `Missing the hotline (${sheet.hotline}).` })
   }
   return issues
 }

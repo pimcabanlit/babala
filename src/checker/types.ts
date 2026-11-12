@@ -37,7 +37,28 @@ export type Rule =
 /** Where in the draft an issue is, so the console can highlight it. */
 export type Span = { start: number; end: number; text: string }
 
-export type Issue = { rule: Rule; message: string; span?: Span }
+/**
+ * What exactly an issue is about, within its rule, so a retry prompt can say
+ * how to fix it: the kind of figure, the missing fact, the kind of place, or
+ * the style problem.
+ */
+export type IssueSubject =
+  | 'time'
+  | 'date'
+  | 'signal'
+  | 'phone'
+  | 'number'
+  | 'place'
+  | 'hotline'
+  | 'venue'
+  | 'area'
+  | 'modifier'
+  | 'sentences'
+  | 'words'
+  | 'emoji'
+  | 'format'
+
+export type Issue = { rule: Rule; message: string; span?: Span; subject?: IssueSubject }
 
 export type CheckResult = { pass: boolean; issues: Issue[] }
 
