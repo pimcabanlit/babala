@@ -1,18 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
 import { canPrepare, describeDeviceStatus } from '../ai/deviceStatus'
+import { alertDocId, approvedAlert, areaKey } from '../alerts/record'
+import { saveApprovedAlert } from '../alerts/store'
 import { SAMPLE_BULLETIN } from '../factsheet/sample'
 import { fromForm, toForm, type FactSheetForm } from '../factsheet/form'
 import { parseBulletin } from '../factsheet/parse'
-import { HOUSEHOLDS } from '../drafting/households'
+import { HOUSEHOLDS, type Household, type HouseholdId } from '../drafting/households'
+import type { OfficerSession } from '../officer/OfficerGate'
+import { writtenBy } from './approval'
 import DraftCard from './DraftCard'
 import FactSheetEditor from './FactSheetEditor'
 import { attemptLog } from './log'
 import { useDrafts } from './useDrafts'
 import { useHybrid } from './useHybrid'
+import { useSavedAlerts } from './useSavedAlerts'
 
-/** The officer console: bulletin in, fact sheet confirmed, drafts checked and approved. */
-export default function OfficerConsole() {
+/** The officer console: bulletin in, fact sheet confirmed, drafts checked, approved and saved. */
+export default function OfficerConsole({ session }: { session: OfficerSession }) {
   const hybrid = useHybrid()
+  const savedAlerts = useSavedAlerts(session.db)
+  const [saveErrors, setSaveErrors] = useState<Partial<Record<HouseholdId, string>>>({})
   const [bulletin, setBulletin] = useState('')
   const [form, setForm] = useState<FactSheetForm>()
   const [notFound, setNotFound] = useState<string[]>([])
@@ -33,6 +40,37 @@ export default function OfficerConsole() {
     warmPromise: hybrid.warmPromise,
   })
   const busy = HOUSEHOLDS.some((h) => drafts.drafts[h.id].running)
+  const areaSaveKey = areaKey(area)
+
+  /**
+   * Approving saves: approvedAlert() runs the checker again on the exact text,
+   * then the alert replaces the last one saved for this household and area.
+   * Offline it waits on the laptop; the card shows that from the saved alerts.
+   */
+  function approve(h: Household) {
+    if (!sheet) return
+    const draft = drafts.drafts[h.id]
+    const approval = approvedAlert({
+      text: draft.text,
+      sheet,
+      area,
+      household: h,
+      claimWords,
+      source: writtenBy(draft),
+      edited: draft.edited ?? false,
+    })
+    const showError = (message: string | undefined) => setSaveErrors((all) => ({ ...all, [h.id]: message }))
+    if (!approval.ok) {
+      showError(approval.reason)
+      return
+    }
+    showError(undefined)
+    drafts.setApproved(h.id, true)
+    saveApprovedAlert(session.db, session.uid, approval).catch((err: unknown) => {
+      drafts.setApproved(h.id, false)
+      showError(`Not saved: ${err instanceof Error ? err.message : String(err)}`)
+    })
+  }
 
   // A second of resolution is enough for the budget and the timers.
   const [now, setNow] = useState(() => Date.now())
@@ -50,6 +88,7 @@ export default function OfficerConsole() {
     setConfirmed(false)
     setArea(result.sheet.signals[0]?.area ?? '')
     drafts.reset()
+    setSaveErrors({})
   }
 
   function editForm(next: FactSheetForm) {
@@ -182,6 +221,14 @@ export default function OfficerConsole() {
               Draft all four
             </button>
           </div>
+          {savedAlerts.error && (
+            <p className="mt-3 rounded bg-red-50 p-2 text-sm text-red-800">Couldn’t read the saved alerts: {savedAlerts.error}</p>
+          )}
+          {savedAlerts.saved && savedAlerts.saved.unreadable.length > 0 && (
+            <p className="mt-3 rounded bg-amber-100 p-2 text-sm text-amber-950">
+              These saved documents aren’t alerts this app can read: {savedAlerts.saved.unreadable.join(', ')}.
+            </p>
+          )}
           <div className="mt-4 space-y-4">
             {HOUSEHOLDS.map((h) => (
               <DraftCard
@@ -199,7 +246,9 @@ export default function OfficerConsole() {
                 onDraft={() => void drafts.draft(h)}
                 onAbandon={() => drafts.abandon(h.id)}
                 onEdit={(text) => drafts.edit(h.id, text)}
-                onApprove={(approved) => drafts.setApproved(h.id, approved)}
+                saved={areaSaveKey ? savedAlerts.saved?.byId.get(alertDocId(h.id, areaSaveKey)) : undefined}
+                saveError={saveErrors[h.id]}
+                onApprove={() => approve(h)}
               />
             ))}
           </div>

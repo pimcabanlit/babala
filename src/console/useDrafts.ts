@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { streamDraft, type DraftModels, type Route, type Source } from '../ai'
-import { checkDraft, type CheckResult, type FactSheet, type Issue } from '../checker'
+import type { FactSheet, Issue } from '../checker'
 import type { DeviceStatus } from '../ai/deviceStatus'
+import { checkFor } from '../drafting/check'
 import { HOUSEHOLDS, type Household, type HouseholdId } from '../drafting/households'
 import { buildDraftPrompt, buildRetryPrompt } from '../drafting/prompt'
 import { previewFromPartialJson, readAnswer } from '../drafting/structured'
@@ -54,11 +55,6 @@ type Context = {
   models: DraftModels | undefined
   deviceRef: { current: DeviceStatus }
   warmPromise: { current: Promise<unknown> }
-}
-
-/** The check for one household's alert. Code only, so it runs on every keystroke. */
-export function checkFor(text: string, sheet: FactSheet, area: string, household: Household, claimWords: string[]): CheckResult {
-  return checkDraft(text, sheet, { claimWords, area, required: household.required })
 }
 
 /**

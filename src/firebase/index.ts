@@ -1,6 +1,22 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { ReCaptchaEnterpriseProvider, initializeAppCheck, type AppCheck } from 'firebase/app-check'
-import { appCheckDebugSetting, readFirebaseEnv } from './env'
+import {
+  browserPopupRedirectResolver,
+  connectAuthEmulator,
+  getAuth,
+  inMemoryPersistence,
+  initializeAuth,
+  type Auth,
+} from 'firebase/auth'
+import {
+  connectFirestoreEmulator,
+  initializeFirestore,
+  memoryLocalCache,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+} from 'firebase/firestore'
+import { EMULATORS, appCheckDebugSetting, readFirebaseEnv, wantsEmulators } from './env'
 
 declare global {
   // Read by the App Check SDK before it initializes. Development only.
@@ -8,14 +24,14 @@ declare global {
 }
 
 export type FirebaseServices =
-  | { ok: true; app: FirebaseApp; appCheck: AppCheck }
+  | { ok: true; app: FirebaseApp; appCheck: AppCheck; auth: Auth; db: Firestore; emulators: boolean }
   | { ok: false; missing: string[] }
 
 let services: FirebaseServices | undefined
 
 /**
- * Starts Firebase and App Check once. App Check must start before any AI Logic
- * call, because AI Logic is enforced: requests without a valid token are refused.
+ * Starts Firebase once: App Check first, because AI Logic is enforced and
+ * Firestore attaches App Check tokens only if App Check started before it.
  */
 export function getFirebase(): FirebaseServices {
   if (services) return services
@@ -32,6 +48,22 @@ export function getFirebase(): FirebaseServices {
     provider: new ReCaptchaEnterpriseProvider(env.recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
   })
-  services = { ok: true, app, appCheck }
+  const emulators = wantsEmulators(import.meta.env)
+  // The persistent cache keeps saved alerts and the officer list on the laptop,
+  // and the signed-in officer stays signed in, so approving still works with no
+  // signal and uploads when it's back. With the emulators both stay in memory:
+  // they share the real project's ID, and test users and data must never mix
+  // with the real project's in IndexedDB.
+  const db = initializeFirestore(app, {
+    localCache: emulators ? memoryLocalCache() : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  })
+  const auth = emulators
+    ? initializeAuth(app, { persistence: inMemoryPersistence, popupRedirectResolver: browserPopupRedirectResolver })
+    : getAuth(app)
+  if (emulators) {
+    connectAuthEmulator(auth, EMULATORS.auth)
+    connectFirestoreEmulator(db, EMULATORS.firestore.host, EMULATORS.firestore.port)
+  }
+  services = { ok: true, app, appCheck, auth, db, emulators }
   return services
 }

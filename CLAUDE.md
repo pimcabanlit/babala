@@ -87,11 +87,15 @@ npm run check       # typecheck, lint, Vitest, production build (what CI runs)
 npm run typecheck   # tsc -b, strict
 npm run lint        # oxlint, warnings fail
 npm run test        # Vitest, single run
+npm run test:rules  # Firestore rules tests on the emulator (needs Java 21; CI runs it)
+npm run emulators   # local Auth and Firestore emulators; set VITE_FIREBASE_EMULATORS=true in .env.local
 npm run build       # production build into dist/
 npm run preview     # serve dist/ locally
 ```
 
-Deploy is not set up yet. CI (`.github/workflows/ci.yml`) runs `npm ci` and `npm run check` on every pull request and on pushes to `main`. It never deploys.
+Deploy is not set up yet. CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run check` and `npm run test:rules` on every pull request and on pushes to `main`. It never deploys.
+
+Firestore rules live in `firestore.rules` and are tested in `tests/rules/`. Pim publishes them (Firebase console > Firestore > Rules); agents never do. Officers are the user IDs in the `officers` collection, which Pim edits by hand in the Firebase console.
 
 ## How changes land
 

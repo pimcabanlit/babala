@@ -49,3 +49,18 @@ export function appCheckDebugSetting(env: EnvSource): string | true | undefined 
   const token = env.VITE_APPCHECK_DEBUG_TOKEN
   return typeof token === 'string' && token.trim() !== '' ? token.trim() : true
 }
+
+/** Where `npm run emulators` serves Auth and Firestore (the ports in firebase.json). */
+export const EMULATORS = {
+  auth: 'http://127.0.0.1:9099',
+  firestore: { host: '127.0.0.1', port: 8080 },
+} as const
+
+/**
+ * Whether to use the local Auth and Firestore emulators instead of the real
+ * project: only in development, and only when .env.local asks for it, so a
+ * production build always talks to the real project.
+ */
+export function wantsEmulators(env: EnvSource): boolean {
+  return env.DEV === true && env.VITE_FIREBASE_EMULATORS === 'true'
+}

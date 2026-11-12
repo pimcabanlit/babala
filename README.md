@@ -36,3 +36,27 @@ App Check is enforced, so a local run needs a registered debug token:
 
 Debug tokens are only used in development builds. Treat them like passwords: never commit or share
 them.
+
+### Officer sign-in
+
+The officer console opens only for an officer: someone signed in with Google whose Firebase user ID
+is in the Firestore `officers` collection. To become one:
+
+1. Publish the rules: in the Firebase console, open Firestore > Rules, replace the text with the
+   contents of `firestore.rules`, and click **Publish**.
+2. Run the app, click **Sign in with Google**, and copy the user ID it shows.
+3. In the Firebase console, open Firestore > Data, start a collection called `officers` (or open
+   it), and add a document whose ID is that user ID, with one field `name` (string).
+
+The console opens as soon as the document exists.
+
+### Tests for the Firestore rules
+
+`npm run test:rules` starts the Firestore emulator and runs `tests/rules/` against
+`firestore.rules`. It needs Java 21. CI runs it on every pull request.
+
+### Emulators (optional)
+
+`npm run emulators` starts local Auth and Firestore emulators (Java 21). With
+`VITE_FIREBASE_EMULATORS=true` in `.env.local`, `npm run dev` signs in and saves alerts there
+instead of the real project, and the page says so. AI calls still use the real project.
