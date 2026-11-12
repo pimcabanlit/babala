@@ -1,3 +1,4 @@
+import HybridTest from './hybrid/HybridTest'
 import SetupStatus from './SetupStatus'
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
           Checked typhoon alerts that still work when the signal drops.
         </p>
         <SetupStatus />
+        <HybridTest />
       </main>
     </div>
   )

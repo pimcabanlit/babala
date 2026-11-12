@@ -4,8 +4,12 @@
  * Keys match the Remote Config parameter names exactly.
  */
 export const REMOTE_CONFIG_DEFAULTS = {
-  /** Cloud model for Firebase AI Logic. Gemini 3+ only, billing not required. */
-  cloud_model_name: 'gemini-3.8-flash',
+  /**
+   * Cloud model for Firebase AI Logic. Gemini 3+ only, billing not required.
+   * gemini-3.5-flash-lite: on Nov 12 gemini-3.8-flash returned 500 "high demand"
+   * or timed out, while flash-lite answered in 1 to 5 s. Switch in Remote Config.
+   */
+  cloud_model_name: 'gemini-3.5-flash-lite',
   /** Seconds to wait for an on-device draft before offering the cloud. */
   ondevice_budget_seconds: 30,
 } as const
