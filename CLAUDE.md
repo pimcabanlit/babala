@@ -129,3 +129,5 @@ every change must be cheap to undo. This replaces the old "Definition of done" s
 - Keep the demo story in mind: bulletin in, Nano drafts on the laptop, the checker catches an invented claim or placeholder, retry passes, officer approves, the cloud translates, Wi-Fi off and it still works.
 - Simplest working version first. The core loop (bulletin, draft, check, approve) must work end to end by Nov 20.
 - Ask before adding new paid services, new frameworks, or anything that changes the plan.
+- Comments say why, not what. No commented-out code and no dead code: git keeps the history.
+- One behaviour per test, and the test's name says that behaviour ("flags the landfall time in a sentence about the signal").
