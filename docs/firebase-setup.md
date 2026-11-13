@@ -9,14 +9,14 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | Item | Value | Notes |
 | --- | --- | --- |
 | Firebase project | `babala-hybrid` | Spark plan, no billing account (`CLAUDE.md` non-negotiable 4) |
-| Web app | "Babala web" | Its config lives in `.env.local` and, for hosting, GitHub secrets |
+| Web app | "Babala web" | Its config lives in `.env.local` on the laptop, which also builds the hosted site |
 | AI Logic | Gemini Developer API backend | The app calls it with limited-use App Check tokens (`src/ai/index.ts`) |
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, registered for "Babala web" | **Enforced on AI Logic.** Not yet enforced on Firestore (turn on near the end). A debug token is registered for local work and kept in `.env.local` |
 | Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12, then PRs #21 to #24 together, Nov 13). The `officers` documents are added by hand |
 | Authentication | Google, Anonymous and Email/Password sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background. Email/Password for the judges' test officer only (*Test officer for judges* below), set up Nov 13 |
 | Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name`, `checker_claim_words` and `checker_translation_claims` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
-| Hosting | Not set up | Planned for Phase 4, deployed by GitHub Actions |
-| GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets used yet |
+| Hosting | Config in `firebase.json`; not deployed yet | Pim deploys from the laptop with `npm run deploy:hosting` (section 8) |
+| GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets |
 | Agent skills | Firebase's official skills in `.claude/skills/`, commit `99954a3` (Nov 9) | See `.claude/skills/README.md`. `CLAUDE.md` wins where they differ |
 
 Not used: the Blaze plan, Google Account Quota sprint accounts, the Vertex AI (Agent Platform) backend, Cloud Functions, and classic reCAPTCHA (deprecated).
@@ -70,7 +70,7 @@ These match what is in place now. Console menu names drift: when the console dis
 ### 5. Authentication
 
 1. Authentication → Sign-in method: **Google** and **Anonymous** are enabled.
-2. Authentication → Settings → Authorized domains: the hosted domain must be added when hosting is set up. Without it, sign-in fails with `auth/unauthorized-domain`, and the app says where to fix it.
+2. Authentication → Settings → Authorized domains: `localhost`, `babala-hybrid.web.app` and `babala-hybrid.firebaseapp.com` (section 8). Without the hosted domain, sign-in fails with `auth/unauthorized-domain`, and the app says where to fix it.
 
 #### Test officer for judges
 
@@ -123,11 +123,71 @@ Parameters, with their in-app defaults in `src/config/defaults.ts`:
 
 Publish after each change. The app fetches at most once an hour, so a change can take up to an hour to show.
 
-### 8. Hosting (not set up yet)
+### 8. Hosting
 
-Planned for Phase 4: Firebase Hosting, deployed by a GitHub Actions workflow from `main`, never on pull requests. The web app config and reCAPTCHA site key come from GitHub secrets, never the repo. Add the hosted domain to Authentication's authorized domains. The app must stay up, free and open to judges until Dec 16.
+Firebase Hosting serves the production build from `dist/` at `https://babala-hybrid.web.app` (and the same site at `babala-hybrid.firebaseapp.com`). Hosting is free on Spark: 10 GB stored and 360 MB a day of downloads. The app's first visit downloads about 350 KB compressed, so that is roughly a thousand fresh visits a day.
 
-The resident view needs two things from the Hosting config: a rewrite of every path to `/index.html` (so `/resident` opens, also from the installed app), and `sw.js` served from the root of the site, which the build already does.
+**How it deploys.** Pim deploys from the laptop with `npm run deploy:hosting`, in PowerShell. It runs Firebase's CLI (version pinned) for this project and Hosting only, so it never touches the Firestore rules, Auth or Remote Config. Before uploading, two checks run (`predeploy` in `firebase.json`), and either one failing stops the deploy:
+
+1. `scripts/check-deploy-source.mjs`: the laptop is on `main`, at the same commit as `main` on GitHub, with no changed or new files (ignored ones, such as `.env.local`, are fine). A stray file in `public/` would otherwise be published. So the hosted site is always what was reviewed and merged.
+2. `npm run check`: typecheck, lint, tests, and a fresh production build.
+
+**Settings at build time.** The build reads the Firebase web app config and the reCAPTCHA site key from `.env.local`, as the dev server does. They end up in the public JavaScript, which is expected for a web app: they identify the project, and App Check and the rules protect it. The App Check debug token in the same file must never be in the build: the app reads it only in development (`src/firebase/index.ts`), and the build stops with an error if its value appears in any output file (`vite.secrets.ts`).
+
+**What `firebase.json` sets, and why:**
+
+| Setting | Why |
+| --- | --- |
+| `/resident` and `/resident/...` rewrite to `/index.html` | The resident view and the installed app's start page open on a direct visit. Other unknown paths get Hosting's 404 page |
+| `no-cache` on `index.html`, the resident page, `sw.js`, the manifest and icons | The phone checks for a new copy on every load, so a deploy reaches phones on their next visit with a signal. The service worker installs each new version from fresh files |
+| `max-age` of a year, `immutable` on `/assets/...` | Vite puts a content hash in each file name, so a changed file has a new name |
+| `X-Frame-Options: DENY` and `frame-ancestors 'none'` on the pages | Another site can't frame the officer console and trick a click on "Approve" |
+| `nosniff` and a referrer policy | Standard hardening. Hosting's reserved `/__/` paths (Google sign-in) get none of these headers |
+
+`npm run preview:hosting` builds and serves `dist/` with these rules on the Hosting emulator, at http://127.0.0.1:5002.
+
+#### First deploy (Pim, once)
+
+1. **Turn Hosting on.** Firebase console → Build → **Hosting** → **Get started**. Click through the CLI steps without running them (the repo has them). The site `babala-hybrid` appears. (Done Nov 13.)
+2. **Allow the hosted domains for reCAPTCHA.** Google Cloud console for `babala-hybrid` → Security → **reCAPTCHA** → the key App Check uses (the site key in `.env.local`) → **Edit key** → the domain list must be exactly `babala-hybrid.web.app` and `babala-hybrid.firebaseapp.com` → **Save changes**. Leave out `localhost`: local runs use the debug token, and with `localhost` on the list anyone could get App Check tokens for this project from a page on their own computer. Without the hosted domains, App Check gets no token on the hosted site, and every AI call is refused. (Done Nov 13: both hosted domains were already listed; `localhost` was removed.)
+3. **Check Auth's authorized domains.** Firebase console → Authentication → Settings → **Authorized domains**: `babala-hybrid.web.app` and `babala-hybrid.firebaseapp.com` should already be listed (Firebase adds them for new projects). Add any that is missing. Without them, sign-in fails with `auth/unauthorized-domain`. Keep `localhost` here: Google sign-in on the dev server needs it. (Checked Nov 13: all three listed.)
+4. **Sign the CLI in** (once per laptop), in PowerShell in the repo folder: `npx -y firebase-tools@15.36.0 login`, and sign in with the Google account that owns the project.
+5. **Deploy:**
+
+   ```
+   git switch main
+   git pull
+   npm ci
+   npm run deploy:hosting
+   ```
+
+   The CLI ends with `Hosting URL: https://babala-hybrid.web.app`.
+6. **Check it** (*Check the hosted site* below).
+
+#### Later deploys
+
+After a PR merges: `git switch main`, `git pull`, `npm ci`, `npm run deploy:hosting`. Phones get the new version on their next visit with a signal, and keep the old one offline until then.
+
+**Rolling back:** Firebase console → Hosting → *Release history* → the previous release → **Rollback**. It takes seconds and needs no build. Or revert the PR and deploy again.
+
+During judging (Dec 10–16), deploy only fixes, and check the hosted site after each one.
+
+#### Check the hosted site
+
+On the laptop, in Chrome, at `https://babala-hybrid.web.app`:
+
+1. *Setup status* shows ✓ Firebase, ✓ App Check (a real reCAPTCHA token this time, not the debug token) and ✓ Remote Config.
+2. **Sign in with Google** opens the popup and the console opens. Sign out, then sign in as the test officer in a private window.
+3. *Prepare on-device model*, then draft one alert: the card says the laptop wrote it. The Prompt API is on for web pages from Chrome 148, so the hosted origin needs no trial token; `chrome://version` shows the version.
+4. Translate one alert (a cloud call through App Check).
+5. Open `/resident` directly: it shows the alert.
+
+On a phone (Chrome on Android, or Safari on iPhone):
+
+1. Open `https://babala-hybrid.web.app/resident` with a signal. Pick a purok and household, and wait until the alert shows.
+2. Optional: install it (Chrome's *Install app*, or Safari's *Share* → *Add to Home Screen*).
+3. Turn on airplane mode (and Wi-Fi off). Close the tab or app completely, then open the page or app again. It opens and shows the saved alert, with the offline status line.
+4. Turn airplane mode off and reload: the status line says *Live*.
 
 ### 9. Verify
 
@@ -186,7 +246,7 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 - [ ] Resident view offline on a phone: open `/resident` on the hosted site (Phase 4), pick a purok and household, turn on airplane mode and reopen it. The dev server doesn't save the page for offline use. Alerts saved before Nov 13 reach residents at their next approval.
 - [x] Translations checked on the laptop (Nov 13): "Translate into both" on General · Purok Ilaya, both passed the checker and were published, and `/resident` shows Filipino and Cebuano. The cloud's Filipino said "tumama na ang Bagyong Sample sa lupa" (has already made landfall) for an English "makes landfall at 6:00 PM": the figures matched, so the checker passed it. Pim edited it to "tatama sa lupa" and published again. The checker can't see tense, so the officer's reading is the guard.
 - [ ] Have a fluent Filipino and Cebuano speaker review `TRANSLATION_CLAIMS` in `src/config/defaults.ts`, the claim words a translation may only use when the English backs them.
-- [ ] Hosting, GitHub secrets, and the hosted domain in Authentication's authorized domains (Phase 4).
+- [ ] Hosting: turn it on, add the hosted domains to the reCAPTCHA key and check Auth's authorized domains, deploy, and check the hosted site (section 8, Phase 4).
 - [ ] App Check enforced on Firestore (Phase 4).
 - [x] Test officer for judges set up (Nov 13): Email/Password on, user actions set, `test-officer@example.com` added with its `officers` document, and signed in on the laptop. Its password is in Pim's password manager.
 - [ ] Put the test officer's email and password in the private testing instructions (Phase 5).

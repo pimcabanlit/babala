@@ -8,11 +8,13 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint --deny-warnings",
     "preview": "vite preview",
+    "preview:hosting": "npm run build && npx -y firebase-tools@15.36.0 emulators:start --only hosting --project demo-babala",
     "typecheck": "tsc -b",
     "test": "vitest run --passWithNoTests",
     "test:rules": "npx -y firebase-tools@15.36.0 emulators:exec --only firestore --project demo-babala \"vitest run --config vitest.rules.config.ts\"",
     "emulators": "npx -y firebase-tools@15.36.0 emulators:start --only auth,firestore --project demo-babala",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "deploy:hosting": "npx -y firebase-tools@15.36.0 deploy --only hosting --project babala-hybrid"
   },
   "dependencies": {
     "firebase": "13.3.0",

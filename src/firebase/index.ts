@@ -30,17 +30,33 @@ export type FirebaseServices =
 let services: FirebaseServices | undefined
 
 /**
+ * Each setting is read by its own name, never as the whole import.meta.env:
+ * Vite writes the whole object, with every VITE_ variable in .env.local, into
+ * the production bundle wherever it is passed as a value.
+ *
  * Starts Firebase once: App Check first, because AI Logic is enforced and
  * Firestore attaches App Check tokens only if App Check started before it.
  */
 export function getFirebase(): FirebaseServices {
   if (services) return services
-  const env = readFirebaseEnv(import.meta.env)
+  const env = readFirebaseEnv({
+    VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
+    VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    VITE_FIREBASE_STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID,
+    VITE_RECAPTCHA_ENTERPRISE_SITE_KEY: import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY,
+  })
   if (!env.ok) {
     services = { ok: false, missing: env.missing }
     return services
   }
-  const debug = appCheckDebugSetting(import.meta.env)
+  // Behind import.meta.env.DEV, which is the constant false in a production
+  // build, so the debug token from .env.local never reaches the hosted bundle.
+  const debug = import.meta.env.DEV
+    ? appCheckDebugSetting({ DEV: true, VITE_APPCHECK_DEBUG_TOKEN: import.meta.env.VITE_APPCHECK_DEBUG_TOKEN })
+    : undefined
   if (debug !== undefined) globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN = debug
 
   const app = initializeApp(env.firebaseConfig)
@@ -48,7 +64,7 @@ export function getFirebase(): FirebaseServices {
     provider: new ReCaptchaEnterpriseProvider(env.recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
   })
-  const emulators = wantsEmulators(import.meta.env)
+  const emulators = wantsEmulators({ DEV: import.meta.env.DEV, VITE_FIREBASE_EMULATORS: import.meta.env.VITE_FIREBASE_EMULATORS })
   // The persistent cache keeps saved alerts and the officer list on the laptop,
   // and the signed-in officer stays signed in, so approving still works with no
   // signal and uploads when it's back. With the emulators both stay in memory:

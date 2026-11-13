@@ -49,7 +49,7 @@ The docs in `docs/` are the source of truth. The first plan doc (https://claude.
 | Data | Firestore (`(default)`, asia-southeast1) with offline cache |
 | Auth | Google sign-in for officers, one email and password test officer for judges, anonymous sign-in for residents |
 | Config | Remote Config (`ondevice_budget_seconds` = 30, `cloud_model_name`, `checker_claim_words`, `checker_translation_claims`) |
-| Hosting | Firebase Hosting, deployed by GitHub Actions |
+| Hosting | Firebase Hosting (`https://babala-hybrid.web.app`), deployed by Pim from the laptop |
 | Tests | Vitest for the checker and routing logic |
 
 Firebase project: `babala-hybrid` (Spark). Web app: "Babala web".
@@ -98,9 +98,11 @@ npm run test:rules  # Firestore rules tests on the emulator (needs Java 21; CI r
 npm run emulators   # local Auth and Firestore emulators; set VITE_FIREBASE_EMULATORS=true in .env.local
 npm run build       # production build into dist/
 npm run preview     # serve dist/ locally
+npm run preview:hosting  # build, then serve dist/ with firebase.json's rewrites and headers (http://127.0.0.1:5002)
+npm run deploy:hosting   # Pim only: deploy Hosting from main (docs/firebase-setup.md, Hosting)
 ```
 
-Deploy is not set up yet. CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run check` and `npm run test:rules` on every pull request and on pushes to `main`. It never deploys.
+Pim deploys Hosting from the laptop with `npm run deploy:hosting`, which refuses to run unless the laptop has `main` exactly as on GitHub, and runs `npm run check` first. Agents never deploy. CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run check` and `npm run test:rules` on every pull request and on pushes to `main`. It never deploys.
 
 Firestore rules live in `firestore.rules` and are tested in `tests/rules/`. Pim publishes them (Firebase console > Firestore > Rules); agents never do. Officers are the user IDs in the `officers` collection, which Pim edits by hand in the Firebase console.
 
