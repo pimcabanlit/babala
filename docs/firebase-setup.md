@@ -148,9 +148,9 @@ Firebase Hosting serves the production build from `dist/` at `https://babala-hyb
 
 #### First deploy (Pim, once)
 
-1. **Turn Hosting on.** Firebase console → Build → **Hosting** → **Get started**. Click through the CLI steps without running them (the repo has them). The site `babala-hybrid` appears.
-2. **Allow the hosted domains for reCAPTCHA.** Google Cloud console for `babala-hybrid` → Security → **reCAPTCHA** → the key App Check uses (the site key in `.env.local`) → **Edit key** → Domains: add `babala-hybrid.web.app` and `babala-hybrid.firebaseapp.com` → **Update key**. Don't add `localhost`: local runs use the debug token. Without this, App Check gets no token on the hosted site, and every AI call is refused.
-3. **Check Auth's authorized domains.** Firebase console → Authentication → Settings → **Authorized domains**: `babala-hybrid.web.app` and `babala-hybrid.firebaseapp.com` should already be listed (Firebase adds them for new projects). Add any that is missing. Without them, sign-in fails with `auth/unauthorized-domain`.
+1. **Turn Hosting on.** Firebase console → Build → **Hosting** → **Get started**. Click through the CLI steps without running them (the repo has them). The site `babala-hybrid` appears. (Done Nov 13.)
+2. **Allow the hosted domains for reCAPTCHA.** Google Cloud console for `babala-hybrid` → Security → **reCAPTCHA** → the key App Check uses (the site key in `.env.local`) → **Edit key** → the domain list must be exactly `babala-hybrid.web.app` and `babala-hybrid.firebaseapp.com` → **Save changes**. Leave out `localhost`: local runs use the debug token, and with `localhost` on the list anyone could get App Check tokens for this project from a page on their own computer. Without the hosted domains, App Check gets no token on the hosted site, and every AI call is refused. (Done Nov 13: both hosted domains were already listed; `localhost` was removed.)
+3. **Check Auth's authorized domains.** Firebase console → Authentication → Settings → **Authorized domains**: `babala-hybrid.web.app` and `babala-hybrid.firebaseapp.com` should already be listed (Firebase adds them for new projects). Add any that is missing. Without them, sign-in fails with `auth/unauthorized-domain`. Keep `localhost` here: Google sign-in on the dev server needs it. (Checked Nov 13: all three listed.)
 4. **Sign the CLI in** (once per laptop), in PowerShell in the repo folder: `npx -y firebase-tools@15.36.0 login`, and sign in with the Google account that owns the project.
 5. **Deploy:**
 
