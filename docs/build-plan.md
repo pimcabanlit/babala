@@ -301,6 +301,11 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
    - **Stats need a cited source**, checked before recording, with the source in the YouTube description. No casualty figures, and no dollar comparison of cloud-only against hybrid: on the Spark plan both cost $0, so the ledger count is the honest version.
    - **Sound:** no copyrighted music. Use recorded rain or wind, or a royalty-free track whose licence allows it, after checking the contest rules.
    - **The dark opening is a real shot**, not a mock-up: the iPhone in airplane mode opening the hosted app.
+   - **Shoot on the hosted site** (https://babala-hybrid.web.app), not localhost. Nano, the cloud through App Check and the iPhone offline were all checked there on Nov 13, and it's the URL on the end card.
+   - **Deploy last, then prime the phone.** After the final deploy, open the app on the iPhone with a signal and wait for "Live" before airplane mode; phones only get a deploy on their next online visit. The Home Screen app keeps its own storage, separate from Safari: open it from its icon with a signal and pick the purok and household again, or it opens offline with no alerts saved.
+   - **Show the offline proof**: record with iPhone screen recording, which works in airplane mode, so the airplane icon and "Offline. Showing the alerts saved on this phone at …" are both on screen. With the laptop's Wi-Fi off, the console's offline banners and waiting saves are expected and worth showing.
+   - **Demo data:** the Purok 1 alerts predate the ledger and can't be translated or traced. Re-approve them, or use Purok Ilaya for the translation and ledger shots, and re-approve the demo alerts again before judging starts (Dec 10).
+   - **Nothing private on screen:** no reCAPTCHA key ID, App Check debug token, `.env.local`, test officer password, email or real user IDs. Crop user IDs in the ledger or sign in as the test officer, and use the code or a diagram, not console pages, for "How it's built".
 
 2. **README and Devpost text** (Nov 27). Cover the value proposition, setup, testing instructions, how Firebase AI Logic is used (with links to the calls), the AI coding tools used, and what was built during the contest (all of it).
 3. **Requirements map.** Bring every row of [requirements-map.md](requirements-map.md) to its final status.
