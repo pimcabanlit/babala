@@ -8,6 +8,9 @@ import { inDisplayOrder } from './savedView'
 import Translations, { type TranslationActions } from './Translations'
 import type { TranslationClaims } from '../firebase/remoteConfig'
 import type { PublishedTranslations } from '../translation/record'
+import Button, { LinkButton } from '../ui/Button'
+import { StatusChip } from '../ui/Chip'
+import Notice from '../ui/Notice'
 
 type Props = {
   saved: SavedAlert[] | undefined
@@ -42,22 +45,20 @@ export type TranslationProps = {
  */
 export default function SavedAlerts({ saved, unreadable, error, uid, withdrawErrors, onWithdraw, onShowLedger, translations }: Props) {
   return (
-    <div className="space-y-2 text-sm">
-      <p className="text-slate-700">
+    <div className="space-y-3 text-body-md">
+      <p className="text-on-surface-variant">
         One alert per household and area. Withdrawing one keeps its text and its record, marks it withdrawn so residents no
         longer get it or its translations, and adds the reason to the ledger. Approving a new alert for the same household and
         area replaces it, and its translations need publishing again.
       </p>
-      {translations.error && <p className="rounded bg-red-50 p-2 text-red-800">Couldn’t read the published translations: {translations.error}</p>}
-      {error && <p className="rounded bg-red-50 p-2 text-red-800">Couldn’t read the saved alerts: {error}</p>}
-      {!saved && !error && <p className="text-slate-600">Loading the saved alerts…</p>}
-      {saved && saved.length === 0 && <p className="text-slate-600">No alerts saved yet.</p>}
+      {translations.error && <Notice tone="error">Couldn’t read the published translations: {translations.error}</Notice>}
+      {error && <Notice tone="error">Couldn’t read the saved alerts: {error}</Notice>}
+      {!saved && !error && <p className="text-on-surface-variant">Loading the saved alerts…</p>}
+      {saved && saved.length === 0 && <p className="text-on-surface-variant">No alerts saved yet.</p>}
       {unreadable.length > 0 && (
-        <p className="rounded bg-amber-100 p-2 text-amber-950">
-          These saved documents aren’t alerts this app can read: {unreadable.join(', ')}.
-        </p>
+        <Notice tone="warning">These saved documents aren’t alerts this app can read: {unreadable.join(', ')}.</Notice>
       )}
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {saved &&
           inDisplayOrder(saved).map((alert) => (
             <li key={alert.id}>
@@ -104,42 +105,48 @@ function Row({
   }
 
   return (
-    <article aria-label={`${household} · ${alert.area}`} className="rounded border border-slate-200 p-2">
+    <article aria-label={`${household} · ${alert.area}`} className="rounded-md border border-outline-variant p-4">
       <header className="flex flex-wrap items-center gap-2">
-        <h3 className="font-medium">
+        <h3 className="text-title-md">
           {household} · {alert.area}
         </h3>
         {withdrawn ? (
-          <span className="rounded bg-amber-100 px-1.5 text-xs font-semibold text-amber-950">Withdrawn</span>
+          <StatusChip tone="warning" icon="block">
+            Withdrawn
+          </StatusChip>
         ) : (
-          <span className="rounded bg-emerald-100 px-1.5 text-xs font-semibold text-emerald-900">Active</span>
+          <StatusChip tone="success" icon="check_circle">
+            Active
+          </StatusChip>
         )}
-        {alert.pending && <span className="rounded bg-orange-100 px-1.5 text-xs font-semibold text-orange-950">Not uploaded yet</span>}
+        {alert.pending && (
+          <StatusChip tone="warning" icon="cloud_upload">
+            Not uploaded yet
+          </StatusChip>
+        )}
         {!withdrawn && !form && (
-          <button
-            type="button"
-            onClick={() => setForm({ reason: '' })}
-            className="ml-auto rounded border border-red-300 bg-white px-2 py-0.5 text-xs font-medium text-red-800 hover:bg-red-50"
-          >
+          <Button size="sm" variant="danger-outlined" onClick={() => setForm({ reason: '' })} className="ml-auto">
             Withdraw
-          </button>
+          </Button>
         )}
       </header>
-      <p className={`mt-1 whitespace-pre-wrap ${withdrawn ? 'text-slate-500 line-through' : ''}`}>{alert.text}</p>
-      <p className="mt-1 text-xs text-slate-600">
+      <p className={`mt-2 whitespace-pre-wrap text-body-lg ${withdrawn ? 'text-on-surface-variant line-through' : ''}`}>{alert.text}</p>
+      <p className="mt-2 text-body-sm text-on-surface-variant">
         {alert.approvedAt ? `Approved ${formatTime(alert.approvedAt)}` : 'Approval time pending'}
         {withdrawn &&
           ` · withdrawn by ${approverLabel(withdrawn.by, uid)}${withdrawn.at ? ` ${formatTime(withdrawn.at)}` : ''}`}
         {' · '}
         {entryId ? (
-          <button type="button" onClick={() => onShowLedger(entryId)} className="font-semibold underline">
-            See its ledger entry
-          </button>
+          <LinkButton onClick={() => onShowLedger(entryId)}>See its ledger entry</LinkButton>
         ) : (
           'saved before the ledger'
         )}
       </p>
-      {error && <p className="mt-2 rounded bg-red-50 p-2 text-red-800">{error}</p>}
+      {error && (
+        <Notice tone="error" className="mt-3">
+          {error}
+        </Notice>
+      )}
       {!withdrawn && (
         <Translations
           alert={alert}
@@ -152,8 +159,8 @@ function Row({
         />
       )}
       {form && (
-        <div className="mt-2 rounded border border-red-200 bg-red-50 p-2">
-          <label className="block text-xs font-medium text-red-950" htmlFor={`reason-${alert.id}`}>
+        <div className="mt-3 rounded-md border border-error bg-error-container p-4 text-on-error-container">
+          <label className="block text-body-md font-medium" htmlFor={`reason-${alert.id}`}>
             Why are you withdrawing it? The reason goes in the ledger only; residents don’t see it.
           </label>
           <textarea
@@ -162,24 +169,16 @@ function Row({
             maxLength={LEDGER_LIMITS.reason}
             onChange={(e) => setForm({ reason: e.target.value })}
             rows={2}
-            className="mt-1 w-full rounded border border-red-300 bg-white p-2 text-sm"
+            className="field mt-2"
           />
-          {form.problem && <p className="mt-1 text-red-800">{form.problem}</p>}
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={confirm}
-              className="rounded bg-red-700 px-2 py-1 text-xs font-semibold text-white hover:bg-red-600"
-            >
+          {form.problem && <p className="mt-2 font-medium">{form.problem}</p>}
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" variant="danger" onClick={confirm}>
               Withdraw this alert
-            </button>
-            <button
-              type="button"
-              onClick={() => setForm(undefined)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium hover:bg-slate-100"
-            >
+            </Button>
+            <Button size="sm" onClick={() => setForm(undefined)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}

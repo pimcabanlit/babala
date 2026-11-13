@@ -16,25 +16,25 @@ const FIELDS: { key: keyof FactSheetForm; label: string; hint?: string; rows?: n
 export default function FactSheetEditor(props: { form: FactSheetForm; onChange: (form: FactSheetForm) => void; disabled: boolean }) {
   const { form, onChange, disabled } = props
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-2">
       {FIELDS.map(({ key, label, hint, rows }) => (
-        <label key={key} className={`block text-sm font-medium ${rows ? 'sm:col-span-2' : ''}`}>
+        <label key={key} className={`block text-body-md font-medium ${rows ? 'sm:col-span-2' : ''}`}>
           {label}
-          {hint && <span className="ml-1 font-normal text-slate-500">({hint})</span>}
+          {hint && <span className="ml-1 font-normal text-on-surface-variant">({hint})</span>}
           {rows ? (
             <textarea
               value={form[key]}
               onChange={(e) => onChange({ ...form, [key]: e.target.value })}
               rows={rows}
               disabled={disabled}
-              className="mt-1 w-full rounded border border-slate-300 p-2 font-normal"
+              className="field mt-1 font-normal"
             />
           ) : (
             <input
               value={form[key]}
               onChange={(e) => onChange({ ...form, [key]: e.target.value })}
               disabled={disabled}
-              className="mt-1 w-full rounded border border-slate-300 p-2 font-normal"
+              className="field mt-1 font-normal"
             />
           )}
         </label>

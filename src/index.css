@@ -1,1 +1,154 @@
-@import 'tailwindcss';
+/* Only src/ holds class names; scanning docs/ would ship CSS for words in the plans. */
+@import 'tailwindcss' source('.');
+
+/*
+ * Google Sans, OFL 1.1 (assets/fonts/OFL.txt), from the Google Fonts API, v76,
+ * weight axis 400 to 700 only. Served from this site, not fonts.googleapis.com,
+ * so the service worker keeps it and the app keeps its type with no signal.
+ * The unicode ranges are Google Fonts' own, so Latin Extended loads only when
+ * a page uses one of its letters.
+ */
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./assets/fonts/google-sans-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./assets/fonts/google-sans-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/*
+ * Material Design 3 tokens (docs/build-plan.md, Phase 4, "Visual language").
+ * Tailwind's own palette, sizes and radii are cleared, so a class that isn't a
+ * token here produces no CSS and shows up in review as unstyled.
+ */
+@theme {
+  --color-*: initial;
+
+  /* Colour roles from a #1B3A5B seed, M3 tonal spot scheme. */
+  --color-brand: #001c37;
+  --color-on-brand: #ffffff;
+  --color-on-brand-variant: #a2c9fd;
+  --color-primary: #37618e;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #d2e4ff;
+  --color-on-primary-container: #1c4975;
+  --color-surface: #f8f9ff;
+  --color-on-surface: #191c20;
+  --color-on-surface-variant: #43474e;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f2f3fa;
+  --color-surface-container: #eceef4;
+  --color-surface-container-high: #e7e8ee;
+  --color-surface-container-highest: #e1e2e8;
+  --color-outline: #73777f;
+  --color-outline-variant: #c3c6cf;
+
+  /* Custom colours, each from its own tonal palette, not harmonised (harmonising turns the red pink). */
+  --color-error: #b91d20;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffedea;
+  --color-on-error-container: #93000e;
+  --color-error-highlight: #ffdad6;
+  --color-success: #006d38;
+  --color-success-container: #ccf2d1;
+  --color-on-success-container: #173721;
+  --color-warning: #8a5100;
+  --color-warning-container: #ffdcbd;
+  --color-on-warning-container: #2c1600;
+
+  --font-sans: 'Google Sans', Roboto, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+
+  /* M3 type scale (m3.material.io/styles/typography/type-scale-tokens), in rem. */
+  --text-*: initial;
+  --text-display-sm: 2.25rem;
+  --text-display-sm--line-height: 2.75rem;
+  --text-headline-lg: 2rem;
+  --text-headline-lg--line-height: 2.5rem;
+  --text-headline-md: 1.75rem;
+  --text-headline-md--line-height: 2.25rem;
+  --text-headline-sm: 1.5rem;
+  --text-headline-sm--line-height: 2rem;
+  --text-title-lg: 1.375rem;
+  --text-title-lg--line-height: 1.75rem;
+  --text-title-md: 1rem;
+  --text-title-md--line-height: 1.5rem;
+  --text-title-md--font-weight: 500;
+  --text-title-md--letter-spacing: 0.009375rem;
+  --text-title-sm: 0.875rem;
+  --text-title-sm--line-height: 1.25rem;
+  --text-title-sm--font-weight: 500;
+  --text-title-sm--letter-spacing: 0.00625rem;
+  --text-body-lg: 1rem;
+  --text-body-lg--line-height: 1.5rem;
+  --text-body-md: 0.875rem;
+  --text-body-md--line-height: 1.25rem;
+  --text-body-sm: 0.75rem;
+  --text-body-sm--line-height: 1rem;
+  --text-label-lg: 0.875rem;
+  --text-label-lg--line-height: 1.25rem;
+  --text-label-lg--font-weight: 500;
+  --text-label-lg--letter-spacing: 0.00625rem;
+  --text-label-md: 0.75rem;
+  --text-label-md--line-height: 1rem;
+  --text-label-md--font-weight: 500;
+  --text-label-md--letter-spacing: 0.03125rem;
+
+  /* M3 shape scale. */
+  --radius-*: initial;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.75rem;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface font-sans text-body-lg text-on-surface antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Text fields, text areas and selects: M3 outlined fields, with the label kept above. */
+@utility field {
+  @apply w-full rounded-xs border border-outline bg-surface-container-lowest px-3 py-2 text-body-lg text-on-surface;
+  @apply placeholder:text-on-surface-variant;
+  @apply focus-visible:border-primary focus-visible:outline-1 focus-visible:outline-offset-0;
+  @apply disabled:border-outline-variant disabled:bg-surface-container-low disabled:text-on-surface-variant;
+  @apply [&[readonly]]:bg-surface-container-low;
+}

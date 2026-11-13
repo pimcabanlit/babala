@@ -19,6 +19,9 @@ import { useHybrid } from './useHybrid'
 import { useLedger } from './useLedger'
 import { useSavedAlerts } from './useSavedAlerts'
 import { usePublishedTranslations, useTranslations } from './useTranslations'
+import Button from '../ui/Button'
+import Card from '../ui/Card'
+import Notice from '../ui/Notice'
 
 /**
  * The officer console: bulletin in, fact sheet confirmed, drafts checked,
@@ -144,28 +147,23 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
 
   return (
     <div className="mt-6 space-y-6">
-      <Section title="Models">
-        <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-sm">
+      <Card title="Models">
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-body-md">
           <dt className="font-medium">On this laptop</dt>
-          <dd className="text-slate-700">
+          <dd className="text-on-surface-variant">
             {describeDeviceStatus(hybrid.device)}
             {hybrid.warmUp.state === 'warming' && ` · warming up (${((now - hybrid.warmUp.startedAt) / 1000).toFixed(0)} s)`}
             {hybrid.warmUp.state === 'warm' &&
               ` · ${hybrid.warmUp.source === 'in_cloud' ? 'warm-up answered from the cloud' : 'warmed up'} in ${hybrid.warmUp.seconds.toFixed(1)} s`}
             {hybrid.warmUp.state === 'failed' && ` · warm-up failed: ${hybrid.warmUp.error}`}
             {canPrepare(hybrid.device) && hybrid.models && (
-              <button
-                type="button"
-                onClick={() => void hybrid.prepare()}
-                disabled={hybrid.download !== undefined}
-                className="ml-3 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium hover:bg-slate-100 disabled:opacity-50"
-              >
+              <Button size="sm" variant="tonal" onClick={() => void hybrid.prepare()} disabled={hybrid.download !== undefined} className="ml-3">
                 {hybrid.download === undefined ? 'Prepare on-device model' : `Downloading ${Math.round(hybrid.download * 100)}%`}
-              </button>
+              </Button>
             )}
           </dd>
           <dt className="font-medium">Cloud</dt>
-          <dd className="text-slate-700">
+          <dd className="text-on-surface-variant">
             {!hybrid.configured
               ? 'Not configured: you can still write and check alerts by hand'
               : hybrid.online
@@ -173,10 +171,10 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
                 : 'Offline: only the laptop model can draft'}
           </dd>
         </dl>
-      </Section>
+      </Card>
 
-      <Section title="1. Bulletin">
-        <label className="block text-sm font-medium" htmlFor="bulletin">
+      <Card title="1. Bulletin">
+        <label className="block text-body-md font-medium" htmlFor="bulletin">
           Paste the storm bulletin
         </label>
         <textarea
@@ -184,46 +182,37 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
           value={bulletin}
           onChange={(e) => setBulletin(e.target.value)}
           rows={6}
-          className="mt-1 w-full rounded border border-slate-300 p-2 font-mono text-xs"
+          className="field mt-1 font-mono text-body-sm"
         />
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => readBulletin(bulletin)}
-            disabled={bulletin.trim() === '' || busy}
-            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-          >
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="filled" onClick={() => readBulletin(bulletin)} disabled={bulletin.trim() === '' || busy}>
             Read bulletin
-          </button>
-          <button
-            type="button"
-            onClick={() => readBulletin(SAMPLE_BULLETIN)}
-            disabled={busy}
-            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium hover:bg-slate-100 disabled:opacity-50"
-          >
+          </Button>
+          <Button variant="text" onClick={() => readBulletin(SAMPLE_BULLETIN)} disabled={busy}>
             Use the demo bulletin
-          </button>
+          </Button>
         </div>
-      </Section>
+      </Card>
 
       {form && (
-        <Section title="2. Fact sheet">
+        <Card title="2. Fact sheet">
           {notFound.length > 0 && (
-            <p className="mb-3 rounded bg-amber-100 p-2 text-sm text-amber-950">
+            <Notice tone="warning" className="mb-4">
               Not found in the bulletin: {notFound.join(', ')}. Fill these in if the bulletin has them.
-            </p>
+            </Notice>
           )}
           <FactSheetEditor form={form} onChange={editForm} disabled={busy} />
           {parsed && !parsed.ok && (
-            <ul className="mt-3 list-disc pl-5 text-sm text-red-700">
+            <ul className="mt-3 list-disc pl-5 text-body-md text-error">
               {parsed.problems.map((p) => (
                 <li key={p}>{p}</li>
               ))}
             </ul>
           )}
-          <label className="mt-3 flex items-center gap-2 text-sm font-medium">
+          <label className="mt-4 flex min-h-12 items-center gap-3 text-body-md font-medium">
             <input
               type="checkbox"
+              className="size-[18px] accent-primary"
               checked={confirmed}
               disabled={!parsed?.ok || busy}
               onChange={(e) => {
@@ -233,36 +222,31 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
             />
             I checked every fact against the bulletin
           </label>
-        </Section>
+        </Card>
       )}
 
       {sheet && (
-        <Section title="3. Draft, check and approve">
+        <Card title="3. Draft, check and approve">
           <div className="flex flex-wrap items-end gap-3">
-            <label className="text-sm font-medium">
+            <label className="text-body-md font-medium">
               Area
               <select
+                className="field ml-2 w-auto"
                 value={area}
                 onChange={(e) => {
                   setArea(e.target.value)
                   drafts.unapproveAll()
                 }}
                 disabled={busy}
-                className="ml-2 rounded border border-slate-300 bg-white px-2 py-1 text-sm"
               >
                 {areas.map((a) => (
                   <option key={a}>{a}</option>
                 ))}
               </select>
             </label>
-            <button
-              type="button"
-              onClick={() => void drafts.draftAll()}
-              disabled={!canDraft}
-              className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-            >
+            <Button variant="tonal" onClick={() => void drafts.draftAll()} disabled={!canDraft}>
               Draft all four
-            </button>
+            </Button>
           </div>
           <div className="mt-4 space-y-4">
             {HOUSEHOLDS.map((h) => (
@@ -301,10 +285,10 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
               })}
             />
           )}
-        </Section>
+        </Card>
       )}
 
-      <Section title="4. Saved alerts and translations">
+      <Card title="4. Saved alerts and translations">
         <SavedAlerts
           saved={savedList}
           unreadable={savedAlerts.saved?.unreadable ?? []}
@@ -322,9 +306,9 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
             translationClaims: hybrid.tunables?.translationClaims,
           }}
         />
-      </Section>
+      </Card>
 
-      <Section title="5. Ledger">
+      <Card title="5. Ledger">
         <Ledger
           view={ledger.view}
           error={ledger.error}
@@ -334,7 +318,7 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
           openId={openEntry}
           onOpen={setOpenEntry}
         />
-      </Section>
+      </Card>
     </div>
   )
 }
@@ -344,32 +328,22 @@ function TestLog({ text }: { text: string }) {
   const [copiedText, setCopiedText] = useState('')
   const copied = copiedText === text
   return (
-    <div className="mt-4 text-sm">
-      <button
-        type="button"
+    <div className="mt-6 text-body-md">
+      <Button
+        size="sm"
         onClick={() =>
           navigator.clipboard.writeText(text).then(
             () => setCopiedText(text),
             () => setCopiedText(''),
           )
         }
-        className="rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium hover:bg-slate-100"
       >
         {copied ? 'Copied: paste it into the chat' : 'Copy test log'}
-      </button>
-      <details className="mt-2">
-        <summary className="cursor-pointer text-slate-700">Show the test log (prompts, answers and problems)</summary>
-        <textarea readOnly value={text} rows={12} className="mt-2 w-full rounded border border-slate-300 p-2 font-mono text-xs" />
+      </Button>
+      <details className="mt-3">
+        <summary className="cursor-pointer text-on-surface-variant">Show the test log (prompts, answers and problems)</summary>
+        <textarea readOnly value={text} rows={12} className="field mt-2 font-mono text-body-sm" />
       </details>
     </div>
-  )
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section aria-label={title} className="rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">{title}</h2>
-      {children}
-    </section>
   )
 }

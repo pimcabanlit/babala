@@ -79,3 +79,10 @@ App Check debug token: the build stops with an error if it would.
 `npm run emulators` starts local Auth and Firestore emulators (Java 21). With
 `VITE_FIREBASE_EMULATORS=true` in `.env.local`, `npm run dev` signs in and saves alerts there
 instead of the real project, and the page says so. AI calls still use the real project.
+
+## Credits
+
+- **Google Sans**, by Google, under the SIL Open Font License 1.1. The font files are served from
+  this site, in `src/assets/fonts/`, with the licence in `src/assets/fonts/OFL.txt`.
+- **Material Symbols Rounded** icons, by Google, under the Apache License 2.0, copied in as inline
+  SVG paths in `src/ui/Icon.tsx`.

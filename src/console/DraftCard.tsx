@@ -8,6 +8,9 @@ import Problems from './Problems'
 import { inReadingOrder } from './segments'
 import { checkFor } from '../drafting/check'
 import type { Attempt, Draft } from './useDrafts'
+import Button, { LinkButton } from '../ui/Button'
+import { StatusChip } from '../ui/Chip'
+import Notice from '../ui/Notice'
 
 type Props = {
   household: Household
@@ -46,40 +49,30 @@ export default function DraftCard(props: Props) {
   const approved = draft.approved && !props.saved?.withdrawn
 
   return (
-    <article aria-label={`${household.label} alert`} className="rounded border border-slate-200 p-3">
+    <article aria-label={`${household.label} alert`} className="rounded-md border border-outline-variant p-4">
       <header className="flex flex-wrap items-center gap-2">
-        <h3 className="font-semibold">{household.label}</h3>
+        <h3 className="text-title-md">{household.label}</h3>
         <Status running={draft.running} approved={approved} passed={result?.pass} />
         <div className="ml-auto flex gap-2">
-          <button
-            type="button"
-            onClick={props.onDraft}
-            disabled={!props.canDraft}
-            className="rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium hover:bg-slate-100 disabled:opacity-50"
-          >
+          <Button size="sm" onClick={props.onDraft} disabled={!props.canDraft}>
             {draft.attempts.length ? 'Draft again' : 'Draft'}
-          </button>
-          <button
-            type="button"
-            onClick={props.onApprove}
-            disabled={draft.running || approved || !result?.pass}
-            className="rounded bg-emerald-700 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-600 disabled:bg-slate-300"
-          >
+          </Button>
+          <Button size="sm" variant="filled" onClick={props.onApprove} disabled={draft.running || approved || !result?.pass}>
             {approved ? 'Approved' : 'Approve and save'}
-          </button>
+          </Button>
         </div>
       </header>
 
       {draft.attempts.length > 0 && (
-        <ol className="mt-2 space-y-0.5 text-xs text-slate-600">
+        <ol className="mt-3 space-y-1 text-body-sm text-on-surface-variant">
           {draft.attempts.map((a, i) => (
             <li key={a.id}>
               {i + 1}. <SourceBadge attempt={a} cloudModel={cloudModel} /> {attemptText(a, a === current ? elapsed : undefined)}
               {a.passed === false && a.issues && a.issues.length > 0 && (
                 <details className="ml-4 mt-1">
-                  <summary className="cursor-pointer text-slate-700 underline">Why it failed</summary>
-                  <p className="mt-1 whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm text-slate-800">{a.text}</p>
-                  <ul className="mt-1 list-disc pl-5 text-red-800">
+                  <summary className="cursor-pointer text-primary underline">Why it failed</summary>
+                  <p className="mt-1 whitespace-pre-wrap rounded-sm bg-surface-container-low p-2 text-body-md text-on-surface">{a.text}</p>
+                  <ul className="mt-1 list-disc pl-5 text-on-error-container">
                     {inReadingOrder(a.issues).map((issue, j) => (
                       <li key={j}>{issue.message}</li>
                     ))}
@@ -93,20 +86,18 @@ export default function DraftCard(props: Props) {
       )}
 
       {overBudget && (
-        <p className="mt-2 rounded bg-amber-100 p-2 text-sm">
+        <Notice tone="warning" className="mt-3">
           The laptop has taken over {budgetSeconds} s.{' '}
-          {online ? (
-            <button type="button" onClick={props.onAbandon} className="font-semibold underline">
-              Use the cloud instead
-            </button>
-          ) : (
-            'Offline, so it keeps waiting for the laptop.'
-          )}
-        </p>
+          {online ? <LinkButton onClick={props.onAbandon}>Use the cloud instead</LinkButton> : 'Offline, so it keeps waiting for the laptop.'}
+        </Notice>
       )}
-      {draft.note && <p className="mt-2 rounded bg-amber-100 p-2 text-sm">{draft.note}</p>}
+      {draft.note && (
+        <Notice tone="warning" className="mt-3">
+          {draft.note}
+        </Notice>
+      )}
 
-      <label className="mt-3 block text-xs font-medium text-slate-500" htmlFor={`text-${household.id}`}>
+      <label className="mt-4 block text-body-sm font-medium text-on-surface-variant" htmlFor={`text-${household.id}`}>
         Alert text {draft.running ? '(writing…)' : '(you can edit it; it is re-checked as you type)'}
       </label>
       <textarea
@@ -115,10 +106,14 @@ export default function DraftCard(props: Props) {
         onChange={(e) => props.onEdit(e.target.value)}
         readOnly={draft.running}
         rows={4}
-        className="mt-1 w-full rounded border border-slate-300 p-2 text-sm"
+        className="field mt-1"
       />
 
-      {props.saveError && <p className="mt-2 rounded bg-red-50 p-2 text-sm text-red-800">{props.saveError}</p>}
+      {props.saveError && (
+        <Notice tone="error" className="mt-3">
+          {props.saveError}
+        </Notice>
+      )}
       {props.saved && <Saved saved={props.saved} current={draft.text.trim()} onShowLedger={props.onShowLedger} />}
 
       {result && !result.pass && !draft.running && <Problems text={draft.text} issues={result.issues} />}
@@ -141,15 +136,11 @@ function Saved({ saved, current, onShowLedger }: { saved: SavedAlert; current: s
       ? `Saved on this laptop${when}. It uploads when the laptop is back online.`
       : `Saved online${when}.`
   return (
-    <div
-      className={`mt-2 rounded border p-2 text-sm ${withdrawn ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`}
-    >
+    <Notice tone={withdrawn ? 'warning' : 'success'} className="mt-3">
       <p>
         {state}{' '}
         {entryId ? (
-          <button type="button" onClick={() => onShowLedger(entryId)} className="font-semibold underline">
-            See its ledger entry
-          </button>
+          <LinkButton onClick={() => onShowLedger(entryId)}>See its ledger entry</LinkButton>
         ) : (
           'Saved before the ledger, so it has no entry.'
         )}
@@ -158,41 +149,52 @@ function Saved({ saved, current, onShowLedger }: { saved: SavedAlert; current: s
         (withdrawn ? (
           <>
             <p className="mt-1">The withdrawn alert:</p>
-            <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-amber-300 pl-2 line-through">{saved.text}</blockquote>
+            <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-warning pl-3 line-through">{saved.text}</blockquote>
           </>
         ) : (
           <>
-            <p className="mt-1 text-emerald-900">The saved alert stays until you approve a new one:</p>
-            <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-emerald-300 pl-2">{saved.text}</blockquote>
+            <p className="mt-1">The saved alert stays until you approve a new one:</p>
+            <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-success pl-3">{saved.text}</blockquote>
           </>
         ))}
-    </div>
+    </Notice>
   )
 }
 
 function Status({ running, approved, passed }: { running: boolean; approved: boolean; passed: boolean | undefined }) {
-  const [label, style] = running
-    ? ['Drafting', 'bg-slate-200 text-slate-800']
-    : approved
-      ? ['Approved', 'bg-emerald-700 text-white']
-      : passed === undefined
-        ? ['Empty', 'bg-slate-100 text-slate-600']
-        : passed
-          ? ['Passes the checker', 'bg-emerald-100 text-emerald-900']
-          : ['Fails the checker', 'bg-red-100 text-red-900']
-  return <span className={`rounded px-2 py-0.5 text-xs font-semibold ${style}`}>{label}</span>
+  if (running) return <StatusChip tone="neutral">Drafting</StatusChip>
+  if (approved)
+    return (
+      <StatusChip tone="success" icon="check_circle">
+        Approved
+      </StatusChip>
+    )
+  if (passed === undefined) return <StatusChip tone="neutral">Empty</StatusChip>
+  return passed ? (
+    <StatusChip tone="success" icon="check_circle">
+      Passes the checker
+    </StatusChip>
+  ) : (
+    <StatusChip tone="error" icon="error">
+      Fails the checker
+    </StatusChip>
+  )
 }
 
 function SourceBadge({ attempt, cloudModel }: { attempt: Attempt; cloudModel: string }) {
   if (attempt.source === InferenceSource.ON_DEVICE)
-    return <span className="rounded bg-emerald-100 px-1.5 font-semibold text-emerald-900">Laptop · Gemini Nano</span>
+    return (
+      <StatusChip tone="success" icon="computer">
+        Laptop · Gemini Nano
+      </StatusChip>
+    )
   if (attempt.source === InferenceSource.IN_CLOUD)
-    return <span className="rounded bg-sky-100 px-1.5 font-semibold text-sky-900">Cloud · {cloudModel}</span>
-  return (
-    <span className="rounded bg-slate-200 px-1.5 font-semibold text-slate-700">
-      {attempt.route === 'only_in_cloud' ? 'Cloud' : 'Laptop or cloud'}
-    </span>
-  )
+    return (
+      <StatusChip tone="primary" icon="cloud">
+        Cloud · {cloudModel}
+      </StatusChip>
+    )
+  return <StatusChip tone="neutral">{attempt.route === 'only_in_cloud' ? 'Cloud' : 'Laptop or cloud'}</StatusChip>
 }
 
 function attemptText(a: Attempt, runningMs: number | undefined): string {

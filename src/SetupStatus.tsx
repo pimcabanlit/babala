@@ -2,6 +2,8 @@ import { getToken, onTokenChanged } from 'firebase/app-check'
 import { useEffect, useState } from 'react'
 import { getFirebase } from './firebase'
 import { loadTunables, type Tunables } from './firebase/remoteConfig'
+import Card from './ui/Card'
+import Icon from './ui/Icon'
 
 type Check = { state: 'pending' } | { state: 'ok'; detail: string } | { state: 'error'; detail: string }
 
@@ -32,7 +34,7 @@ export default function SetupStatus() {
     return (
       <Panel>
         <Row label="Firebase" check={{ state: 'error', detail: 'not configured' }} />
-        <p className="mt-3 text-sm text-slate-700">
+        <p className="mt-3 text-body-md text-on-surface-variant">
           Copy <code>.env.example</code> to <code>.env.local</code> and fill in: {firebase.missing.join(', ')}.
         </p>
       </Panel>
@@ -61,7 +63,7 @@ export default function SetupStatus() {
         />
       )}
       {appCheck.state === 'error' && import.meta.env.DEV && (
-        <p className="mt-3 text-sm text-slate-700">
+        <p className="mt-3 text-body-md text-on-surface-variant">
           Running locally? Open the browser console, copy the App Check debug token it printed, and
           register it in the Firebase console under App Check &gt; Apps &gt; Babala web &gt; Manage debug
           tokens. Then put it in <code>.env.local</code> as <code>VITE_APPCHECK_DEBUG_TOKEN</code> and reload.
@@ -73,22 +75,23 @@ export default function SetupStatus() {
 
 function Panel({ children }: { children: React.ReactNode }) {
   return (
-    <section aria-label="Setup status" className="mt-8 rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Setup status</h2>
-      <ul className="mt-2 space-y-1">{children}</ul>
-    </section>
+    <Card title="Setup status" className="mt-8">
+      <ul className="space-y-2">{children}</ul>
+    </Card>
   )
 }
 
 function Row({ label, check }: { label: string; check: Check }) {
-  const icon = check.state === 'ok' ? '✓' : check.state === 'error' ? '✗' : '…'
-  const color =
-    check.state === 'ok' ? 'text-emerald-700' : check.state === 'error' ? 'text-red-700' : 'text-slate-500'
   return (
-    <li className="text-sm">
-      <span className={`inline-block w-5 font-bold ${color}`}>{icon}</span>
-      <span className="font-medium">{label}:</span>{' '}
-      <span className="text-slate-700">{check.state === 'pending' ? 'checking…' : check.detail}</span>
+    <li className="flex gap-2 text-body-md">
+      {check.state === 'ok' && <Icon name="check_circle" className="size-5 text-success" />}
+      {check.state === 'error' && <Icon name="error" className="size-5 text-error" />}
+      {check.state === 'pending' && <span className="size-5 shrink-0" />}
+      <p>
+        <span className="sr-only">{check.state === 'ok' ? 'Working. ' : check.state === 'error' ? 'Problem. ' : ''}</span>
+        <span className="font-medium">{label}:</span>{' '}
+        <span className="text-on-surface-variant">{check.state === 'pending' ? 'checking…' : check.detail}</span>
+      </p>
     </li>
   )
 }
