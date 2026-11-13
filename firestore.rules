@@ -17,8 +17,11 @@ rules_version = '2';
 // entry and an entry without its change. Entries can't be changed or deleted,
 // so the ledger keeps every approval and withdrawal.
 //
-// Residents (anonymous sign-in) get read access to alerts in the resident
-// view step, not yet. They never read the ledger.
+// Residents (anonymous sign-in) read only `residentAlerts`: a copy of each
+// alert without the officers' user IDs or the bulletin, written in the same
+// batch as every approval and withdrawal and always equal to residentCopy() of
+// its alert. A withdrawn alert's copy has no text. Residents never read
+// `alerts` or the ledger.
 //
 // ===============================================================
 // Data model
@@ -65,6 +68,21 @@ rules_version = '2';
 //       ledgerId: string, the withdrawal's ledger entry, written in the same batch
 //       by: string, the signed-in officer's user ID
 //       at: timestamp, the server's time of the write
+//
+// Collection: residentAlerts
+// Document ID: the alert's ID, "{household}__{areaKey}".
+//   What residents read. Written by src/alerts/residentCopy.ts and
+//   src/alerts/store.ts, and always equal to residentCopy() of the alert with
+//   the same ID, after the batch that writes it.
+// Fields while the alert is current (status "active"):
+//   - household, area, areaKey, signal, text: the alert's
+//   - stormName: the alert's factSheet.stormName
+//   - status: "active"
+//   - updatedAt: timestamp, the alert's approvedAt
+// Fields once the alert is withdrawn (status "withdrawn"), with no text:
+//   - household, area, areaKey: the alert's
+//   - status: "withdrawn"
+//   - updatedAt: timestamp, the alert's withdrawal.at
 //
 // Collection: ledger
 // Document ID: a 20-character auto ID made by the app.
@@ -169,7 +187,8 @@ service cloud.firestore {
         && isValidFactSheet(data.factSheet)
         // The area and its signal come from the fact sheet saved with the alert.
         && {'area': data.area, 'signal': data.signal} in data.factSheet.signals
-        && recordsThisAlert(alertId, data);
+        && recordsThisAlert(alertId, data)
+        && residentsGetThisAlert(alertId, data);
     }
 
     // The alert's ledger entry, as it will be after this batch, records exactly
@@ -237,7 +256,8 @@ service cloud.firestore {
         && isLedgerId(w.ledgerId)
         && w.by == request.auth.uid
         && w.at == request.time
-        && recordsThisWithdrawal(alertId, before, w);
+        && recordsThisWithdrawal(alertId, before, w)
+        && residentsGetThisAlert(alertId, after);
     }
 
     // The withdrawal's ledger entry, as it will be after this batch, records
@@ -276,6 +296,34 @@ service cloud.firestore {
       return alert.withdrawal.ledgerId == entryId && alert.withdrawal.at == request.time;
     }
 
+    // The copy residents read of this alert: its text and where it applies
+    // while current, and only that it was withdrawn, and when, once withdrawn.
+    // Never who approved or withdrew it, and never the bulletin.
+    function residentCopy(alert) {
+      return 'withdrawal' in alert
+        ? {'household': alert.household, 'area': alert.area, 'areaKey': alert.areaKey,
+           'status': 'withdrawn', 'updatedAt': alert.withdrawal.at}
+        : {'household': alert.household, 'area': alert.area, 'areaKey': alert.areaKey,
+           'signal': alert.signal, 'stormName': alert.factSheet.stormName, 'text': alert.text,
+           'status': 'active', 'updatedAt': alert.approvedAt};
+    }
+
+    // The resident copy, as it will be after this batch, matches the alert as
+    // it will be after this batch. Required with every approval and withdrawal,
+    // so residents never keep an alert that was replaced or withdrawn.
+    function residentsGetThisAlert(alertId, alert) {
+      return getAfter(/databases/$(database)/documents/residentAlerts/$(alertId)).data
+        == residentCopy(alert);
+    }
+
+    // A resident copy may only ever equal residentCopy() of its alert after
+    // the batch. Written alone, that makes a copy of an alert saved before
+    // copies existed, and can't say anything the alert doesn't.
+    function isValidResidentCopy(alertId, data) {
+      let alert = getAfter(/databases/$(database)/documents/alerts/$(alertId));
+      return alert != null && data == residentCopy(alert.data);
+    }
+
     // ---------- Collections ----------
 
     // The officer list: each user may read only their own entry, to learn
@@ -293,6 +341,17 @@ service cloud.firestore {
       allow create: if isOfficer() && isValidAlert(alertId, request.resource.data);
       allow update: if isOfficer()
         && (isValidAlert(alertId, request.resource.data) || isValidWithdrawal(alertId));
+      allow delete: if false;
+    }
+
+    // What residents read: anyone signed in, anonymous residents included.
+    // A list must ask for at most 200 documents, the whole barangay's pack
+    // (4 households for each of up to 30 areas), so one read can't run up the
+    // free quota. Only officers write, and only an exact copy of the alert.
+    match /residentAlerts/{alertId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && request.query.limit <= 200;
+      allow create, update: if isOfficer() && isValidResidentCopy(alertId, request.resource.data);
       allow delete: if false;
     }
 

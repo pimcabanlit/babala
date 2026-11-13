@@ -14,6 +14,7 @@
 import type { Route } from '../ai'
 import type { Rule } from '../checker'
 import { ALERT_SOURCES, type AlertRecord, type AlertSource, type Approval, type SavedAlert } from '../alerts/record'
+import { activeCopy, withdrawnCopy, type ActiveCopy, type WithdrawnCopy } from '../alerts/residentCopy'
 import { HOUSEHOLDS } from '../drafting/households'
 
 export const LEDGER = 'ledger'
@@ -92,12 +93,13 @@ export type Trail = {
   claimWords: string[]
 }
 
-export type ApprovalWrites = { alertId: string; alert: LinkedAlert; ledgerId: string; entry: ApprovedEntry }
+export type ApprovalWrites = { alertId: string; alert: LinkedAlert; ledgerId: string; entry: ApprovedEntry; copy: ActiveCopy }
 
 /**
- * The two documents an approval writes together. The store adds who approved
- * it and the server's time to both (approvedBy and approvedAt on the alert,
- * by and at on the entry).
+ * The three documents an approval writes together: the alert, its entry, and
+ * the copy residents read (src/alerts/residentCopy.ts). The store adds who
+ * approved it and the server's time (approvedBy and approvedAt on the alert,
+ * by and at on the entry, updatedAt on the copy).
  */
 export function approvalWrites(approval: Extract<Approval, { ok: true }>, ledgerId: string, trail: Trail): ApprovalWrites {
   const kept = trail.drafts.slice(-LEDGER_LIMITS.drafts)
@@ -114,6 +116,7 @@ export function approvalWrites(approval: Extract<Approval, { ok: true }>, ledger
       drafts: kept.map(clipDraft),
       draftsOmitted: trail.drafts.length - kept.length,
     },
+    copy: activeCopy(approval.record),
   }
 }
 
@@ -155,13 +158,21 @@ export type WithdrawnEntry = {
 /** The withdrawal field the alert gets. The store adds by and at. */
 export type AlertWithdrawal = { ledgerId: string }
 
-export type WithdrawalWrites = { alertId: string; withdrawal: AlertWithdrawal; ledgerId: string; entry: WithdrawnEntry }
+export type WithdrawalWrites = {
+  alertId: string
+  withdrawal: AlertWithdrawal
+  ledgerId: string
+  entry: WithdrawnEntry
+  /** The resident copy without its text, so residents stop seeing the alert. */
+  copy: WithdrawnCopy
+}
 
 export type Withdrawal = ({ ok: true } & WithdrawalWrites) | { ok: false; reason: string }
 
 /**
- * The two writes that withdraw a saved alert, or why it can't be withdrawn.
- * The store adds who withdrew it and the server's time to both.
+ * The writes that withdraw a saved alert, or why it can't be withdrawn: the
+ * alert's withdrawal field, its entry, and the resident copy without its text.
+ * The store adds who withdrew it and the server's time.
  */
 export function withdrawalWrites(saved: SavedAlert, ledgerId: string, reason: string): Withdrawal {
   const why = reason.trim()
@@ -183,6 +194,7 @@ export function withdrawalWrites(saved: SavedAlert, ledgerId: string, reason: st
       approvalId: saved.ledgerId ?? '',
       reason: why,
     },
+    copy: withdrawnCopy(saved),
   }
 }
 

@@ -2,7 +2,7 @@
 
 Babala turns an official storm bulletin into checked, plain-language typhoon alerts for each household, and keeps working when the signal drops. It is a static web app on Firebase with no server of its own, on the free Spark plan with no billing account.
 
-A barangay officer's laptop drafts alerts with Gemini Nano on the device, through Firebase AI Logic. Plain code checks every figure against the bulletin, and the officer approves. The cloud model drafts when Nano is missing or fails. It will also translate approved alerts while the connection is up. Residents' phones will save the alerts and answer questions on the device, in the cloud, or with plain text search when neither is available.
+A barangay officer's laptop drafts alerts with Gemini Nano on the device, through Firebase AI Logic. Plain code checks every figure against the bulletin, and the officer approves. The cloud model drafts when Nano is missing or fails. It will also translate approved alerts while the connection is up. Residents' phones save the alerts and open them with no signal. They will also answer questions on the device, in the cloud, or with plain text search when neither is available.
 
 The SDK falls back to the cloud only when the local model is missing. Babala also catches a **bad** answer, with a code checker that no model can talk its way past.
 
@@ -22,13 +22,13 @@ flowchart TB
     subgraph firebase["Firebase · Spark plan"]
         cloud["Gemini in the cloud<br/>Gemini Developer API"]
         appcheck["App Check<br/>reCAPTCHA Enterprise"]
-        auth["Authentication<br/>Google (officers),<br/>email (judges' test officer)"]
+        auth["Authentication<br/>Google (officers), email (judges' test officer),<br/>anonymous (residents)"]
         rc["Remote Config<br/>cloud model, budget, claim words"]
-        fs["Firestore<br/>officers, alerts, ledger"]
+        fs["Firestore<br/>officers, alerts, ledger,<br/>residentAlerts"]
         hosting["Hosting<br/>(planned)"]
     end
 
-    phone["Resident phone (planned)<br/>saved alerts, ask, offline"]
+    phone["Resident phone (/resident)<br/>saved alert pack, offline app<br/>(ask: planned)"]
 
     bulletin --> facts
     facts --> ai
@@ -43,7 +43,7 @@ flowchart TB
     auth --> console
     console --> cache
     cache --> fs
-    fs -.-> phone
+    fs -->|"residentAlerts only"| phone
     hosting -.-> phone
 ```
 
@@ -58,9 +58,9 @@ Dashed lines are planned. `src/ai/` is the only module that imports `firebase/ai
 5. **Check.** The checker runs on the joined text. A failed draft is retried following the routing rules below, at most three AI calls in all. Problems are highlighted in the text, and the officer can edit any draft. It is re-checked on every keystroke, by code only.
 6. **Approve and save.** "Approve and save" stays off until the alert passes. On approval the checker runs again on the exact text, and the alert is saved to `alerts/{household}__{areaKey}`, replacing the last one for that household and area. Its ledger entry is written in the same batch (step 9). Offline, the save waits in the Firestore cache on the laptop and uploads when the connection is back.
 7. **Translate** (planned). The cloud translates each approved alert into Filipino and the chosen local languages. Rule 7 checks each translation against the approved English alert before it is published.
-8. **Deliver** (planned). Residents' phones read their alert and keep the whole pack for offline use.
+8. **Deliver.** The same batch that saves an approval writes the alert's resident copy at `residentAlerts/{id}`: the text, area, household, signal, storm name and time, and nothing else. Residents' phones read only these copies, keep the whole pack for offline use, and show each resident their alert (*Screens*).
 9. **Keep the record.** Every approval writes a locked ledger entry with the alert: the confirmed fact sheet and bulletin, every model draft on that card since its last approval (which model, how long, the checker's verdict and each problem), any hand edit, the claim words the checker used, and who approved it when. The rules refuse an alert without its entry, and nobody can change or delete an entry. The console's *Ledger* section traces each alert from the bulletin to the saved text. Translations will add their own entries.
-10. **Withdraw.** An officer can withdraw a saved alert from the console's *Saved alerts* section, with a reason. The alert keeps its text and approval, gains a `withdrawal` mark so residents stop getting it, and a `withdrawn` ledger entry records the text, the approval it withdraws and the reason, in the same batch. The reason stays in the ledger only. Approving a new alert for the same household and area replaces the withdrawn one. Offline, the withdrawal waits on the laptop like a save.
+10. **Withdraw.** An officer can withdraw a saved alert from the console's *Saved alerts* section, with a reason. The alert keeps its text and approval, gains a `withdrawal` mark, and a `withdrawn` ledger entry records the text, the approval it withdraws and the reason, in the same batch. The resident copy loses its text in that batch too, so phones show "withdrawn" instead of the alert. The reason stays in the ledger only. Approving a new alert for the same household and area replaces the withdrawn one. Offline, the withdrawal waits on the laptop like a save.
 
 ## Components
 
@@ -79,8 +79,9 @@ Dashed lines are planned. `src/ai/` is the only module that imports `firebase/ai
 | App Check | `src/firebase/index.ts`, reCAPTCHA Enterprise | Required by AI Logic; started before Firestore | Built (enforced on AI Logic) |
 | Remote Config | `src/firebase/remoteConfig.ts`, defaults in `src/config/defaults.ts` | Cloud model, on-device budget, claim words | Built |
 | Setup status | `src/SetupStatus.tsx` | Shows whether Firebase, App Check and Remote Config work | Built |
-| Resident view | Not started | Purok and household picker, alert in the resident's language, ask | Planned (Phase 3) |
-| Offline pack | Not started | Installable offline web app; the alert pack on the phone | Planned (Phase 3) |
+| Resident copy | `src/alerts/residentCopy.ts`, Firestore `residentAlerts` | What residents read: each alert without officers' user IDs or the bulletin, written with every approval and withdrawal | Built |
+| Resident view | `src/resident/` at `/resident` | Purok and household picker, the alert with its last update, a withdrawn notice, and a language choice once translations exist. Ask is planned | Built (ask planned) |
+| Offline pack | `src/resident/useResidentPack.ts`, `src/offline/` | The alert pack saved on the phone, and a service worker and manifest that keep the app itself there, so it opens with no signal and can be installed | Built |
 | Translations | Not started (`checkTranslation` is built) | Cloud-only translation, checked by rule 7 | Planned (Phase 3) |
 | Ledger | `src/ledger/`, `src/console/Ledger.tsx`, Firestore `ledger` | A locked entry per approval, written with the alert: facts, drafts and checks with the model and time, edits, approver. A locked entry per withdrawal, with the reason. Translations next | Built (approvals and withdrawals) |
 | Saved alerts | `src/console/SavedAlerts.tsx` | Every saved alert, active or withdrawn, and the place to withdraw one | Built |
@@ -101,11 +102,13 @@ Two users share one web app: a barangay disaster officer on a laptop running Chr
 - **4. Saved alerts.** Every saved alert in every area, by area and household, marked "Active" or "Withdrawn", and "Not uploaded yet" while offline. Each has a "See its ledger entry" link and, while active, "Withdraw", which asks for a reason (up to 300 characters, kept in the ledger only). It needs no bulletin, so an officer can withdraw an alert straight after opening the console.
 - **5. Ledger.** The latest 50 approvals and withdrawals, newest first. An approval is marked "Current alert", "Withdrawn" or "Replaced", a withdrawal "Still withdrawn" or "Replaced", and either "Not uploaded yet" while offline. Each opens into its trace. An approval shows the bulletin and confirmed facts, each draft with its model, time, verdict, problems and prompt, any hand edit, and the approval with who and when. A withdrawal shows the withdrawn text, a link to the approval it withdrew, and who withdrew it, when and why.
 
-**Resident view (phone), planned.**
+**Resident view (phone), at `/resident`.** No sign-in screen: the phone signs in anonymously in the background. The officer page links to it.
 
-1. **My alert.** The resident picks their purok and household type once, and the phone remembers it. They see their alert in their language, with a "last updated" time.
-2. **Ask.** A question like "Where do we go?" is answered on the device if a model is available, in the cloud if online, and otherwise by a plain text search that quotes the saved alert word for word.
-3. **Offline.** The whole alert pack is saved on the phone, so it opens with no signal.
+1. **My alert** (built). The resident picks their purok and household type once, and the phone remembers both. They see their alert with the storm, signal and a "last updated" time. A withdrawn alert shows "The barangay withdrew the alert…" and no text. An area or household with no alert says so.
+2. **Language** (built, waiting for translations). A language choice appears on an alert that has a checked Filipino or Cebuano translation, and the phone remembers it. An alert without a translation into the chosen language shows English.
+3. **Status line** (built). "Live" while connected, "Offline. Showing the alerts saved on this phone at …" with no signal, or what went wrong and what is still on screen.
+4. **Offline** (built). The whole pack is saved on the phone each time the server sends it, and the service worker keeps the page itself, so it opens with no signal. Chrome offers "Install on this phone" where it can.
+5. **Ask** (planned). A question like "Where do we go?" is answered on the device if a model is available, in the cloud if online, and otherwise by a plain text search that quotes the saved alert word for word.
 
 ## Routing: on-device, cloud or no AI
 
@@ -177,15 +180,16 @@ The approval also refuses to save while the claim-word list hasn't loaded, becau
   - The area and its signal must be in the fact sheet saved with the alert.
   - Every alert write comes with a new ledger entry in the same batch that records it exactly, and an entry can't be written without its alert. Officers may read the ledger; nobody can change or delete an entry.
   - Withdrawing adds only a `withdrawal` mark (entry ID, the signed-in officer, the server's time) to an alert that has none, with a `withdrawn` entry in the same batch that names the alert's text and current approval. A withdrawn alert can only be replaced by a new approval.
+  - Every approval and withdrawal also writes the resident copy, and a resident copy can only ever equal `residentCopy()` of its alert after the batch, so it never says anything the alert doesn't, and loses its text once the alert is withdrawn.
   - Nobody can delete an alert, and everything else is denied.
-  - Tested on the Firestore emulator (`npm run test:rules`, 117 cases, in CI). Each withdrawal check and the sign-in method check were broken on purpose to confirm a test catches them.
-- **Residents** will sign in anonymously and get read access with the resident view. Anonymous sign-in is turned on in the project, but the app doesn't use it yet, and the rules give residents no access today.
+  - Tested on the Firestore emulator (`npm run test:rules`, 144 cases, in CI). Each withdrawal check, the sign-in method check and each resident-copy check were broken on purpose to confirm a test catches them.
+- **Residents** sign in anonymously, without a sign-in screen, and may read only `residentAlerts`: one copy at a time, or a list of at most 200. They can't read `alerts` (officers' user IDs, the bulletin) or the ledger, and can't write anything.
 - **AI quota.** Drafting is inside the officer console, so visitors who aren't officers can't use the AI quota. App Check is enforced on AI Logic, with limited-use tokens.
 
 ## Offline
 
 - **Laptop (built).** Nano drafts with Wi-Fi off. The checker is plain code, so it runs offline too. Firestore's persistent cache (`persistentLocalCache` with a multi-tab manager) keeps the saved alerts, the ledger and the officer list. A save or a withdrawal made offline, alert and ledger entry together, waits on the laptop, and the card, the saved alerts and the ledger say it uploads when the laptop is back online. If another officer replaced the alert in the meantime, the withdrawal is refused on upload and the console says so. Remote Config keeps the last fetched values, or the defaults, when it can't fetch.
-- **Phone (planned).** The installable offline pack, and the no-AI text search fallback for questions.
+- **Phone (built).** Each pack the server sends is saved in the phone's local storage, and the page shows it first, before any network. A service worker (`src/offline/sw.js`, production builds only) keeps the page, its scripts and icons, so `/resident` opens with no signal, and the manifest makes the app installable. Pages load from the network when it answers within 3 s, so updates arrive, and from the phone otherwise. The worker never touches other sites (Firebase, Google sign-in) or anything but GETs. Each build gives it a new version, which replaces the old saved copy. Planned: the no-AI text search fallback for questions.
 
 ## Configuration
 
@@ -206,6 +210,7 @@ The approval also refuses to save while the claim-word list hasn't loaded, becau
 - **All AI through Firebase AI Logic.** `firebase/ai` is imported only in `src/ai/index.ts`. There are no other model SDKs, and Nano is never prompted directly.
 - **A model never vouches for itself.** Every alert passes the code checker before approval, and again when it is saved.
 - **The officer approves** every alert, and the officer list is edited only in the Firebase console.
+- **Residents never see officers' IDs or withdrawn alerts.** They read only the resident copy, which the rules hold equal to the alert minus approver, ledger and bulletin, and empty of text once withdrawn.
 - **The saved record says who and what.** It includes which model wrote the text (`on_device`, `in_cloud`, `none` when typed, or `unknown`), whether the officer edited it, the approver's user ID (no name or email), the server time, and the confirmed fact sheet, so the alert can be re-checked later.
 - **A locked ledger.** Every approval writes an entry with the drafts and checks behind it, in the same batch as the alert, and every withdrawal writes one with its reason. The rules refuse one without the other, and no one can change or delete an entry, so replacing or withdrawing an alert never erases its history.
 - **Bounded AI use.** At most three AI calls per alert, and never a second cloud call.
@@ -214,14 +219,14 @@ The approval also refuses to save while the claim-word list hasn't loaded, becau
 
 ## Testing and CI
 
-- `npm run check`: typecheck, oxlint (warnings fail), Vitest and a production build. On Nov 12: 20 test files, 286 tests.
+- `npm run check`: typecheck, oxlint (warnings fail), Vitest and a production build. On Nov 13: 22 test files, 330 tests.
 - `npm run test:rules`: the Firestore rules on the emulator (Java 21).
 - CI (`.github/workflows/ci.yml`) runs both on every pull request and on pushes to `main`. It never deploys.
 - Gemini Nano can't run in CI or in a cloud session, so Pim tests on-device changes on the laptop before merging.
 
 ## Deployment (not set up yet)
 
-Firebase Hosting, deployed by GitHub Actions, gives judges a public URL that stays up until judging ends (Dec 16). The Firebase settings come from GitHub secrets. A deploy step never runs on pull requests (Phase 4).
+Firebase Hosting, deployed by GitHub Actions, gives judges a public URL that stays up until judging ends (Dec 16). The Firebase settings come from GitHub secrets. A deploy step never runs on pull requests (Phase 4). Hosting must rewrite every path, `/resident` included, to `/index.html`, and serve `sw.js` from the root.
 
 ## Cost plan (Spark plan, no billing account)
 

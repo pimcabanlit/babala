@@ -13,7 +13,7 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | AI Logic | Gemini Developer API backend | The app calls it with limited-use App Check tokens (`src/ai/index.ts`) |
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, registered for "Babala web" | **Enforced on AI Logic.** Not yet enforced on Firestore (turn on near the end). A debug token is registered for local work and kept in `.env.local` |
 | Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12). The `officers` documents are added by hand |
-| Authentication | Google and Anonymous sign-in enabled | The app uses Google for officers. Anonymous is for residents, not used yet. Email/Password for the judges' test officer: to turn on (*Test officer for judges* below) |
+| Authentication | Google and Anonymous sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background. Email/Password for the judges' test officer: to turn on (*Test officer for judges* below) |
 | Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name` and `checker_claim_words` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
 | Hosting | Not set up | Planned for Phase 4, deployed by GitHub Actions |
 | GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets used yet |
@@ -98,7 +98,7 @@ Judges share one email and password account, on the officer list like any office
 ### 6. Firestore
 
 1. Database `(default)`, **Standard** edition, location **asia-southeast1**, started in production mode.
-2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15 and PR #19. Withdrawals need the rules from the withdrawal PR, and the test officer the rules from its PR, which include the withdrawal rules.
+2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15 and PR #19. Withdrawals need the rules from the withdrawal PR, and the test officer the rules from its PR, which include the withdrawal rules. The resident view needs the rules from its PR: until they are published the server refuses every approval and withdrawal (each now writes a resident copy, which the old rules don't allow), and residents can't read anything.
 
    Publish right after the PR that changes them merges, not before. The app and the rules change together: for PR #19, the app on `main` before the merge saves alerts without a ledger entry, which the new rules refuse, and the new app saves a ledger entry, which the old rules refuse. To try a rules change before merging, use the emulators (`npm run emulators`), which load `firestore.rules` from the branch.
 3. **Add an officer:**
@@ -125,6 +125,8 @@ Publish after each change. The app fetches at most once an hour, so a change can
 ### 8. Hosting (not set up yet)
 
 Planned for Phase 4: Firebase Hosting, deployed by a GitHub Actions workflow from `main`, never on pull requests. The web app config and reCAPTCHA site key come from GitHub secrets, never the repo. Add the hosted domain to Authentication's authorized domains. The app must stay up, free and open to judges until Dec 16.
+
+The resident view needs two things from the Hosting config: a rewrite of every path to `/index.html` (so `/resident` opens, also from the installed app), and `sw.js` served from the root of the site, which the build already does.
 
 ### 9. Verify
 
@@ -179,7 +181,7 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 - [x] Ledger rules from PR #19 published right after it merged, and checked on the laptop with a real Nano approval (Nov 12, 9:09 PM). Alerts saved before then stay readable and show "Saved before the ledger" until their next approval.
 - [ ] Publish the rules from the withdrawal PR right after it merges, then withdraw a test alert on the laptop and check the ledger shows the reason. Until then the server refuses withdrawals, and the console shows "Not withdrawn".
 - [ ] Optional: publish `cloud_model_name` in Remote Config, so the cloud model can be switched during judging without a redeploy.
-- [ ] Resident read access in `firestore.rules`, with anonymous sign-in (Phase 3).
+- [ ] Publish the rules from the resident view PR right after it merges. Then approve one alert on the laptop, open `/resident` on a phone, pick its purok and household, and check it shows. Turn on airplane mode and reopen it. Alerts saved before then reach residents at their next approval.
 - [ ] Hosting, GitHub secrets, and the hosted domain in Authentication's authorized domains (Phase 4).
 - [ ] App Check enforced on Firestore (Phase 4).
 - [ ] Test officer for judges: after its PR merges, publish its rules, turn on Email/Password, add the account and its `officers` document, and check it (*Test officer for judges*). Put the email and password in the private testing instructions (Phase 5).

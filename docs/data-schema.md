@@ -217,16 +217,44 @@ Rules can't loop over list items, so lists are limited in number only. Firestore
 | by | string | Must equal the signed-in officer's user ID |
 | at | timestamp | Must equal the server's time of the write |
 
-The reason is never on the alert. Residents will read alerts, and the reason never passes the checker, so it lives only in the ledger entry.
+The reason is never on the alert or its resident copy. The reason never passes the checker, so it lives only in the ledger entry.
 
 **Access:**
 
 - Officers may read alerts, and create or update them with exactly these fields, together with a new ledger entry.
 - Officers may withdraw an alert as above, together with a new `withdrawn` entry. Any officer may withdraw any alert, not only the one who approved it.
+- Every approval and withdrawal also writes the alert's resident copy (below), in the same batch.
 - Nobody may delete an alert from the app.
-- Residents have no access yet. They get read access with the resident view (Phase 3).
+- Residents can't read alerts: they hold officers' user IDs and the bulletin. Residents read the resident copy instead.
 
 **In the console** a saved alert is read back as `SavedAlert`: id, household, area, text, source, edited, approval time (the laptop's estimate while the save waits to upload), `pending` (saved on the laptop, not yet uploaded) `ledgerId`, and `withdrawn` (the withdrawal's entry, who and when) once it is withdrawn. Alerts saved before the ledger have no `ledgerId`; they stay readable, they can be withdrawn, and the next approval adds one. A document the app can't read is listed by ID as unreadable.
+
+**`residentAlerts/{household}__{areaKey}`.** What residents read: a copy of the alert with the same ID, with only what residents need. Written by `src/alerts/residentCopy.ts` (`activeCopy()`, `withdrawnCopy()`, through `approvalWrites()` and `withdrawalWrites()`) and `src/alerts/store.ts`, in the same batch as each approval and withdrawal. Firestore rules can't hide single fields from a reader, which is why residents get a separate document.
+
+While the alert is current:
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| household, area, areaKey, signal, text | as in `alerts` | Equal to the alert's |
+| stormName | string | The alert's `factSheet.stormName` |
+| status | string | `active` |
+| updatedAt | timestamp | The alert's `approvedAt` |
+
+Once the alert is withdrawn, with no text:
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| household, area, areaKey | as in `alerts` | Equal to the alert's |
+| status | string | `withdrawn` |
+| updatedAt | timestamp | The alert's `withdrawal.at` |
+
+Translations (Phase 3, being built separately) add `translations: { fil?: { text, ledgerId }, ceb?: { text, ledgerId } }` to a current copy. A new approval or a withdrawal replaces the whole copy, which clears them. The resident view reads only each translation's `text`.
+
+The rules hold a copy equal to `residentCopy()` of its alert as it is after the batch: an exact map comparison, so a copy has no other field, and never an officer's user ID, the ledger ID or the bulletin. An approval or withdrawal without its copy is refused. An officer may also write a copy on its own, which is how an alert saved before copies existed gets one; it must still equal the alert. Nobody may delete a copy.
+
+**Access:** anyone signed in, anonymous residents included, may read a copy or list at most 200 of them (4 households for each of up to 30 areas, fetched in one read). Only officers write, as above.
+
+**On the phone** the copies are read as `PackAlert` (`src/resident/pack.ts`) and the whole set is saved in local storage as the offline pack (`babala.pack.v1`), with the time it came from the server. The resident's purok, household and language are saved as `babala.choice.v1`. A copy the app can't read is left out and counted.
 
 **`ledger/{entryId}`.** A locked record of every change to a saved alert: an `approved` entry for each approval and a `withdrawn` entry for each withdrawal. Written by `src/ledger/record.ts` (`approvalWrites()`, `withdrawalWrites()`) and `src/alerts/store.ts` (`saveApprovedAlert()`, `withdrawAlert()`). The limits are the same in `LEDGER_LIMITS` in `src/ledger/record.ts` and in the rules.
 
@@ -327,7 +355,6 @@ These get a schema when they are built. Nothing is stored for them today.
 | --- | --- |
 | Ledger entries for translations | 3 |
 | Translations of an approved alert, per language | 3 |
-| The resident's saved choice of purok and household, and the offline alert pack | 3 |
 
 ## Worked example
 
