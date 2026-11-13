@@ -28,7 +28,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 | Officers | Google sign-in, plus a document in `officers` that Pim adds by hand in the Firebase console. Judges share one test officer account, with an email and password, on the same list |
 | Translations | Filipino and Cebuano, cloud only ("only in cloud" mode), because Nano writes only de, en, es, fr and ja. Each is checked on its own against the approved English (rule 7, with Filipino and Cebuano claim words in Remote Config), approved by an officer, and published on the resident copy with a `translated` ledger entry |
 | Ask | A resident's question is answered on the device (Nano, English only, only when already downloaded), in the cloud (online, at most 6 cloud answers per phone per hour, Remote Config `ask_cloud_per_hour`), or by a no-AI text search of the saved alert. At most one call per route. An AI answer is shown only after rule 8 passes it, with the alert sentences it rests on quoted word for word. Questions aren't saved (`src/ask/`) |
-| App Check | reCAPTCHA Enterprise (Fraud Defense), enforced on AI Logic, with limited-use tokens. Firestore enforcement comes near the end. Classic reCAPTCHA is deprecated, so it isn't used |
+| App Check | reCAPTCHA Enterprise (Fraud Defense), enforced on AI Logic, with limited-use tokens, and on Firestore (Nov 13). Classic reCAPTCHA is deprecated, so it isn't used |
 
 ## Phases
 
@@ -81,7 +81,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
    The model answers in JSON: whether the alert answers the question, which numbered sentences do, and a short answer in the resident's language. Rule 8 checks that answer against the approved alert, and only a passing answer is shown, with the sentences it cites quoted under it. A failed check, an error or a slow device moves on to the next route, and the resident sees why. The question is fenced off in the prompt and never saved. Tested with Vitest and in Chrome offline and with simulated cloud answers; Nano and the real cloud need Pim's test on the laptop and phone.
 6. **Cloud reading of bulletins.** Free-form bulletins are turned into a fact sheet in the cloud when online, with every fact confirmed by the officer. A long bulletin is summarised in the cloud.
 
-**Done when:** a phone with no signal opens its saved alert in the resident's language, and a question gets an answer by one of the three routes (video, 1:25–2:00). Done: deployed and checked on the laptop and an iPhone, Nov 13 (docs/firebase-setup.md, *Follow-ups*).
+**Done when:** a phone with no signal opens its saved alert in the resident's language, and a question gets an answer by one of the three routes (video, 1:15–1:50). Done: deployed and checked on the laptop and an iPhone, Nov 13 (docs/firebase-setup.md, *Follow-ups*).
 
 ### Phase 4 — UI and UX redesign (Nov 14–23) · planned, waiting for Pim's go-ahead
 
@@ -265,7 +265,7 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
 | 8. Polish | Nov 23 | Accessibility pass, Lighthouse, screenshots, and the docs: architecture *Screens*, README, the stack table in `CLAUDE.md` (fonts), the *Design* row of the requirements map | Medium |
 
 - **Cut line.** Slices 1 to 5 are what the video shows, and they must land. If slice 6 or 7 isn't merged by the evening of Nov 23, those views keep today's layout with slice 1's tokens and components, and the freeze holds on Nov 24.
-- **Same week:** Phase 3 item 6 (reading bulletins in the cloud) and Phase 5 items 2 and 4 (App Check on Firestore, and "try again shortly" in the console). The console message touches the same files as slice 5, so it lands first or inside slice 5.
+- **Same week:** Phase 3 item 6 (reading bulletins in the cloud) and Phase 5 item 4 ("try again shortly" in the console). The console message touches the same files as slice 5, so it lands first or inside slice 5.
 - **Each PR:** `npm run check` passes with the existing Vitest and rules tests unchanged, because this is UI only. New pure helpers get their own Vitest cases (the greeting for the time of day, the hotline number taken from the approved text, the storm summary from the fact sheet, the drawer's step states). Screenshots use fictional data, at 1280 × 720 for the laptop (about what Chrome shows on the Acer's 14-inch screen at Windows' usual 150% scaling) and 390 × 844 for a phone.
 - **How to revert:** each slice is one PR, reverted with `git revert -m 1 <merge commit>` and a redeploy by Pim. Reverting slice 1 takes the app back to system fonts and today's colours.
 
@@ -274,7 +274,7 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
 ### Phase 5 — Hosting and feature freeze (Nov 24)
 
 1. Firebase Hosting (PR #26), **live at https://babala-hybrid.web.app since Nov 13** and checked on the laptop and an iPhone in airplane mode. Pim deploys from the laptop with `npm run deploy:hosting`, only from `main` as it is on GitHub and after `npm run check` passes; never from a pull request or CI. The settings come from the laptop's `.env.local`, and the build stops if the App Check debug token would be in it. Deploying from GitHub Actions would need a service account key in the repo's secrets, so it was left out.
-2. App Check enforced on Firestore.
+2. App Check enforced on Firestore, **done Nov 13**. PR #30 made a page opened offline reach Firestore again when the signal returns; Pim enforced it after deploying that, and it was checked on the laptop, local dev and the iPhone, with a refusal test (docs/firebase-setup.md, section 4, *Enforcing on Firestore*).
 3. A test officer login for judges, without putting personal data or production keys in the repo, the form or the testing instructions. Built in Phase 2 (item 7); the email and password go only in the private testing instructions.
 4. Against free-tier limits on the Gemini API: a per-user rate limit and a clear "try again shortly" message (*Risks*). Done for residents' questions in PR #28 (6 cloud answers per phone per hour, and "busy right now, try again shortly" on a quota error). Still open: the same message in the console, and optionally a lower AI Logic per-user quota (docs/firebase-setup.md, *Cost and usage*).
 5. Feature freeze.
@@ -283,18 +283,22 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
 
 ### Phase 6 — Video and submission (Nov 25–29)
 
-1. **Video** (Nov 25–26), 2:45, English:
+1. **Video** (Nov 25–26), 2:45, English, with Pim's voice-over (about 2.5 words a second, so about 400 words in all):
 
    | Time | Shot | What it proves |
    | --- | --- | --- |
-   | 0:00–0:15 | Storm signal raised, phone shows no signal. "In a typhoon, the signal goes first." | The problem and the audience |
-   | 0:15–0:35 | Officer pastes the bulletin, and the fact sheet appears | Facts come from the source, not the model |
-   | 0:35–1:05 | Nano drafts on the laptop (on-device badge). The checker catches a placeholder and an invented "severe", the retry passes | On-device AI, and why checking matters |
-   | 1:05–1:25 | Officer approves, the cloud translates to Filipino and Cebuano, the checker confirms the figures | Cloud for what Nano can't do |
-   | 1:25–2:00 | Wi-Fi off: the laptop still drafts and checks. iPhone shows the saved alert, and a question falls back to text search. Back online, the cloud answers | Three routes: on-device, cloud and no AI |
-   | 2:00–2:20 | Ledger: one alert traced from bulletin to household | Trust and accountability |
-   | 2:20–2:40 | How it's built: hybrid modes, App Check, Firestore offline cache, Remote Config | Technical depth |
-   | 2:40–2:45 | Name, URL, repo | Where to try it |
+   | 0:00–0:20 | Opens in the dark. Over a map of the Philippines in the western Pacific typhoon belt, one sourced stat on typhoon frequency and "When a typhoon hits, the signal goes first." A phone lights up in a dark room in airplane mode, like a candle, showing a saved Babala alert. Title | The problem and the audience, and the app working with no signal |
+   | 0:20–1:00 | Officer pastes the bulletin and the fact sheet appears. Nano drafts on the laptop (on-device badge). The checker catches a placeholder and an invented "severe", the retry passes. Voice-over: "Firebase AI Logic falls back to the cloud when the local model is missing. Babala also falls back when the local answer is wrong" | On-device AI, facts from the source, and why checking matters |
+   | 1:00–1:15 | Officer approves, the cloud translates to Filipino and Cebuano, the checker confirms the figures | Cloud for what Nano can't do |
+   | 1:15–1:50 | Wi-Fi off: the laptop still drafts and checks. iPhone shows the saved alert, and a question falls back to text search. Back online, the cloud answers | Three routes: on-device, cloud and no AI |
+   | 1:50–2:05 | Ledger: one alert traced from bulletin to household | Trust and accountability |
+   | 2:05–2:30 | How it's built: hybrid modes, App Check, Firestore offline cache, Remote Config. The hybrid benefit as a real count from the ledger: how many drafts ran on the laptop with nothing sent to the cloud | Technical depth, and what hybrid saves |
+   | 2:30–2:45 | "Babala!" turns its "!" upside down into "¡", which becomes a candle flame: "a guide light in times of uncertainty". Name, URL, repo | Where to try it |
+
+   Rules for the video:
+   - **Stats need a cited source**, checked before recording, with the source in the YouTube description. No casualty figures, and no dollar comparison of cloud-only against hybrid: on the Spark plan both cost $0, so the ledger count is the honest version.
+   - **Sound:** no copyrighted music. Use recorded rain or wind, or a royalty-free track whose licence allows it, after checking the contest rules.
+   - **The dark opening is a real shot**, not a mock-up: the iPhone in airplane mode opening the hosted app.
 
 2. **README and Devpost text** (Nov 27). Cover the value proposition, setup, testing instructions, how Firebase AI Logic is used (with links to the calls), the AI coding tools used, and what was built during the contest (all of it).
 3. **Requirements map.** Bring every row of [requirements-map.md](requirements-map.md) to its final status.
@@ -303,7 +307,7 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
    - [ ] Public GitHub repo, with the Apache-2.0 license showing in the About section
    - [ ] Firebase AI Logic imported and called at runtime, and the README links to those calls
    - [ ] README covers the value proposition, setup, testing instructions, and the AI coding tools used. It also states that no pre-existing code was reused
-   - [ ] App Check enforced, with debug-token steps for running locally
+   - [x] App Check enforced (AI Logic and Firestore), with debug-token steps for running locally
    - [ ] Hosted URL that is free, needs no login for residents, gives judges a test officer login, and stays up until Dec 16
    - [ ] Video under 3 minutes, public on YouTube, in English
    - [ ] Text description: features, how Firebase AI Logic is used, value proposition, and what was built during the contest (all of it)

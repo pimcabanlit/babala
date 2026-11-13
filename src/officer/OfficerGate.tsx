@@ -85,14 +85,16 @@ function Gate({ auth, db, children }: { auth: Auth; db: Firestore; children: (se
         {status.kind === 'offline' && (
           <p className="mt-3 rounded bg-amber-100 p-2 text-sm text-amber-950">
             This laptop is offline and hasn’t seen the officer list yet. Connect once to confirm you’re an officer; after
-            that, the console works offline too.
+            that, the console works offline too. If the laptop is online, look at App Check in Setup status above:
+            without a ✓ there, Firestore can’t be reached.
           </p>
         )}
         {status.kind === 'not-officer' && <NotOnList uid={status.user.uid} />}
         {status.kind === 'error' && (
           <p className="mt-3 rounded bg-red-50 p-2 text-sm text-red-800">
-            Couldn’t read the officer list: {status.message} If this says “permissions”, the Firestore rules from this
-            repo may not be published yet. Publish them, then reload this page.
+            Couldn’t read the officer list: {status.message} If this says “permissions”, look at App Check in Setup
+            status above first: without a ✓ there, Firestore refuses this browser. Otherwise the Firestore rules from
+            this repo may not be published yet. Publish them, then reload this page.
           </p>
         )}
         {signInError && <p className="mt-3 rounded bg-red-50 p-2 text-sm text-red-800">{signInError}</p>}

@@ -25,7 +25,8 @@ Then open http://localhost:5173 in Chrome. `npm run check` runs the typecheck, l
 
 ### App Check debug token (running locally)
 
-App Check is enforced, so a local run needs a registered debug token:
+App Check is enforced on AI Logic and Firestore, so a local run against the real project needs a
+registered debug token (the emulators don't check App Check):
 
 1. Leave `VITE_APPCHECK_DEBUG_TOKEN` empty and run `npm run dev`. The browser console prints
    `Firebase App Check debug token: ...`.
