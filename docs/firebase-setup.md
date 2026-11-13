@@ -309,7 +309,7 @@ Every draft in the first runs, on-device and cloud, added claims or placeholders
 
 ## Cost and usage
 
-On Spark there is no bill. Heavy use ends in quota errors, which the app must show as a clear "try again shortly" (Phase 4; done for residents' questions). Drafting is limited to signed-in officers, with at most one cloud call per alert, and App Check stops other clients using the quota. No usage numbers have been recorded yet.
+On Spark there is no bill. Heavy use ends in quota errors, which the app must show as a clear "try again shortly" (Phase 5; done for residents' questions). Drafting is limited to signed-in officers, with at most one cloud call per alert, and App Check stops other clients using the quota. No usage numbers have been recorded yet.
 
 Since Ask, anonymous residents can use the cloud too: one cloud call per question, at most 6 per phone per hour (`ask_cloud_per_hour`). That limit is kept on the phone, so someone clearing the site's storage gets a new hour. The hard limit is AI Logic's own per-user quota, "Generate content requests" per user per minute, 100 by default ([rate limits and quotas](https://firebase.google.com/docs/ai-logic/quotas)). Optional, before judging: lower it in the Google Cloud console → APIs & Services → **Firebase AI Logic API** → **Manage** → **Quotas & System Limits** → filter for "Generate content requests" → select it → **Edit quota**, for example to 10. It applies to officers too, and a drafting card makes at most one cloud call, so 10 a minute leaves plenty. Each cloud call also takes a limited-use App Check token, so check reCAPTCHA's usage in the Google Cloud console (Security → reCAPTCHA) after judging starts. Enforcing App Check on Firestore (Nov 13) added none: Firestore uses the ordinary token each open page already refreshes about once an hour.
 
@@ -334,4 +334,4 @@ Since Ask, anonymous residents can use the cloud too: one cloud call per questio
 - [ ] Optional: lower AI Logic's per-user quota before judging (*Cost and usage*).
 - [ ] Have a fluent Filipino and Cebuano speaker review the "do less" phrases in `ANSWER_CLAIM_WORDS` with `TRANSLATION_CLAIMS`.
 - [x] Test officer for judges set up (Nov 13): Email/Password on, user actions set, `test-officer@example.com` added with its `officers` document, and signed in on the laptop. Its password is in Pim's password manager.
-- [ ] Put the test officer's email and password in the private testing instructions (Phase 5).
+- [ ] Put the test officer's email and password in the private testing instructions (Phase 6).
