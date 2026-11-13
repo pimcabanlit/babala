@@ -22,7 +22,7 @@ flowchart TB
     subgraph firebase["Firebase · Spark plan"]
         cloud["Gemini in the cloud<br/>Gemini Developer API"]
         appcheck["App Check<br/>reCAPTCHA Enterprise"]
-        auth["Authentication<br/>Google (officers)"]
+        auth["Authentication<br/>Google (officers),<br/>email (judges' test officer)"]
         rc["Remote Config<br/>cloud model, budget, claim words"]
         fs["Firestore<br/>officers, alerts, ledger"]
         hosting["Hosting<br/>(planned)"]
@@ -51,7 +51,7 @@ Dashed lines are planned. `src/ai/` is the only module that imports `firebase/ai
 
 ## How one alert flows
 
-1. **Sign in.** The officer signs in with Google. The console opens only if their user ID has a document in the Firestore `officers` collection.
+1. **Sign in.** The officer signs in with Google; judges use the shared test officer account, with an email and password. The console opens only if their user ID has a document in the Firestore `officers` collection.
 2. **Bulletin in.** The officer pastes the bulletin, or uses the demo bulletin. "Read bulletin" turns it into a fact sheet with plain code: storm name, signal number per area, landfall time and date, evacuation centres, puroks, barangays, hotline and any other figures. Facts it couldn't find are listed.
 3. **Confirm.** The officer edits the facts and ticks "I checked every fact against the bulletin". Nothing is drafted before that, and editing a fact later cancels every approval.
 4. **Draft.** The officer picks an area and drafts the four household alerts one after another. Each prompt gives the alert as three sentences built from the fact sheet. The model may reword them, and answers in JSON with one field per sentence. The text streams into the card, with a badge for the laptop or the cloud.
@@ -67,7 +67,7 @@ Dashed lines are planned. `src/ai/` is the only module that imports `firebase/ai
 | Component | Where | Role | Status |
 | --- | --- | --- | --- |
 | Officer console | `src/console/` | Bulletin, fact sheet, drafts, checks, approve and save, test log | Built |
-| Officer sign-in | `src/officer/`, Firebase Authentication (Google) | The console and drafting open only for officers | Built |
+| Officer sign-in | `src/officer/`, Firebase Authentication (Google, and email for the judges' test officer) | The console and drafting open only for officers | Built |
 | Fact sheet | `src/factsheet/` | Demo bulletin to fact sheet in plain code. The officer's edit form | Built |
 | AI module | `src/ai/`, Firebase AI Logic | Two draft models ("prefer on-device", "only in cloud"), streaming, device model download and warm-up | Built |
 | On-device status | `src/ai/deviceStatus.ts` | Reads Chrome's `LanguageModel.availability()` for the UI only. Never prompts Nano directly | Built |
@@ -93,7 +93,7 @@ Two users share one web app: a barangay disaster officer on a laptop running Chr
 **Officer console (laptop), built.** One page, in this order:
 
 - **Setup status.** Whether Firebase, App Check and Remote Config work, and which values are in use.
-- **Officer sign-in.** A signed-in user who isn't on the list sees their user ID, to send to Pim.
+- **Officer sign-in.** "Sign in with Google", and a folded "Judges: sign in with the test officer account" form for the email and password in the testing instructions. A signed-in user who isn't on the list sees their user ID, to send to Pim. The test officer sees a note that the account is shared and that the ledger records what it does.
 - **Models.** The on-device status, a "Prepare on-device model" button while Nano isn't downloaded, the warm-up time, and whether the cloud is online.
 - **1. Bulletin.** Paste a bulletin, then "Read bulletin" or "Use the demo bulletin".
 - **2. Fact sheet.** One field per fact, a list of facts not found, and "I checked every fact against the bulletin".
@@ -169,6 +169,7 @@ The approval also refuses to save while the claim-word list hasn't loaded, becau
 ## Sign-in and access
 
 - **Officers.** An officer is signed in with Google, and their Firebase user ID has a document in `officers`. Pim adds those documents by hand in the Firebase console, and the rules let nobody write them from the app. The console watches the user's own entry, so adding someone lets them in without a reload.
+- **The judges' test officer.** One email and password account that Pim makes in the Firebase console and adds to `officers` like any officer. The rules accept a Google or an email and password sign-in, never anonymous or any other method, and being on the list is still what makes an officer: an email account that isn't on it gets nothing. The test officer can do what any officer can (draft, approve, withdraw, read alerts and the ledger) and nothing more, and the ledger records each action under its user ID. The email and password are only in the private testing instructions. Setup and recovery: [firebase-setup.md](firebase-setup.md), *Test officer for judges*.
 - **Offline sign-in.** The persistent Firestore cache answers the officer check offline. A laptop that has never seen the list shows an offline message instead of "not an officer".
 - **Firestore rules** (`firestore.rules`):
   - Officers may read alerts, and create or replace them with exactly the fields and limits the app writes.
@@ -177,7 +178,7 @@ The approval also refuses to save while the claim-word list hasn't loaded, becau
   - Every alert write comes with a new ledger entry in the same batch that records it exactly, and an entry can't be written without its alert. Officers may read the ledger; nobody can change or delete an entry.
   - Withdrawing adds only a `withdrawal` mark (entry ID, the signed-in officer, the server's time) to an alert that has none, with a `withdrawn` entry in the same batch that names the alert's text and current approval. A withdrawn alert can only be replaced by a new approval.
   - Nobody can delete an alert, and everything else is denied.
-  - Tested on the Firestore emulator (`npm run test:rules`, 103 cases, in CI). Each withdrawal check was broken on purpose to confirm a test catches it.
+  - Tested on the Firestore emulator (`npm run test:rules`, 117 cases, in CI). Each withdrawal check and the sign-in method check were broken on purpose to confirm a test catches them.
 - **Residents** will sign in anonymously and get read access with the resident view. Anonymous sign-in is turned on in the project, but the app doesn't use it yet, and the rules give residents no access today.
 - **AI quota.** Drafting is inside the officer console, so visitors who aren't officers can't use the AI quota. App Check is enforced on AI Logic, with limited-use tokens.
 
