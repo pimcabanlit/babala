@@ -30,12 +30,17 @@ export function normalizeTime(text: string): string | undefined {
 }
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-const MONTH = '(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sept?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)'
+/** Filipino and Cebuano month names, from Spanish, for translations: "Nobyembre 14". */
+const LOCAL_MONTHS: Record<string, number> = {
+  enero: 0, pebrero: 1, marso: 2, abril: 3, mayo: 4, hunyo: 5, hulyo: 6, agosto: 7, setyembre: 8,
+  oktubre: 9, nobyembre: 10, disyembre: 11,
+}
+const MONTH = `(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sept?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|${Object.keys(LOCAL_MONTHS).join('|')})`
 
 function monthDay(month: string, day: number): string | undefined {
   // "Signal No. 2 may be raised": lowercase "may" is a verb, not a month.
   if (month.toLowerCase() === 'may' && month !== 'May' && month !== 'MAY') return undefined
-  const m = MONTHS.indexOf(month.slice(0, 3).toLowerCase())
+  const m = LOCAL_MONTHS[month.toLowerCase()] ?? MONTHS.indexOf(month.slice(0, 3).toLowerCase())
   if (m < 0 || day < 1 || day > 31) return undefined
   return `${pad(m + 1)}-${pad(day)}`
 }
@@ -145,7 +150,8 @@ const MATCHERS: Matcher[] = [
   },
   {
     kind: 'date',
-    pattern: new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?${MONTH}\\b(?:,?\\s+\\d{4}\\b)?`, 'gi'),
+    // "14 November", and Filipino "ika-14 ng Nobyembre".
+    pattern: new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:(?:of|ng)\\s+)?${MONTH}\\b(?:,?\\s+\\d{4}\\b)?`, 'gi'),
     value: (m) => monthDay(m[2], Number(m[1])),
   },
   {

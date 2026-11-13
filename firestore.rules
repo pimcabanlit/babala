@@ -23,6 +23,11 @@ rules_version = '2';
 // its alert. A withdrawn alert's copy has no text. Residents never read
 // `alerts` or the ledger.
 //
+// Officers publish Filipino and Cebuano translations on the copy of a current
+// alert, one language at a time, each with a `translated` ledger entry in the
+// same batch that names the alert's text and approval. A new approval or a
+// withdrawal rewrites the copy without them.
+//
 // ===============================================================
 // Data model
 // ===============================================================
@@ -79,6 +84,10 @@ rules_version = '2';
 //   - stormName: the alert's factSheet.stormName
 //   - status: "active"
 //   - updatedAt: timestamp, the alert's approvedAt
+//   - translations: map (optional), added after the approval, one language
+//     per write, nothing else changing:
+//       fil, ceb (each optional): {text: string (1 to 1500), ledgerId: string,
+//         the `translated` ledger entry written in the same batch}
 // Fields once the alert is withdrawn (status "withdrawn"), with no text:
 //   - household, area, areaKey: the alert's
 //   - status: "withdrawn"
@@ -86,8 +95,8 @@ rules_version = '2';
 //
 // Collection: ledger
 // Document ID: a 20-character auto ID made by the app.
-//   One entry per change to a saved alert: "approved" or "withdrawn".
-//   Translations add their own kind later.
+//   One entry per change to a saved alert: "approved", "withdrawn" or
+//   "translated".
 //   Written by src/ledger/record.ts and src/alerts/store.ts. Keep the limits
 //   here the same as LEDGER_LIMITS in src/ledger/record.ts.
 // Fields of an "approved" entry (all required):
@@ -109,6 +118,24 @@ rules_version = '2';
 //     empty for an alert saved before the ledger
 //   - reason: string, 1 to 300 characters. Only here, never on the alert:
 //     residents will read alerts, and the reason never passes the checker.
+//   - by: string, the signed-in officer's user ID
+//   - at: timestamp, the server's time of the write
+// Fields of a "translated" entry (all required), written by
+//   src/translation/record.ts and src/translation/store.ts:
+//   - kind: "translated"
+//   - alertId: string, the alert translated
+//   - household, area: equal to the alert's
+//   - lang: "fil" or "ceb"
+//   - approvalId: string, the alert's ledgerId: the approval it translates
+//   - english: string (1 to 1000), equal to the alert's text
+//   - text: string (1 to 1500), equal to the translation on the resident copy
+//   - source: string, one of in_cloud, none, unknown
+//   - edited: bool
+//   - cloudModel: string, up to 100 characters
+//   - claimWords: list of strings (1 to 500), rule 5's English word list
+//   - translatedClaims: list of maps (1 to 100), this language's claim words
+//   - drafts: list of maps (up to 20), the cloud calls behind it
+//   - draftsOmitted: int, 0 or more
 //   - by: string, the signed-in officer's user ID
 //   - at: timestamp, the server's time of the write
 //
@@ -324,6 +351,92 @@ service cloud.firestore {
       return alert != null && data == residentCopy(alert.data);
     }
 
+    // Publishing a translation changes only `translations` on an active copy,
+    // and only one language. Each language that changes must be vouched for by
+    // its new ledger entry.
+    function isValidTranslationPublish(alertId) {
+      let before = resource.data;
+      let after = request.resource.data;
+      let t = after.translations;
+      let changed = t.diff(before.get('translations', {})).affectedKeys();
+      return before.status == 'active'
+        && after.diff(before).affectedKeys().hasOnly(['translations'])
+        && t is map
+        && t.keys().hasOnly(['fil', 'ceb'])
+        && changed.size() == 1
+        && (!changed.hasAny(['fil']) || publishesTranslation(alertId, 'fil', t.fil))
+        && (!changed.hasAny(['ceb']) || publishesTranslation(alertId, 'ceb', t.ceb));
+    }
+
+    // The translation's ledger entry, as it will be after this batch, records
+    // this text in this language, by this officer at this request's time (so
+    // it is new, written in the same batch), against the alert's current text
+    // and approval. The alert must not be withdrawn.
+    function publishesTranslation(alertId, lang, t) {
+      let alert = get(/databases/$(database)/documents/alerts/$(alertId)).data;
+      let entry = getAfter(/databases/$(database)/documents/ledger/$(t.ledgerId)).data;
+      return t is map
+        && t.keys().hasAll(['text', 'ledgerId'])
+        && t.keys().hasOnly(['text', 'ledgerId'])
+        && isString(t.text, 1, 1500)
+        && isLedgerId(t.ledgerId)
+        && !('withdrawal' in alert)
+        && entry.kind == 'translated'
+        && entry.alertId == alertId
+        && entry.lang == lang
+        && entry.text == t.text
+        && entry.household == alert.household
+        && entry.area == alert.area
+        && entry.approvalId == alert.ledgerId
+        && entry.english == alert.text
+        && entry.by == request.auth.uid
+        && entry.at == request.time;
+    }
+
+    // A copy rewritten on its own, with no change to its alert in the batch,
+    // can't drop published translations: only a new approval or a withdrawal,
+    // each with its own ledger entry, clears them.
+    function dropsTranslationsUnrecorded(alertId) {
+      let alert = getAfter(/databases/$(database)/documents/alerts/$(alertId)).data;
+      return 'translations' in resource.data
+        && alert.approvedAt != request.time
+        && !('withdrawal' in alert && alert.withdrawal.at == request.time);
+    }
+
+    // A translation's entry. Its alert fields are checked through the copy,
+    // whose translation in this language must be written in the same batch
+    // and point at this entry.
+    function isValidTranslatedEntry(entryId, data) {
+      let fields = ['kind', 'alertId', 'household', 'area', 'lang', 'approvalId', 'english', 'text',
+                    'source', 'edited', 'cloudModel', 'claimWords', 'translatedClaims', 'drafts',
+                    'draftsOmitted', 'by', 'at'];
+      return data.keys().hasAll(fields)
+        && data.keys().hasOnly(fields)
+        && data.kind == 'translated'
+        && isString(data.alertId, 4, 200)
+        && data.alertId.matches('^[a-z]+__[a-z0-9]+(-[a-z0-9]+)*$')
+        && data.lang in ['fil', 'ceb']
+        && isLedgerId(data.approvalId)
+        && isString(data.english, 1, 1000)
+        && isString(data.text, 1, 1500)
+        && data.source in ['in_cloud', 'none', 'unknown']
+        && data.edited is bool
+        && isString(data.cloudModel, 0, 100)
+        && isList(data.claimWords, 1, 500)
+        && isList(data.translatedClaims, 1, 100)
+        && isList(data.drafts, 0, 20)
+        && data.draftsOmitted is int
+        && data.draftsOmitted >= 0
+        && data.by == request.auth.uid
+        && data.at == request.time
+        && isPublishedWithItsTranslation(entryId, data);
+    }
+
+    function isPublishedWithItsTranslation(entryId, data) {
+      let copy = getAfter(/databases/$(database)/documents/residentAlerts/$(data.alertId)).data;
+      return copy.translations[data.lang].ledgerId == entryId;
+    }
+
     // ---------- Collections ----------
 
     // The officer list: each user may read only their own entry, to learn
@@ -347,21 +460,27 @@ service cloud.firestore {
     // What residents read: anyone signed in, anonymous residents included.
     // A list must ask for at most 200 documents, the whole barangay's pack
     // (4 households for each of up to 30 areas), so one read can't run up the
-    // free quota. Only officers write, and only an exact copy of the alert.
+    // free quota. Only officers write: an exact copy of the alert, or one
+    // checked translation added to the copy of a current alert.
     match /residentAlerts/{alertId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn() && request.query.limit <= 200;
-      allow create, update: if isOfficer() && isValidResidentCopy(alertId, request.resource.data);
+      allow create: if isOfficer() && isValidResidentCopy(alertId, request.resource.data);
+      allow update: if isOfficer()
+        && ((isValidResidentCopy(alertId, request.resource.data) && !dropsTranslationsUnrecorded(alertId))
+            || isValidTranslationPublish(alertId));
       allow delete: if false;
     }
 
-    // The ledger: written only together with the change to the alert it
-    // records, and never changed or deleted. Officers only.
+    // The ledger: written only together with the change it records (to the
+    // alert, or a translation on its copy), and never changed or deleted.
+    // Officers only.
     match /ledger/{entryId} {
       allow read: if isOfficer();
       allow create: if isOfficer()
         && (isValidApprovedEntry(entryId, request.resource.data)
-            || isValidWithdrawnEntry(entryId, request.resource.data));
+            || isValidWithdrawnEntry(entryId, request.resource.data)
+            || isValidTranslatedEntry(entryId, request.resource.data));
       allow update, delete: if false;
     }
   }

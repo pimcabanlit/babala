@@ -1,19 +1,20 @@
 /**
  * The ledger: a locked record of every change to a saved alert, in Firestore
- * at `ledger/{entryId}`. Two kinds of change today: an approval and a
- * withdrawal. Translations add their own kind of entry later.
+ * at `ledger/{entryId}`. Three kinds of change: an approval, a withdrawal,
+ * and a published translation.
  *
- * Each change writes the alert and its entry in one batch, and firestore.rules
- * refuses either one without the other, so no alert changes without its
- * record. Entries can't be changed or deleted, so a later approval replaces the
+ * Each change writes the alert (or, for a translation, the residents' copy of
+ * it) and its entry in one batch, and firestore.rules refuses either one
+ * without the other, so no alert changes without its record. Entries can't be changed or deleted, so a later approval replaces the
  * alert but never its history.
  *
  * Pure code, so the console and the rules tests build exactly the same
  * documents. firestore.rules checks the same fields and limits. Change both together.
  */
 import type { Route } from '../ai'
-import type { Rule } from '../checker'
-import { ALERT_SOURCES, type AlertRecord, type AlertSource, type Approval, type SavedAlert } from '../alerts/record'
+import type { Rule, TranslatedClaim } from '../checker'
+import { isLanguageCode, type LanguageCode } from '../translation/languages'
+import { ALERT_SOURCES, isFactSheet, type AlertRecord, type AlertSource, type Approval, type SavedAlert } from '../alerts/record'
 import { activeCopy, withdrawnCopy, type ActiveCopy, type WithdrawnCopy } from '../alerts/residentCopy'
 import { HOUSEHOLDS } from '../drafting/households'
 
@@ -34,6 +35,7 @@ export const LEDGER_LIMITS = {
   issueMessage: 300,
   error: 500,
   reason: 300,
+  translatedClaims: 100,
 } as const
 
 /** How a model call ended: the checker passed or failed its text, it threw, or the officer stopped waiting. */
@@ -120,7 +122,8 @@ export function approvalWrites(approval: Extract<Approval, { ok: true }>, ledger
   }
 }
 
-function clipDraft(d: LedgerDraft): LedgerDraft {
+/** A draft with its long text fields cut to LEDGER_LIMITS, saying so. */
+export function clipDraft(d: LedgerDraft): LedgerDraft {
   return {
     ...d,
     prompt: clip(d.prompt, LEDGER_LIMITS.prompt),
@@ -198,6 +201,41 @@ export function withdrawalWrites(saved: SavedAlert, ledgerId: string, reason: st
   }
 }
 
+/** Which model wrote a published translation's text: the cloud, none (the officer typed it) or unknown. */
+export type TranslationSource = Extract<AlertSource, 'in_cloud' | 'none' | 'unknown'>
+export const TRANSLATION_SOURCES: readonly TranslationSource[] = ['in_cloud', 'none', 'unknown']
+
+/**
+ * The record of a published translation: the English it translates (the
+ * alert's text and approval), the translation residents get, where it came
+ * from, and the cloud calls and checks behind it. Written by
+ * translationWrites() in src/translation/record.ts.
+ */
+export type TranslatedEntry = {
+  kind: 'translated'
+  alertId: string
+  household: AlertRecord['household']
+  area: string
+  lang: LanguageCode
+  /** The ledger entry of the approval it translates: the alert's ledgerId. */
+  approvalId: string
+  /** The approved English alert it was checked against. */
+  english: string
+  /** The translation as the checker passed it and residents get it. */
+  text: string
+  source: TranslationSource
+  /** The officer changed the model's text, or typed it. */
+  edited: boolean
+  cloudModel: string
+  /** Rule 5's English word list when it was published. */
+  claimWords: string[]
+  /** This language's claim words when it was published, so the check can be repeated. */
+  translatedClaims: TranslatedClaim[]
+  /** The translation calls for this alert and language since its last publication, oldest first. */
+  drafts: LedgerDraft[]
+  draftsOmitted: number
+}
+
 /** What every entry has, as the console shows it. */
 type EntryMeta = {
   id: string
@@ -228,7 +266,10 @@ export type ApprovedLedgerEntry = EntryMeta & {
 /** A withdrawal's entry as the console shows it. */
 export type WithdrawnLedgerEntry = EntryMeta & WithdrawnEntry
 
-export type LedgerEntry = ApprovedLedgerEntry | WithdrawnLedgerEntry
+/** A translation's entry as the console shows it. */
+export type TranslatedLedgerEntry = EntryMeta & Omit<TranslatedEntry, 'claimWords' | 'translatedClaims'>
+
+export type LedgerEntry = ApprovedLedgerEntry | WithdrawnLedgerEntry | TranslatedLedgerEntry
 
 /** Reads an entry's fields; undefined if the document isn't one this app wrote. */
 export function readLedgerEntry(
@@ -246,25 +287,20 @@ export function readLedgerEntry(
     if (typeof approvalId !== 'string' || typeof reason !== 'string') return undefined
     return { ...common, kind, approvalId, reason }
   }
+  if (kind === 'translated') {
+    const { lang, approvalId, english, source, edited, cloudModel, drafts, draftsOmitted } = data
+    if (!isLanguageCode(lang) || typeof approvalId !== 'string' || typeof english !== 'string') return undefined
+    if (!TRANSLATION_SOURCES.includes(source as TranslationSource) || typeof edited !== 'boolean') return undefined
+    if (typeof cloudModel !== 'string' || typeof draftsOmitted !== 'number') return undefined
+    if (!Array.isArray(drafts) || !drafts.every(isLedgerDraft)) return undefined
+    return { ...common, kind, lang, approvalId, english, source: source as TranslationSource, edited, cloudModel, drafts, draftsOmitted }
+  }
   if (kind !== 'approved') return undefined
   const { signal, source, edited, factSheet, cloudModel, drafts, draftsOmitted } = data
   if (typeof signal !== 'number' || typeof edited !== 'boolean' || typeof cloudModel !== 'string') return undefined
   if (typeof draftsOmitted !== 'number' || !ALERT_SOURCES.includes(source as AlertSource)) return undefined
   if (!isFactSheet(factSheet) || !Array.isArray(drafts) || !drafts.every(isLedgerDraft)) return undefined
   return { ...common, kind, signal, source: source as AlertSource, edited, factSheet, cloudModel, drafts, draftsOmitted }
-}
-
-function isFactSheet(v: unknown): v is AlertRecord['factSheet'] {
-  if (typeof v !== 'object' || v === null) return false
-  const s = v as Record<string, unknown>
-  return (
-    typeof s.stormName === 'string' &&
-    Array.isArray(s.signals) &&
-    typeof s.landfallTime === 'string' &&
-    Array.isArray(s.evacuationCentres) &&
-    typeof s.hotline === 'string' &&
-    typeof s.bulletinText === 'string'
-  )
 }
 
 const OUTCOMES: readonly string[] = ['passed', 'failed', 'error', 'stopped'] satisfies DraftOutcome[]

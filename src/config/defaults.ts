@@ -3,6 +3,8 @@
  * (Firebase console > Remote Config), so a change there needs no redeploy.
  * Keys match the Remote Config parameter names exactly.
  */
+import type { TranslatedClaim } from '../checker'
+import type { LanguageCode } from '../translation/languages'
 
 /**
  * Words that need support from the bulletin before an alert may use them
@@ -27,6 +29,69 @@ export const CHECKER_CLAIM_WORDS: readonly string[] = [
   'barangay captain', 'tanod',
 ]
 
+// English words that back each kind of claim, shared by both languages.
+const STRONG = ['strong', 'stronger', 'strongest', 'strengthen', 'strengthening', 'severe', 'extreme', 'intense',
+  'powerful', 'violent', 'heavy', 'maximum', 'super typhoon', 'major']
+const DANGER = ['danger', 'dangerous', 'threat', 'risk', 'hazard', 'hazardous', 'life-threatening', 'deadly', 'unsafe']
+const DEADLY = ['deadly', 'life-threatening', 'fatal', 'death']
+const DESTRUCTIVE = ['destructive', 'devastating', 'catastrophic', 'damage', 'damaging', 'destroy', 'destruction']
+const SAFE = ['safe', 'safely', 'safety', 'no danger', 'no threat', 'not dangerous', 'all clear']
+const WEAK = ['weak', 'weaker', 'weaken', 'weakened', 'weakening', 'minimal', 'minor']
+const AUTHORITY = ['authorities', 'authority', 'officials', 'official', 'barangay captain', 'captain', 'tanod',
+  'rescue teams', 'rescue team', 'emergency personnel', 'responders']
+const STRONG_WINDS = ['strong winds', 'strong wind', 'destructive winds', 'maximum winds', 'maximum sustained winds']
+
+/**
+ * Claim words in Filipino and Cebuano (checker rule 7). A translation may use
+ * one only when the approved English alert says one of its English words, so
+ * "mapanganib" needs "dangerous" (or "danger", …) in the English. The same
+ * kinds as the English list: severity, hazards, safety, timing and authority.
+ * Written by hand for the demo, not by a model; a fluent speaker should review
+ * them. A longer phrase is judged before a word inside it.
+ */
+export const TRANSLATION_CLAIMS: Readonly<Record<LanguageCode, readonly TranslatedClaim[]>> = {
+  fil: [
+    { words: ['malakas', 'napakalakas', 'pinakamalakas', 'lumalakas', 'lalakas', 'matindi', 'napakatindi', 'malubha', 'grabe', 'sobrang lakas'], english: STRONG },
+    { words: ['super bagyo', 'superbagyo', 'super-bagyo'], english: ['super typhoon'] },
+    { words: ['mapanganib', 'panganib', 'delikado', 'peligro', 'mapeligro'], english: DANGER },
+    { words: ['nakamamatay', 'nakakamatay'], english: DEADLY },
+    { words: ['mapaminsala', 'nakapipinsala', 'nakakapinsala', 'pinsala', 'mapanira', 'pagkawasak'], english: DESTRUCTIVE },
+    { words: ['ligtas', 'kaligtasan', 'walang panganib', 'walang banta', 'walang dapat ikabahala', 'hindi delikado', 'hindi mapanganib'], english: SAFE },
+    { words: ['mahina', 'humihina', 'hihina', 'humina'], english: WEAK },
+    { words: ['ngayong gabi', 'mamayang gabi', 'ngayong gabing ito'], english: ['tonight', 'this evening'] },
+    { words: ['ngayong araw', 'ngayong araw na ito'], english: ['today'] },
+    { words: ['ngayong umaga', 'mamayang umaga', 'ngayong hapon', 'mamayang hapon'], english: ['this morning', 'this afternoon'] },
+    { words: ['bukas', 'kinabukasan'], english: ['tomorrow', 'open'] },
+    { words: ['hanggang sa susunod na abiso', 'hanggang may bagong abiso', 'hanggang sa may abiso'], english: ['until further notice'] },
+    { words: ['baha', 'pagbaha', 'bumaha', 'babaha', 'binabaha', 'bahain'], english: ['flood', 'flooding', 'flash flood'] },
+    { words: ['pagguho ng lupa', 'guho ng lupa', 'pagguho'], english: ['landslide', 'mudslide'] },
+    { words: ['daluyong', 'daluyong ng bagyo'], english: ['storm surge', 'surge'] },
+    { words: ['malakas na ulan', 'malakas na pag-ulan', 'buhos ng ulan', 'malakas na buhos ng ulan'], english: ['heavy rain', 'heavy rainfall', 'torrential rain'] },
+    { words: ['malakas na hangin', 'malalakas na hangin', 'napakalakas na hangin'], english: STRONG_WINDS },
+    { words: ['awtoridad', 'mga awtoridad', 'opisyal', 'mga opisyal', 'kapitan', 'kapitan ng barangay', 'tanod', 'rescuer', 'rescue team'], english: AUTHORITY },
+  ],
+  ceb: [
+    { words: ['kusog', 'kusgan', 'kusog kaayo', 'pinakakusog', 'mokusog', 'grabe', 'grabeng', 'labihan', 'labihang'], english: STRONG },
+    { words: ['super bagyo', 'superbagyo', 'super-bagyo'], english: ['super typhoon'] },
+    { words: ['peligroso', 'delikado', 'kuyaw', 'makuyaw', 'peligro', 'kapeligrohan'], english: DANGER },
+    { words: ['makamatay', 'ikamatay'], english: DEADLY },
+    { words: ['makadaot', 'kadaot', 'makadaut', 'kadaut', 'makaguba'], english: DESTRUCTIVE },
+    { words: ['luwas', 'kaluwasan', 'walay peligro', 'walay kapeligrohan', 'walay kuyaw', 'dili delikado', 'dili peligroso'], english: SAFE },
+    { words: ['huyang', 'mohuyang', 'nihuyang', 'naghuyang'], english: WEAK },
+    { words: ['karong gabii', 'karong gabhiona', 'unya sa gabii', 'unyang gabii'], english: ['tonight', 'this evening'] },
+    { words: ['karong adlawa', 'karon nga adlaw', 'karong adlaw'], english: ['today'] },
+    { words: ['karong buntag', 'karong buntaga', 'karong hapon', 'karong hapona', 'unya sa hapon', 'unyang hapon'], english: ['this morning', 'this afternoon'] },
+    { words: ['ugma'], english: ['tomorrow'] },
+    { words: ['hangtod sa sunod nga pahibalo', 'hangtod adunay bag-ong pahibalo'], english: ['until further notice'] },
+    { words: ['baha', 'pagbaha', 'bahaan', 'mobaha', 'gibaha', 'lunop'], english: ['flood', 'flooding', 'flash flood'] },
+    { words: ['pagdahili sa yuta', 'pagdahili', 'pagkahugno sa yuta'], english: ['landslide', 'mudslide'] },
+    { words: ['daluyong', 'bul-og', 'bul-og sa dagat'], english: ['storm surge', 'surge'] },
+    { words: ['kusog nga ulan', 'kusog nga pag-ulan', 'bunok sa ulan', 'kusog nga bunok'], english: ['heavy rain', 'heavy rainfall', 'torrential rain'] },
+    { words: ['kusog nga hangin', 'kusog kaayo nga hangin', 'kusog nga huros'], english: STRONG_WINDS },
+    { words: ['awtoridad', 'mga awtoridad', 'opisyal', 'mga opisyal', 'kapitan', 'tanod', 'rescuer', 'rescue team'], english: AUTHORITY },
+  ],
+}
+
 export const REMOTE_CONFIG_DEFAULTS = {
   /**
    * Cloud model for Firebase AI Logic. Gemini 3+ only, billing not required.
@@ -38,6 +103,8 @@ export const REMOTE_CONFIG_DEFAULTS = {
   ondevice_budget_seconds: 30,
   /** JSON array of strings; see CHECKER_CLAIM_WORDS. */
   checker_claim_words: JSON.stringify(CHECKER_CLAIM_WORDS),
+  /** JSON object of claim lists by language code; see TRANSLATION_CLAIMS. */
+  checker_translation_claims: JSON.stringify(TRANSLATION_CLAIMS),
 } as const
 
 export type RemoteConfigKey = keyof typeof REMOTE_CONFIG_DEFAULTS

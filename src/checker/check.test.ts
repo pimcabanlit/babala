@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { CHECKER_CLAIM_WORDS } from '../config/defaults'
+import { CHECKER_CLAIM_WORDS, TRANSLATION_CLAIMS } from '../config/defaults'
 import { checkDraft, checkTranslation } from './check'
 import { DAY1_CASES, DAY1_SHEET } from './fixtures/day1'
 import { GOOD_DRAFT, GOOD_FILIPINO, NANO_HINDI_DRAFT, SAMPLE_SHEET } from './fixtures/halimbawa'
-import type { CheckOptions, Issue, Rule } from './types'
+import type { CheckOptions, Issue, Rule, TranslationOptions } from './types'
 
 const OPTIONS: CheckOptions = { claimWords: [...CHECKER_CLAIM_WORDS], area: 'Purok Ilaya' }
+const FILIPINO: TranslationOptions = { claimWords: [...CHECKER_CLAIM_WORDS], translatedClaims: [...TRANSLATION_CLAIMS.fil] }
 
 /** The flagged text per rule, for compact expectations. */
 function flagged(issues: Issue[]): Partial<Record<Rule, string[]>> {
@@ -237,12 +238,12 @@ describe('plain: other scripts', () => {
     ['ñ and á', GOOD_FILIPINO.replace('lumikas na', 'lumikás na').replace('Para sa tulong', 'Para sa tulong, mga señor at señora')],
     ['an accent written as a combining mark', GOOD_FILIPINO.replace('lumikas na', 'lumika\u0301s na')],
   ])('passes a Filipino translation with %s', (_, translation) => {
-    expect(checkTranslation(GOOD_DRAFT, translation, SAMPLE_SHEET)).toEqual({ pass: true, issues: [] })
+    expect(checkTranslation(GOOD_DRAFT, translation, SAMPLE_SHEET, FILIPINO)).toEqual({ pass: true, issues: [] })
   })
 
   it('flags a word in another script in a translation', () => {
     const translation = GOOD_FILIPINO.replace('Para sa tulong', 'Para sa tulong, कृपया')
-    const { issues } = checkTranslation(GOOD_DRAFT, translation, SAMPLE_SHEET)
+    const { issues } = checkTranslation(GOOD_DRAFT, translation, SAMPLE_SHEET, FILIPINO)
     expect(issues.map((i) => [i.rule, i.subject, i.span?.text])).toEqual([['plain', 'script', 'कृपया']])
   })
 })
@@ -253,11 +254,11 @@ function DAY1_SHEET_WITH_ALL() {
 
 describe('checkTranslation', () => {
   it('passes a Filipino translation that keeps every figure and name', () => {
-    expect(checkTranslation(GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET)).toEqual({ pass: true, issues: [] })
+    expect(checkTranslation(GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET, FILIPINO)).toEqual({ pass: true, issues: [] })
   })
 
   it('rejects a changed time', () => {
-    const result = checkTranslation(GOOD_DRAFT, GOOD_FILIPINO.replace('alas-6', 'alas-7'), SAMPLE_SHEET)
+    const result = checkTranslation(GOOD_DRAFT, GOOD_FILIPINO.replace('alas-6', 'alas-7'), SAMPLE_SHEET, FILIPINO)
     expect(result.issues.map((i) => i.message)).toEqual([
       'The translation lost “6 PM” from the English alert.',
       '“alas-7 ng gabi” is in the translation but not in the English alert.',
@@ -269,24 +270,30 @@ describe('checkTranslation', () => {
       GOOD_DRAFT,
       GOOD_FILIPINO.replace('Halimbawa Elementary School gym', 'gym ng paaralan'),
       SAMPLE_SHEET,
+      FILIPINO,
     )
     expect(result.issues.map((i) => i.message)).toEqual([
       'The translation must keep the place name “Halimbawa Elementary School gym” exactly.',
+      // Since the translation check also runs rule 2, the venue words are flagged too.
+      '“na sa gym” is not an evacuation centre in the fact sheet.',
+      '“gym ng paaralan” is not an evacuation centre in the fact sheet.',
     ])
   })
 
   it('rejects an added number, a lost hotline, placeholders and emojis', () => {
     const bad = GOOD_FILIPINO.replace('0917 555 0100', '[hotline]') + ' ⚠️ 2 oras na lang.'
-    expect(checkTranslation(GOOD_DRAFT, bad, SAMPLE_SHEET).issues.map((i) => i.rule)).toEqual([
+    expect(checkTranslation(GOOD_DRAFT, bad, SAMPLE_SHEET, FILIPINO).issues.map((i) => i.rule)).toEqual([
       'placeholders',
       'translation',
       'translation',
+      // A fourth sentence, now that translations are held to rule 6's length too, then the emoji.
+      'plain',
       'plain',
     ])
   })
 
   it('accepts a Cebuano time form', () => {
     const cebuano = GOOD_FILIPINO.replace('alas-6 ng gabi', 'alas 6 sa gabii')
-    expect(checkTranslation(GOOD_DRAFT, cebuano, SAMPLE_SHEET).pass).toBe(true)
+    expect(checkTranslation(GOOD_DRAFT, cebuano, SAMPLE_SHEET, FILIPINO).pass).toBe(true)
   })
 })

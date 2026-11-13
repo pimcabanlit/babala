@@ -110,3 +110,14 @@ describe('extractFigures', () => {
     ])
   })
 })
+
+describe('Filipino and Cebuano dates', () => {
+  it.each([
+    ['Nobyembre 14', '11-14'],
+    ['ika-14 ng Nobyembre', '11-14'],
+    ['Mayo 3', '05-03'],
+    ['Marso 9', '03-09'],
+  ])('reads “%s” as %s', (text, value) => {
+    expect(normalizeDate(text)).toBe(value)
+  })
+})

@@ -8,7 +8,7 @@ The data contract for Babala: bulletin, fact sheet, draft, check result, saved a
 - **The checker compares, it doesn't judge.** Every figure and place in a draft must be in the fact sheet. Words that add severity, safety, timing or authority are allowed only when the bulletin itself uses them.
 - **One normalized form per figure.** "6 PM", "6:00 p.m.", "18:00" and "alas-6 ng gabi" are the same time. "+63 917…" is the same phone number as "0917…".
 - **The saved alert carries its own evidence.** It is saved with the confirmed fact sheet, the bulletin text included, so it can be re-checked later. It also records which model wrote it, whether the officer edited it, and who approved it when.
-- **No alert without its record.** Each approval also writes a locked ledger entry with the drafts behind it, in the same batch, and so does each withdrawal, with its reason. The rules refuse one without the other, and nobody can change or delete an entry.
+- **No alert without its record.** Each approval also writes a locked ledger entry with the drafts behind it, in the same batch, and so does each withdrawal, with its reason, and each published translation, with the English it was checked against. The rules refuse one without the other, and nobody can change or delete an entry.
 - **Same documents from the app and the rules tests.** `approvedAlert()` and `approvalWrites()` build the Firestore documents, and `tests/rules/` saves exactly those documents against `firestore.rules`.
 
 ## Conventions
@@ -109,9 +109,9 @@ Both models answer in JSON that fits one schema (`ALERT_SCHEMA` in `src/drafting
 
 ## Check result
 
-`checkDraft(text, sheet, options)` checks an English draft against rules 1 to 6. `checkTranslation(approvedEnglish, translation, sheet)` checks a translation against rule 7. Both return `{pass, issues}`, where `pass` is true only when there are no issues.
+`checkDraft(text, sheet, options)` checks an English draft against rules 1 to 6. `checkTranslation(approvedEnglish, translation, sheet, options)` checks one translation against the approved English alert and its fact sheet: rule 7, with rules 2, 4 and 6. Both return `{pass, issues}`, where `pass` is true only when there are no issues.
 
-**Options:**
+**Options of `checkDraft`:**
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -120,6 +120,17 @@ Both models answer in JSON that fits one schema (`ALERT_SCHEMA` in `src/drafting
 | `required` | signal, time, place, hotline | Facts this household's alert must include |
 | `maxSentences` | 3 | Rule 6 |
 | `maxWords` | 60 | Rule 6 |
+
+**Options of `checkTranslation`:**
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `claimWords` | — (required) | The rule 5 word list. An English claim word in a translation must be in the English alert too |
+| `translatedClaims` | — (required) | This language's claim words, each with the English words that back it (rule 7), from Remote Config |
+| `maxSentences` | 3 | Rule 6 |
+| `maxWords` | 90 | Rule 6. Filipino and Cebuano run about a third longer than English |
+
+`keptFacts(approvedEnglish, sheet)` lists the figures and place names in the English alert as written there: what a translation must keep. The translation prompt names them.
 
 **Issue** (one per problem):
 
@@ -139,26 +150,28 @@ No alert reaches a resident unless it passes every rule below and an officer app
 3. **Nothing missing.** Each household type's alert includes its required facts: signal number, time, where to go and hotline.
 4. **No placeholders.** Rejects brackets, "TBD", "XXX" and similar. It also rejects prompt wording copied into an alert ("Tell them to…", "Say that…").
 5. **No added claims.** Flags severity and safety words that aren't in the bulletin, such as "severe", "super typhoon", "safe" or "no threat".
-6. **Plain and short.** At most 3 sentences or 60 words, with no emojis, no Markdown, and only Latin letters and the digits 0 to 9. The script rule was added Nov 12 (PR #16) after Nano wrote the Hindi word "कृपया" into an English alert on the laptop and it passed. Filipino and Cebuano use Latin letters too, so translations are held to the same rule.
-7. **Translations keep the facts.** Every figure and place name in a translation is identical to the approved English alert.
+6. **Plain and short.** At most 3 sentences or 60 words, with no emojis, no Markdown, and only Latin letters and the digits 0 to 9. The script rule was added Nov 12 (PR #16) after Nano wrote the Hindi word "कृपया" into an English alert on the laptop and it passed. Filipino and Cebuano use Latin letters too, so translations are held to the same rule, with up to 90 words.
+7. **Translations say what the English says.** Each translation is checked on its own against the approved English alert and its fact sheet, never against another translation. It has exactly the English alert's figures, none lost and none added; exactly its known place names, written as the fact sheet writes them; and no claim the English doesn't make. Rules 2, 4 and 6 apply to it too.
 
 More detail on each rule:
 
 - **Figures it reads:**
   - times: "6 PM", "6 p.m.", "six PM", "18:00", "1800H", noon and midnight;
   - Filipino and Cebuano times: "alas-6 ng gabi", "alas-sais ng gabi";
-  - dates such as "Nov 14" and "14 November";
+  - dates such as "Nov 14" and "14 November", and in translations "Nobyembre 14" and "ika-14 ng Nobyembre";
   - "Signal No. 3" in several spellings ("Signal #3", "TCWS No. 3", "Signal No. Three");
   - phone numbers by their digits;
   - any other number, including "185km/h" and "1,000".
 
   A short hotline such as "911" may also appear as a plain number. Numbers inside known place names ("Purok 2") and list markers at the start of a line ("1.") are not figures. A list marker is reported once, by rule 6, as formatting.
-- **Where to go:** a venue word ("gym", "school", "church", "hall" and so on) outside a known centre name is flagged. So is a known name with a word in front that changes it ("municipal school gym"). "Purok …" and "Barangay …" must be ones the fact sheet covers. "Barangay Captain" and other titles are people, not places; the claim-word list covers them.
+- **Where to go:** a venue word ("gym", "school", "church", "hall" and so on, and in translations "paaralan", "eskwelahan", "simbahan", "bulwagan" and others) outside a known centre name is flagged. So is a known name with a word in front that changes it ("municipal school gym"). "Purok …" and "Barangay …" must be ones the fact sheet covers. "Barangay Captain" and other titles are people, not places; the claim-word list covers them.
 - **Added claims:** the word list is the Remote Config parameter `checker_claim_words`, a JSON array of strings. Its defaults are in `src/config/defaults.ts`, built from the Nov 12 drafts and grouped as severity, hazards, safety and reassurance, timing not stated as a time, and authority. A word is allowed when the bulletin itself uses it, and plurals match.
+- **Claims in translations (rule 7):** an English claim word from rule 5's list is allowed in a translation only when the English alert has it. Each Filipino or Cebuano claim word comes with the English words that back it: "mapanganib" (dangerous) needs "danger", "dangerous" or a word like them in the English alert; "ngayong gabi" and "karong gabii" (tonight) need "tonight"; "ligtas" and "luwas" (safe) need "safe". Each language has its own list, in the Remote Config parameter `checker_translation_claims` (defaults in `TRANSLATION_CLAIMS`, `src/config/defaults.ts`), grouped like rule 5's: severity, hazards, safety, timing and authority. A longer phrase is judged before a word inside it, so "walang panganib" (no danger) is a safety claim, not "panganib" (danger). The lists were written by hand for the demo and need a fluent speaker's review.
 - **Signal and hotline:** the household's area sets which signal number is required. A bulletin with no hotline doesn't require one.
 - **Placeholders are reported once.** They aren't reported again as unknown places.
 - **Known limits:**
-  - The claim words are English, so translations are held to exact figures and place names instead.
+  - A translation's claims are judged by word lists, so the checker can't read meaning: a negation ("huwag lumikas", do not evacuate) or a changed instruction with no claim word in it passes. That is why the officer reads and approves every translation before it is published.
+  - The landfall time's meaning (rule 1) is checked in English only. A translation must have the same time, but the checker doesn't read whether its sentence is about landfall.
   - Spelled-out numbers are read only for hours and signal numbers.
   - The only allowed time is the landfall time, so a bulletin with other times needs them added to the fact sheet first.
 
@@ -227,7 +240,7 @@ The reason is never on the alert or its resident copy. The reason never passes t
 - Nobody may delete an alert from the app.
 - Residents can't read alerts: they hold officers' user IDs and the bulletin. Residents read the resident copy instead.
 
-**In the console** a saved alert is read back as `SavedAlert`: id, household, area, text, source, edited, approval time (the laptop's estimate while the save waits to upload), `pending` (saved on the laptop, not yet uploaded) `ledgerId`, and `withdrawn` (the withdrawal's entry, who and when) once it is withdrawn. Alerts saved before the ledger have no `ledgerId`; they stay readable, they can be withdrawn, and the next approval adds one. A document the app can't read is listed by ID as unreadable.
+**In the console** a saved alert is read back as `SavedAlert`: id, household, area, text, source, edited, approval time (the laptop's estimate while the save waits to upload), `pending` (saved on the laptop, not yet uploaded) `ledgerId`, `withdrawn` (the withdrawal's entry, who and when) once it is withdrawn, and `factSheet`, which translations are checked against (undefined if it can't be read). Alerts saved before the ledger have no `ledgerId`; they stay readable, they can be withdrawn, and the next approval adds one. A document the app can't read is listed by ID as unreadable.
 
 **`residentAlerts/{household}__{areaKey}`.** What residents read: a copy of the alert with the same ID, with only what residents need. Written by `src/alerts/residentCopy.ts` (`activeCopy()`, `withdrawnCopy()`, through `approvalWrites()` and `withdrawalWrites()`) and `src/alerts/store.ts`, in the same batch as each approval and withdrawal. Firestore rules can't hide single fields from a reader, which is why residents get a separate document.
 
@@ -248,7 +261,15 @@ Once the alert is withdrawn, with no text:
 | status | string | `withdrawn` |
 | updatedAt | timestamp | The alert's `withdrawal.at` |
 
-Translations (Phase 3, being built separately) add `translations: { fil?: { text, ledgerId }, ceb?: { text, ledgerId } }` to a current copy. A new approval or a withdrawal replaces the whole copy, which clears them. The resident view reads only each translation's `text`.
+**Translations.** An officer publishes a checked translation by adding it to a current copy, one language per write, with a `translated` ledger entry in the same batch (*`ledger`*, below). Nothing else on the copy may change in that write.
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| translations | map, optional | Keys `fil` (Filipino) and `ceb` (Cebuano) only, each optional |
+| translations.{lang}.text | string | 1 to 1,500 characters: the translation exactly as the checker passed it and the officer approved it |
+| translations.{lang}.ledgerId | string | The `translated` ledger entry written in the same batch, which must record this text. A random ID; residents can't read the ledger |
+
+A new approval or a withdrawal replaces the whole copy, which clears them, so residents never get a translation of an English text that was replaced or withdrawn. A copy written on its own (the path for alerts saved before copies existed) may not drop published translations. The resident view reads only each translation's `text`, and shows English when there is none in the chosen language.
 
 The rules hold a copy equal to `residentCopy()` of its alert as it is after the batch: an exact map comparison, so a copy has no other field, and never an officer's user ID, the ledger ID or the bulletin. An approval or withdrawal without its copy is refused. An officer may also write a copy on its own, which is how an alert saved before copies existed gets one; it must still equal the alert. Nobody may delete a copy.
 
@@ -256,7 +277,7 @@ The rules hold a copy equal to `residentCopy()` of its alert as it is after the 
 
 **On the phone** the copies are read as `PackAlert` (`src/resident/pack.ts`) and the whole set is saved in local storage as the offline pack (`babala.pack.v1`), with the time it came from the server. The resident's purok, household and language are saved as `babala.choice.v1`. A copy the app can't read is left out and counted.
 
-**`ledger/{entryId}`.** A locked record of every change to a saved alert: an `approved` entry for each approval and a `withdrawn` entry for each withdrawal. Written by `src/ledger/record.ts` (`approvalWrites()`, `withdrawalWrites()`) and `src/alerts/store.ts` (`saveApprovedAlert()`, `withdrawAlert()`). The limits are the same in `LEDGER_LIMITS` in `src/ledger/record.ts` and in the rules.
+**`ledger/{entryId}`.** A locked record of every change to a saved alert: an `approved` entry for each approval, a `withdrawn` entry for each withdrawal and a `translated` entry for each published translation. Written by `src/ledger/record.ts` (`approvalWrites()`, `withdrawalWrites()`) and `src/alerts/store.ts` (`saveApprovedAlert()`, `withdrawAlert()`). The limits are the same in `LEDGER_LIMITS` in `src/ledger/record.ts` and in the rules.
 
 An approval writes the alert and its entry in one batch:
 
@@ -317,11 +338,37 @@ Fields of a `withdrawn` entry:
 | by | string | Must equal the signed-in officer's user ID |
 | at | timestamp | Must equal the server's time of the write |
 
-**Access:** officers may read the ledger, and create an `approved` or `withdrawn` entry only as above. Nobody may update or delete an entry. Residents never read it: it holds prompts, reasons and officers' user IDs.
+A published translation writes its text on the resident copy and its `translated` entry in one batch (`translationWrites()` in `src/translation/record.ts`, `publishTranslation()` in `src/translation/store.ts`), checked the same way in both directions:
+
+- the copy's rules read the entry as it will be after the batch, and require it to record this text in this language, against the alert's current text and approval (`approvalId` equal to the alert's `ledgerId`, `english` equal to its text), by this officer at this request's time, so it is a new entry. The alert must not be withdrawn;
+- the entry's rules require the copy's translation in its language to point at this entry.
+
+So a translation made while another officer replaced or withdrew the alert is refused when it uploads, and the console says "Not published" with the error.
+
+Fields of a `translated` entry:
+
+| Field | Type | Limit or rule |
+| --- | --- | --- |
+| kind | string | `translated` |
+| alertId | string | The alert translated, `{household}__{areaKey}` |
+| household, area | as in `alerts` | Equal to the alert's |
+| lang | string | `fil` (Filipino) or `ceb` (Cebuano) |
+| approvalId | string | The alert's `ledgerId`: the approval it translates |
+| english | string | 1 to 1,000. The alert's text, which the checker compared it with |
+| text | string | 1 to 1,500. The translation residents get, equal to the copy's |
+| source | string | `in_cloud`, `none` (the officer typed it) or `unknown` |
+| edited | bool | The officer changed the cloud's text, or typed it |
+| cloudModel | string | Up to 100. The cloud model the console used |
+| claimWords | list of strings | 1 to 500. Rule 5's English list at publication |
+| translatedClaims | list of {words, english} | 1 to 100. This language's claim list at publication, so the check can be repeated |
+| drafts | list of maps | Up to 20. The cloud calls for this alert and language since its last publication, oldest first, in the same shape as an approval's drafts (route `only_in_cloud`) |
+| draftsOmitted | int | 0 or more |
+| by | string | Must equal the signed-in officer's user ID |
+| at | timestamp | Must equal the server's time of the write |
+
+**Access:** officers may read the ledger, and create an `approved`, `withdrawn` or `translated` entry only as above. Nobody may update or delete an entry. Residents never read it: it holds prompts, reasons and officers' user IDs.
 
 **Known limit:** the rules prove that an entry was written with its alert, by that officer, at that time, and that nobody changed it since. They can't prove what a model wrote: the drafts are what the officer's app reported, the same trust as the alert's `source`.
-
-**Later kinds of entry.** Translations (Phase 3) add a `translated` entry for each published translation, written in the same batch as the translation, the same way.
 
 ## Remote Config
 
@@ -330,6 +377,7 @@ Fields of a `withdrawn` entry:
 | `cloud_model_name` | string | `gemini-3.5-flash-lite` | An empty value uses the default |
 | `ondevice_budget_seconds` | number | 30 | Zero or less uses the default |
 | `checker_claim_words` | string (JSON array of strings) | `CHECKER_CLAIM_WORDS` | Anything other than an array of non-empty strings uses the default |
+| `checker_translation_claims` | string (JSON object) | `TRANSLATION_CLAIMS` | `{"fil": [{"words": [...], "english": [...]}], "ceb": [...]}`. A missing language, an empty list or a claim without words or English words uses the whole default |
 
 Fetched at most once an hour. Offline or on error, the app keeps the last fetched values, or the defaults.
 
@@ -347,14 +395,9 @@ Each model call in the console is an attempt (`Attempt` in `src/console/useDraft
 
 Each attempt also records the area it was drafted for. "Copy test log" turns them into plain text. When the officer approves, the attempts on that card since its last approval are saved in the ledger entry (`drafts`, above), without the raw JSON.
 
-## Not defined yet
+## Translation work (in the console only)
 
-These get a schema when they are built. Nothing is stored for them today.
-
-| Data | Phase |
-| --- | --- |
-| Ledger entries for translations | 3 |
-| Translations of an approved alert, per language | 3 |
+Each active saved alert has a box per language under *Saved alerts and translations* (`src/console/Translations.tsx`, `src/console/useTranslations.ts`). "Translate" makes one "only in cloud" call; nothing retries by itself. The answer is JSON with one field (`TRANSLATION_SCHEMA` in `src/translation/prompt.ts`); if it isn't, the raw text goes to the checker. The officer can edit the text or type one, and the checker runs on every change. Each call is recorded like a draft attempt (`LedgerDraft`) and saved in the `translated` entry on publication. Calls for an earlier approval of the alert are dropped once a new approval replaces it.
 
 ## Worked example
 
@@ -457,6 +500,24 @@ In the same batch, its entry `ledger/<the entry's ID>` records the same fields, 
 }
 ```
 
-Its Filipino translation (`GOOD_FILIPINO`) passes rule 7, because it keeps every figure and place name:
+Its Filipino translation (`GOOD_FILIPINO`) passes rule 7, because it keeps every figure and place name and adds no claim:
 
 > Nakataas ang Signal No. 3 sa Purok Ilaya. Inaasahang tatama ang bagyo sa alas-6 ng gabi sa Nov 14, kaya lumikas na sa Halimbawa Elementary School gym. Para sa tulong, tumawag sa 0917 555 0100.
+
+So does its Cebuano translation (`GOOD_CEBUANO`), checked on its own against the same English:
+
+> Gipataas ang Signal No. 3 sa Purok Ilaya. Gidahom nga motugpa ang bagyo sa alas-6 sa gabii sa Nov 14, busa bakwit na karon sa Halimbawa Elementary School gym. Para sa tabang, tawag sa 0917 555 0100.
+
+A Filipino translation that says "ang mapanganib na bagyo" at "alas-7 ng gabi" fails with three problems: “mapanganib” (“danger”) is not in the English alert; “alas-7 ng gabi” is in the translation but not in the English alert; the translation lost “6 PM” from the English alert.
+
+Once published, both are on the resident copy, `residentAlerts/general__purok-ilaya`:
+
+```json
+{
+  "…": "household, area, areaKey, signal, stormName, text, status and updatedAt, as above",
+  "translations": {
+    "fil": { "text": "Nakataas ang Signal No. 3 sa Purok Ilaya. …", "ledgerId": "<the Filipino entry's ID>" },
+    "ceb": { "text": "Gipataas ang Signal No. 3 sa Purok Ilaya. …", "ledgerId": "<the Cebuano entry's ID>" }
+  }
+}
+```

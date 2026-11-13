@@ -10,6 +10,10 @@ const VENUE_WORDS = [
   'gym', 'gymnasium', 'school', 'elementary', 'hall', 'church', 'chapel', 'cathedral', 'mosque',
   'center', 'centre', 'court', 'plaza', 'stadium', 'arena', 'auditorium', 'covered court',
   'multi-purpose', 'multipurpose', 'barangay hall', 'municipal hall', 'town hall', 'capitol',
+  // Filipino and Cebuano, for translations: a centre's name stays as the fact
+  // sheet writes it, so "paaralan" (school) outside a known name is another place.
+  'paaralan', 'paaralang', 'eskwelahan', 'eskuwelahan', 'iskwelahan', 'tunghaan', 'simbahan', 'kapilya',
+  'bulwagan', 'himnasyo', 'gimnasyo', 'munisipyo', 'kapitolyo', 'plasa',
 ]
 
 /**

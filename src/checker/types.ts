@@ -76,3 +76,19 @@ export type CheckOptions = {
   maxSentences?: number
   maxWords?: number
 }
+
+/**
+ * A claim word in another language, and the English words that back it. A
+ * translation may use one of `words` only when the approved English alert
+ * says one of `english`: "mapanganib" needs "dangerous" (or "danger", …).
+ */
+export type TranslatedClaim = { words: string[]; english: string[] }
+
+export type TranslationOptions = {
+  /** The rule 5 word list: an English claim word in a translation must be in the English alert too. */
+  claimWords: string[]
+  /** Claim words in the translation's language, each with the English words that back it. */
+  translatedClaims: TranslatedClaim[]
+  maxSentences?: number
+  maxWords?: number
+}

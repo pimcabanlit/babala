@@ -4,18 +4,31 @@
  */
 import type { AlertSource, SavedAlert } from '../alerts/record'
 import type { LedgerDraft, LedgerEntry } from '../ledger/record'
+import type { PublishedTranslations } from '../translation/record'
 
 /**
  * Whether this entry is what the alert says now: "current" (for a withdrawal,
- * the alert is still withdrawn), "withdrawn" (an approval whose alert was then
- * withdrawn), "replaced" by a later approval, or "unknown" while the saved
- * alerts haven't loaded or the alert isn't among them.
+ * the alert is still withdrawn; for a translation, residents get it),
+ * "withdrawn" (an approval or translation whose alert was then withdrawn),
+ * "replaced" by a later approval or translation, or "unknown" while the saved
+ * alerts or translations haven't loaded or the alert isn't among them.
  */
 export type EntryStatus = 'current' | 'withdrawn' | 'replaced' | 'unknown'
 
-export function entryStatus(entry: LedgerEntry, saved: ReadonlyMap<string, SavedAlert> | undefined): EntryStatus {
+export function entryStatus(
+  entry: LedgerEntry,
+  saved: ReadonlyMap<string, SavedAlert> | undefined,
+  published?: ReadonlyMap<string, PublishedTranslations>,
+): EntryStatus {
   const alert = saved?.get(entry.alertId)
   if (!alert) return 'unknown'
+  if (entry.kind === 'translated') {
+    // A new approval rewrites the resident copy without translations.
+    if (alert.ledgerId !== entry.approvalId) return 'replaced'
+    if (alert.withdrawn) return 'withdrawn'
+    if (!published) return 'unknown'
+    return published.get(entry.alertId)?.[entry.lang]?.ledgerId === entry.id ? 'current' : 'replaced'
+  }
   if (entry.kind === 'withdrawn') return alert.withdrawn?.ledgerId === entry.id ? 'current' : 'replaced'
   if (alert.ledgerId !== entry.id) return 'replaced'
   return alert.withdrawn ? 'withdrawn' : 'current'

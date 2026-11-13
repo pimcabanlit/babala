@@ -172,6 +172,8 @@ export type SavedAlert = {
   ledgerId: string | undefined
   /** Set once an officer withdraws the alert; a new approval clears it. */
   withdrawn: SavedWithdrawal | undefined
+  /** The confirmed fact sheet saved with it, which a translation is checked against. */
+  factSheet: FactSheet | undefined
 }
 
 /** A withdrawal as the console shows it. The reason is only in its ledger entry. */
@@ -196,7 +198,7 @@ export function readSavedAlert(
   pending: boolean,
   withdrawnAt?: Date,
 ): SavedAlert | undefined {
-  const { household, area, text, source, edited, ledgerId, withdrawal } = data
+  const { household, area, text, source, edited, ledgerId, withdrawal, factSheet } = data
   if (!HOUSEHOLDS.some((h) => h.id === household)) return undefined
   if (typeof area !== 'string' || typeof text !== 'string' || typeof edited !== 'boolean') return undefined
   if (!ALERT_SOURCES.includes(source as AlertSource)) return undefined
@@ -207,5 +209,35 @@ export function readSavedAlert(
     if (typeof w !== 'object' || w === null || typeof w.ledgerId !== 'string' || typeof w.by !== 'string') return undefined
     withdrawn = { ledgerId: w.ledgerId, by: w.by, at: withdrawnAt }
   }
-  return { id, household: household as HouseholdId, area, text, source: source as AlertSource, edited, approvedAt, pending, ledgerId, withdrawn }
+  return {
+    id,
+    household: household as HouseholdId,
+    area,
+    text,
+    source: source as AlertSource,
+    edited,
+    approvedAt,
+    pending,
+    ledgerId,
+    withdrawn,
+    factSheet: isFactSheet(factSheet) ? factSheet : undefined,
+  }
+}
+
+/** Whether a saved value has a fact sheet's fields, enough to show it and check against it. */
+export function isFactSheet(v: unknown): v is FactSheet {
+  if (typeof v !== 'object' || v === null) return false
+  const s = v as Record<string, unknown>
+  const strings = (x: unknown) => Array.isArray(x) && x.every((i) => typeof i === 'string')
+  return (
+    typeof s.stormName === 'string' &&
+    Array.isArray(s.signals) &&
+    s.signals.every((x: unknown) => typeof x === 'object' && x !== null && typeof (x as Record<string, unknown>).area === 'string') &&
+    typeof s.landfallTime === 'string' &&
+    strings(s.evacuationCentres) &&
+    strings(s.puroks) &&
+    strings(s.barangays) &&
+    typeof s.hotline === 'string' &&
+    typeof s.bulletinText === 'string'
+  )
 }
