@@ -17,6 +17,7 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 import { EMULATORS, appCheckDebugSetting, readFirebaseEnv, wantsEmulators } from './env'
+import { browserPage, retryRecaptchaScript } from './recaptchaRetry'
 
 declare global {
   // Read by the App Check SDK before it initializes. Development only.
@@ -34,8 +35,11 @@ let services: FirebaseServices | undefined
  * Vite writes the whole object, with every VITE_ variable in .env.local, into
  * the production bundle wherever it is passed as a value.
  *
- * Starts Firebase once: App Check first, because AI Logic is enforced and
- * Firestore attaches App Check tokens only if App Check started before it.
+ * Starts Firebase once: App Check first, because it is enforced on AI Logic
+ * (and on Firestore, docs/firebase-setup.md section 4), so Firestore's first
+ * request already carries a token. If the
+ * page opened with no signal, the reCAPTCHA script App Check needs is loaded
+ * again when the signal returns (recaptchaRetry.ts).
  */
 export function getFirebase(): FirebaseServices {
   if (services) return services
@@ -64,6 +68,8 @@ export function getFirebase(): FirebaseServices {
     provider: new ReCaptchaEnterpriseProvider(env.recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
   })
+  // Straight after initializeAppCheck, before its reCAPTCHA script can fail.
+  retryRecaptchaScript(browserPage(window))
   const emulators = wantsEmulators({ DEV: import.meta.env.DEV, VITE_FIREBASE_EMULATORS: import.meta.env.VITE_FIREBASE_EMULATORS })
   // The persistent cache keeps saved alerts and the officer list on the laptop,
   // and the signed-in officer stays signed in, so approving still works with no

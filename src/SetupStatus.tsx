@@ -1,4 +1,4 @@
-import { getToken } from 'firebase/app-check'
+import { getToken, onTokenChanged } from 'firebase/app-check'
 import { useEffect, useState } from 'react'
 import { getFirebase } from './firebase'
 import { loadTunables, type Tunables } from './firebase/remoteConfig'
@@ -14,15 +14,18 @@ export default function SetupStatus() {
 
   useEffect(() => {
     if (!firebase.ok) return
-    getToken(firebase.appCheck)
-      .then((t) =>
-        setAppCheck({
-          state: 'ok',
-          detail: `token received, valid until ${new Date(t.token ? expiry(t.token) : Date.now()).toLocaleTimeString()}`,
-        }),
-      )
+    const received = (token: string) =>
+      setAppCheck({
+        state: 'ok',
+        detail: `token received, valid until ${new Date(token ? expiry(token) : Date.now()).toLocaleTimeString()}`,
+      })
+    // reCAPTCHA that never loads (no signal, or a blocker) leaves getToken waiting forever.
+    Promise.race([getToken(firebase.appCheck), noTokenAfter(APP_CHECK_WAIT_MS)])
+      .then((t) => received(t.token))
       .catch((err: unknown) => setAppCheck({ state: 'error', detail: errorText(err) }))
     loadTunables(firebase.app).then(setTunables, (err: unknown) => setTunables(new Error(errorText(err))))
+    // A token that comes later, such as when the signal returns, turns the row back to ✓.
+    return onTokenChanged(firebase.appCheck, (t) => received(t.token))
   }, [])
 
   if (!firebase.ok) {
@@ -98,6 +101,17 @@ function expiry(jwt: string): number {
   } catch {
     return Date.now()
   }
+}
+
+const APP_CHECK_WAIT_MS = 15_000
+
+function noTokenAfter(ms: number): Promise<never> {
+  return new Promise((_, reject) =>
+    setTimeout(
+      () => reject(new Error(`no token after ${ms / 1000} s. reCAPTCHA may not have loaded: no signal, or blocked by a browser extension.`)),
+      ms,
+    ),
+  )
 }
 
 function errorText(err: unknown): string {
