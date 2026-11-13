@@ -1,14 +1,22 @@
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type Auth, type User } from 'firebase/auth'
+import {
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  type Auth,
+  type User,
+} from 'firebase/auth'
 import { doc, onSnapshot, type Firestore } from 'firebase/firestore'
 import { useCallback, useEffect, useState } from 'react'
-import { OFFICERS, officerStatus, signInErrorText, type ListEntry, type SignedInUser } from './status'
+import { OFFICERS, officerStatus, signInErrorText, signInMethod, type ListEntry, type SignedInUser } from './status'
 
 function toSignedInUser(u: User): SignedInUser {
   return {
     uid: u.uid,
     name: u.displayName ?? '',
     email: u.email ?? '',
-    google: u.providerData.some((p) => p.providerId === GoogleAuthProvider.PROVIDER_ID),
+    method: signInMethod(u.providerData.map((p) => p.providerId)),
   }
 }
 
@@ -25,7 +33,7 @@ export function useOfficer(auth: Auth, db: Firestore) {
 
   useEffect(() => onAuthStateChanged(auth, (u) => setUser(u ? toSignedInUser(u) : null)), [auth])
 
-  const uid = user?.google ? user.uid : undefined
+  const uid = user && user.method !== 'other' ? user.uid : undefined
   useEffect(() => {
     if (!uid) return
     return onSnapshot(
@@ -36,18 +44,30 @@ export function useOfficer(auth: Auth, db: Firestore) {
     )
   }, [db, uid])
 
-  const signIn = useCallback(async () => {
+  const attempt = useCallback(async (method: 'google' | 'password', run: () => Promise<unknown>) => {
     setSignInError(undefined)
     setBusy(true)
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider())
+      await run()
     } catch (err) {
       const code = typeof err === 'object' && err && 'code' in err ? String(err.code) : ''
-      setSignInError(signInErrorText(code, err instanceof Error ? err.message : String(err)))
+      setSignInError(signInErrorText(method, code, err instanceof Error ? err.message : String(err)))
     } finally {
       setBusy(false)
     }
-  }, [auth])
+  }, [])
+
+  const signIn = useCallback(
+    () => attempt('google', () => signInWithPopup(auth, new GoogleAuthProvider())),
+    [auth, attempt],
+  )
+
+  /** The judges' shared test officer account, made by the project owner in the Firebase console. */
+  const signInAsTestOfficer = useCallback(
+    (email: string, password: string) =>
+      attempt('password', () => signInWithEmailAndPassword(auth, email.trim(), password)),
+    [auth, attempt],
+  )
 
   const leave = useCallback(async () => {
     setSignInError(undefined)
@@ -60,5 +80,5 @@ export function useOfficer(auth: Auth, db: Firestore) {
 
   // An entry for another user (just signed out and in again) doesn't count.
   const current = entry && entry.uid === uid ? entry.entry : undefined
-  return { status: officerStatus(user, current), signIn, signOut: leave, signInError, busy }
+  return { status: officerStatus(user, current), signIn, signInAsTestOfficer, signOut: leave, signInError, busy }
 }

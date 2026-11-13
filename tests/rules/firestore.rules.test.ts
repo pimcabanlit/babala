@@ -43,8 +43,14 @@ const OFFICER = 'officer-1'
 const OTHER_OFFICER = 'officer-2'
 const STRANGER = 'google-user-not-on-list'
 const RESIDENT = 'anonymous-resident'
+/** The judges' shared test officer: an email and password account on the list. */
+const TEST_OFFICER = 'test-officer'
+const EMAIL_STRANGER = 'email-user-not-on-list'
+const PHONE_USER = 'phone-user-on-list'
 
 const google = { firebase: { sign_in_provider: 'google.com' as const } }
+const password = { firebase: { sign_in_provider: 'password' as const } }
+const phone = { firebase: { sign_in_provider: 'phone' as const } }
 const anonymous = { firebase: { sign_in_provider: 'anonymous' as const } }
 
 let env: RulesTestEnvironment
@@ -68,12 +74,18 @@ beforeEach(async () => {
     await setDoc(doc(db, 'officers', OTHER_OFFICER), { name: 'Second test officer' })
     // Someone on the list who signed in anonymously: still not an officer.
     await setDoc(doc(db, 'officers', RESIDENT), { name: 'Listed but anonymous' })
+    await setDoc(doc(db, 'officers', TEST_OFFICER), { name: 'Test officer for judges' })
+    // On the list, but signed in a way officers never use.
+    await setDoc(doc(db, 'officers', PHONE_USER), { name: 'Listed but signed in by phone' })
   })
 })
 
 const officerDb = (uid = OFFICER) => env.authenticatedContext(uid, google).firestore()
 const strangerDb = () => env.authenticatedContext(STRANGER, google).firestore()
 const residentDb = () => env.authenticatedContext(RESIDENT, anonymous).firestore()
+const testOfficerDb = () => env.authenticatedContext(TEST_OFFICER, password).firestore()
+const emailStrangerDb = () => env.authenticatedContext(EMAIL_STRANGER, password).firestore()
+const phoneUserDb = () => env.authenticatedContext(PHONE_USER, phone).firestore()
 const visitorDb = () => env.unauthenticatedContext().firestore()
 type TestDb = ReturnType<typeof officerDb>
 
@@ -1258,6 +1270,78 @@ describe('translations after the alert changes', () => {
     await seedTranslation('fil')
     const { translations: _translations, ...copy } = (await storedCopy())!
     await assertFails(setDoc(doc(officerDb(), RESIDENT_ALERTS, ALERT_ID), copy))
+  })
+})
+
+describe('the judges’ test officer, signed in with an email and password', () => {
+  it('lets the test officer save an approved alert and its entry', async () => {
+    await assertSucceeds(save(testOfficerDb(), pair(TEST_OFFICER)))
+  })
+
+  it('lets the test officer replace another officer’s approval, keeping the old entry', async () => {
+    await seedApproval()
+    await assertSucceeds(save(testOfficerDb(), pair(TEST_OFFICER)))
+    await assertSucceeds(getDoc(doc(officerDb(), LEDGER, OLD_LEDGER_ID)))
+  })
+
+  it('lets the test officer withdraw an alert', async () => {
+    await seedApproval()
+    await assertSucceeds(withdraw(testOfficerDb(), withdrawalPair(TEST_OFFICER)))
+  })
+
+  it('lets the test officer read the saved alerts and the ledger', async () => {
+    await seedApproval()
+    await assertSucceeds(getDocs(collection(testOfficerDb(), ALERTS)))
+    await assertSucceeds(getDocs(query(collection(testOfficerDb(), LEDGER), orderBy('at', 'desc'), limit(LEDGER_PAGE))))
+  })
+
+  it('stops the test officer naming a Google officer as the approver', async () => {
+    await assertFails(save(testOfficerDb(), pair(OFFICER)))
+  })
+
+  it('does not let the test officer change or delete a ledger entry', async () => {
+    await seedApproval()
+    await assertFails(updateDoc(doc(testOfficerDb(), LEDGER, OLD_LEDGER_ID), { text: 'Changed.' }))
+    await assertFails(deleteDoc(doc(testOfficerDb(), LEDGER, OLD_LEDGER_ID)))
+  })
+
+  it('does not let the test officer delete a saved alert', async () => {
+    await seedApproval()
+    await assertFails(deleteDoc(doc(testOfficerDb(), ALERTS, ALERT_ID)))
+  })
+
+  it('does not let the test officer add someone to the officer list or leave it', async () => {
+    await assertFails(setDoc(doc(testOfficerDb(), 'officers', EMAIL_STRANGER), { name: 'Friend' }))
+    await assertFails(deleteDoc(doc(testOfficerDb(), 'officers', TEST_OFFICER)))
+  })
+
+  it('stops an email and password user who is not on the list from saving', async () => {
+    await assertFails(save(emailStrangerDb(), pair(EMAIL_STRANGER)))
+  })
+
+  it('stops an email and password user who is not on the list from withdrawing', async () => {
+    await seedApproval()
+    await assertFails(withdraw(emailStrangerDb(), withdrawalPair(EMAIL_STRANGER)))
+  })
+
+  it('does not let an email and password user who is not on the list read alerts or the ledger', async () => {
+    await seedApproval()
+    await assertFails(getDocs(collection(emailStrangerDb(), ALERTS)))
+    await assertFails(getDocs(collection(emailStrangerDb(), LEDGER)))
+  })
+
+  it('lets an email and password user who is not on the list learn that, by reading their missing entry', async () => {
+    await assertSucceeds(getDoc(doc(emailStrangerDb(), 'officers', EMAIL_STRANGER)))
+  })
+
+  it('does not let an email and password user add themselves to the list', async () => {
+    await assertFails(setDoc(doc(emailStrangerDb(), 'officers', EMAIL_STRANGER), { name: 'Me' }))
+  })
+
+  it('stops a user on the list who signed in some other way, such as by phone', async () => {
+    await seedApproval()
+    await assertFails(save(phoneUserDb(), pair(PHONE_USER)))
+    await assertFails(getDocs(collection(phoneUserDb(), ALERTS)))
   })
 })
 

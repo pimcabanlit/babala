@@ -1,6 +1,6 @@
 import type { Auth } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
-import { useState, type ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { getFirebase } from '../firebase'
 import type { SignedInUser } from './status'
 import { useOfficer } from './useOfficer'
@@ -27,7 +27,7 @@ export default function OfficerGate({ children }: { children: (session: OfficerS
 }
 
 function Gate({ auth, db, children }: { auth: Auth; db: Firestore; children: (session: OfficerSession) => ReactNode }) {
-  const { status, signIn, signOut, signInError, busy } = useOfficer(auth, db)
+  const { status, signIn, signInAsTestOfficer, signOut, signInError, busy } = useOfficer(auth, db)
 
   if (status.kind === 'starting')
     return (
@@ -50,6 +50,7 @@ function Gate({ auth, db, children }: { auth: Auth; db: Firestore; children: (se
         >
           {busy ? 'Signing in…' : 'Sign in with Google'}
         </button>
+        <TestOfficerSignIn busy={busy} onSignIn={signInAsTestOfficer} />
         {signInError && <p className="mt-3 rounded bg-red-50 p-2 text-sm text-red-800">{signInError}</p>}
       </Panel>
     )
@@ -74,6 +75,12 @@ function Gate({ auth, db, children }: { auth: Auth; db: Firestore; children: (se
           )}
           <span className="ml-auto">{signOutButton}</span>
         </div>
+        {status.kind === 'officer' && status.user.method === 'password' && (
+          <p className="mt-3 text-sm text-slate-600">
+            This is the shared test officer account for judges. Other judges see what you approve or withdraw, and the
+            ledger records it under this account.
+          </p>
+        )}
         {status.kind === 'checking' && <p className="mt-3 text-sm text-slate-600">Checking the officer list…</p>}
         {status.kind === 'offline' && (
           <p className="mt-3 rounded bg-amber-100 p-2 text-sm text-amber-950">
@@ -98,9 +105,67 @@ function Gate({ auth, db, children }: { auth: Auth; db: Firestore; children: (se
 function Who({ user }: { user: SignedInUser }) {
   return (
     <p className="text-sm">
-      Signed in as <span className="font-medium">{user.name || user.email || 'a Google user'}</span>
+      Signed in as <span className="font-medium">{user.name || user.email || 'an unnamed user'}</span>
       {user.name && user.email && <span className="text-slate-600"> ({user.email})</span>}
     </p>
+  )
+}
+
+/**
+ * Email sign-in for the one test officer account that judges share. Folded
+ * away, since real officers use Google. The email and password are only in
+ * the private testing instructions, never in the repo or the page.
+ */
+function TestOfficerSignIn({
+  busy,
+  onSignIn,
+}: {
+  busy: boolean
+  onSignIn: (email: string, password: string) => Promise<void>
+}) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    void onSignIn(email, password)
+  }
+  const field = 'mt-1 block w-full max-w-sm rounded border border-slate-300 px-2 py-1 text-sm'
+  return (
+    <details className="mt-4 text-sm">
+      <summary className="cursor-pointer font-medium text-slate-700">Judges: sign in with the test officer account</summary>
+      <form onSubmit={submit} className="mt-3 space-y-2">
+        <p className="text-slate-600">Use the email and password from the testing instructions.</p>
+        <label className="block">
+          <span className="text-slate-700">Email</span>
+          <input
+            type="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={field}
+          />
+        </label>
+        <label className="block">
+          <span className="text-slate-700">Password</span>
+          <input
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={field}
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+        >
+          {busy ? 'Signing in…' : 'Sign in as test officer'}
+        </button>
+      </form>
+    </details>
   )
 }
 

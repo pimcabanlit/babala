@@ -47,7 +47,7 @@ The docs in `docs/` are the source of truth. The first plan doc (https://claude.
 | AI | Firebase AI Logic (Gemini Developer API backend), hybrid inference modes |
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, enforced on AI Logic; debug token locally |
 | Data | Firestore (`(default)`, asia-southeast1) with offline cache |
-| Auth | Google sign-in for officers, anonymous sign-in for residents |
+| Auth | Google sign-in for officers, one email and password test officer for judges, anonymous sign-in for residents |
 | Config | Remote Config (`ondevice_budget_seconds` = 30, `cloud_model_name`, `checker_claim_words`, `checker_translation_claims`) |
 | Hosting | Firebase Hosting, deployed by GitHub Actions |
 | Tests | Vitest for the checker and routing logic |
