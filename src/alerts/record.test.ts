@@ -137,4 +137,26 @@ describe('readSavedAlert', () => {
   it('ignores a document whose ledger entry ID is not a string', () => {
     expect(readSavedAlert('x', { ...data, ledgerId: 7 }, at, false)).toBeUndefined()
   })
+
+  it('reads an alert that is not withdrawn', () => {
+    expect(readSavedAlert('x', data, at, false)?.withdrawn).toBeUndefined()
+  })
+
+  it('reads who withdrew an alert, when, and the entry that records it', () => {
+    const withdrawnAt = new Date('2026-11-14T09:00:00Z')
+    const withdrawal = { ledgerId: 'WithdrawWithdraw0001', by: 'officer-1', at: 'server time' }
+    expect(readSavedAlert('x', { ...data, withdrawal }, at, false, withdrawnAt)?.withdrawn).toEqual({
+      ledgerId: 'WithdrawWithdraw0001',
+      by: 'officer-1',
+      at: withdrawnAt,
+    })
+  })
+
+  it('ignores a document whose withdrawal has no ledger entry', () => {
+    expect(readSavedAlert('x', { ...data, withdrawal: { by: 'officer-1' } }, at, false)).toBeUndefined()
+  })
+
+  it('ignores a document whose withdrawal is not a map', () => {
+    expect(readSavedAlert('x', { ...data, withdrawal: true }, at, false)).toBeUndefined()
+  })
 })

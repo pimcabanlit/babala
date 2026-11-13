@@ -51,12 +51,14 @@ export default function DraftCard(props: Props) {
   const current = draft.running ? draft.attempts.at(-1) : undefined
   const elapsed = current && current.endedMs === undefined ? now - current.startedAt : 0
   const overBudget = current?.route === 'prefer_on_device' && current.endedMs === undefined && elapsed > budgetSeconds * 1000
+  // Once its alert is withdrawn, the card can approve the same text again, e.g. after a withdrawal by mistake.
+  const approved = draft.approved && !props.saved?.withdrawn
 
   return (
     <article aria-label={`${household.label} alert`} className="rounded border border-slate-200 p-3">
       <header className="flex flex-wrap items-center gap-2">
         <h3 className="font-semibold">{household.label}</h3>
-        <Status draft={draft} passed={result?.pass} />
+        <Status running={draft.running} approved={approved} passed={result?.pass} />
         <div className="ml-auto flex gap-2">
           <button
             type="button"
@@ -69,10 +71,10 @@ export default function DraftCard(props: Props) {
           <button
             type="button"
             onClick={props.onApprove}
-            disabled={draft.running || draft.approved || !result?.pass}
+            disabled={draft.running || approved || !result?.pass}
             className="rounded bg-emerald-700 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-600 disabled:bg-slate-300"
           >
-            {draft.approved ? 'Approved' : 'Approve and save'}
+            {approved ? 'Approved' : 'Approve and save'}
           </button>
         </div>
       </header>
@@ -156,38 +158,54 @@ export default function DraftCard(props: Props) {
   )
 }
 
-/** The saved alert: when, whether it has uploaded, its ledger entry, and its text when the card shows something else. */
+/**
+ * The saved alert: when, whether it has uploaded, its latest ledger entry, and
+ * its text when the card shows something else. A withdrawn alert says so.
+ */
 function Saved({ saved, current, onShowLedger }: { saved: SavedAlert; current: string; onShowLedger: (ledgerId: string) => void }) {
-  const when = saved.approvedAt ? ` at ${formatTime(saved.approvedAt)}` : ''
-  const { ledgerId } = saved
+  const { withdrawn } = saved
+  const at = withdrawn ? withdrawn.at : saved.approvedAt
+  const when = at ? ` at ${formatTime(at)}` : ''
+  const entryId = withdrawn?.ledgerId ?? saved.ledgerId
+  const state = withdrawn
+    ? `Withdrawn${when}${saved.pending ? ' on this laptop, uploading when it is back online' : ''}. Residents no longer get it. Approve a new alert to replace it.`
+    : saved.pending
+      ? `Saved on this laptop${when}. It uploads when the laptop is back online.`
+      : `Saved online${when}.`
   return (
-    <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-950">
+    <div
+      className={`mt-2 rounded border p-2 text-sm ${withdrawn ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`}
+    >
       <p>
-        {saved.pending
-          ? `Saved on this laptop${when}. It uploads when the laptop is back online.`
-          : `Saved online${when}.`}{' '}
-        {ledgerId ? (
-          <button type="button" onClick={() => onShowLedger(ledgerId)} className="font-semibold underline">
+        {state}{' '}
+        {entryId ? (
+          <button type="button" onClick={() => onShowLedger(entryId)} className="font-semibold underline">
             See its ledger entry
           </button>
         ) : (
           'Saved before the ledger, so it has no entry.'
         )}
       </p>
-      {saved.text !== current && (
-        <>
-          <p className="mt-1 text-emerald-900">The saved alert stays until you approve a new one:</p>
-          <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-emerald-300 pl-2">{saved.text}</blockquote>
-        </>
-      )}
+      {saved.text !== current &&
+        (withdrawn ? (
+          <>
+            <p className="mt-1">The withdrawn alert:</p>
+            <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-amber-300 pl-2 line-through">{saved.text}</blockquote>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-emerald-900">The saved alert stays until you approve a new one:</p>
+            <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-emerald-300 pl-2">{saved.text}</blockquote>
+          </>
+        ))}
     </div>
   )
 }
 
-function Status({ draft, passed }: { draft: Draft; passed: boolean | undefined }) {
-  const [label, style] = draft.running
+function Status({ running, approved, passed }: { running: boolean; approved: boolean; passed: boolean | undefined }) {
+  const [label, style] = running
     ? ['Drafting', 'bg-slate-200 text-slate-800']
-    : draft.approved
+    : approved
       ? ['Approved', 'bg-emerald-700 text-white']
       : passed === undefined
         ? ['Empty', 'bg-slate-100 text-slate-600']

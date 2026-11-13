@@ -59,7 +59,8 @@ Dashed lines are planned. `src/ai/` is the only module that imports `firebase/ai
 6. **Approve and save.** "Approve and save" stays off until the alert passes. On approval the checker runs again on the exact text, and the alert is saved to `alerts/{household}__{areaKey}`, replacing the last one for that household and area. Its ledger entry is written in the same batch (step 9). Offline, the save waits in the Firestore cache on the laptop and uploads when the connection is back.
 7. **Translate** (planned). The cloud translates each approved alert into Filipino and the chosen local languages. Rule 7 checks each translation against the approved English alert before it is published.
 8. **Deliver** (planned). Residents' phones read their alert and keep the whole pack for offline use.
-9. **Keep the record.** Every approval writes a locked ledger entry with the alert: the confirmed fact sheet and bulletin, every model draft on that card since its last approval (which model, how long, the checker's verdict and each problem), any hand edit, the claim words the checker used, and who approved it when. The rules refuse an alert without its entry, and nobody can change or delete an entry. The console's *Ledger* section traces each alert from the bulletin to the saved text. Withdrawals and translations will add their own entries.
+9. **Keep the record.** Every approval writes a locked ledger entry with the alert: the confirmed fact sheet and bulletin, every model draft on that card since its last approval (which model, how long, the checker's verdict and each problem), any hand edit, the claim words the checker used, and who approved it when. The rules refuse an alert without its entry, and nobody can change or delete an entry. The console's *Ledger* section traces each alert from the bulletin to the saved text. Translations will add their own entries.
+10. **Withdraw.** An officer can withdraw a saved alert from the console's *Saved alerts* section, with a reason. The alert keeps its text and approval, gains a `withdrawal` mark so residents stop getting it, and a `withdrawn` ledger entry records the text, the approval it withdraws and the reason, in the same batch. The reason stays in the ledger only. Approving a new alert for the same household and area replaces the withdrawn one. Offline, the withdrawal waits on the laptop like a save.
 
 ## Components
 
@@ -81,7 +82,8 @@ Dashed lines are planned. `src/ai/` is the only module that imports `firebase/ai
 | Resident view | Not started | Purok and household picker, alert in the resident's language, ask | Planned (Phase 3) |
 | Offline pack | Not started | Installable offline web app; the alert pack on the phone | Planned (Phase 3) |
 | Translations | Not started (`checkTranslation` is built) | Cloud-only translation, checked by rule 7 | Planned (Phase 3) |
-| Ledger | `src/ledger/`, `src/console/Ledger.tsx`, Firestore `ledger` | A locked entry per approval, written with the alert: facts, drafts and checks with the model and time, edits, approver. Withdrawals and translations next | Built (approvals) |
+| Ledger | `src/ledger/`, `src/console/Ledger.tsx`, Firestore `ledger` | A locked entry per approval, written with the alert: facts, drafts and checks with the model and time, edits, approver. A locked entry per withdrawal, with the reason. Translations next | Built (approvals and withdrawals) |
+| Saved alerts | `src/console/SavedAlerts.tsx` | Every saved alert, active or withdrawn, and the place to withdraw one | Built |
 | Hosting | Not started | Public URL for judges until Dec 16, deployed by GitHub Actions | Planned (Phase 4) |
 
 ## Screens
@@ -95,8 +97,9 @@ Two users share one web app: a barangay disaster officer on a laptop running Chr
 - **Models.** The on-device status, a "Prepare on-device model" button while Nano isn't downloaded, the warm-up time, and whether the cloud is online.
 - **1. Bulletin.** Paste a bulletin, then "Read bulletin" or "Use the demo bulletin".
 - **2. Fact sheet.** One field per fact, a list of facts not found, and "I checked every fact against the bulletin".
-- **3. Draft, check and approve.** Area picker, "Draft all four", and one card per household. Each card has its own draft button, a streamed text with a source badge, highlighted problems and an editable text. It also shows "Use the cloud instead" after the budget (online only), "Approve and save", and the saved alert with its upload state and a "See its ledger entry" link. "Copy test log" copies every prompt, answer and problem.
-- **4. Ledger.** The latest 50 approvals, newest first, each marked "Current alert" or "Replaced", and "Not uploaded yet" while offline. Each opens into its trace: the bulletin and confirmed facts, each draft with its model, time, verdict, problems and prompt, any hand edit, and the approval with who and when.
+- **3. Draft, check and approve.** Area picker, "Draft all four", and one card per household. Each card has its own draft button, a streamed text with a source badge, highlighted problems and an editable text. It also shows "Use the cloud instead" after the budget (online only), "Approve and save", and the saved alert with its upload state and a "See its ledger entry" link. A withdrawn alert says so on its card, and "Approve and save" turns back on so the officer can replace it. "Copy test log" copies every prompt, answer and problem.
+- **4. Saved alerts.** Every saved alert in every area, by area and household, marked "Active" or "Withdrawn", and "Not uploaded yet" while offline. Each has a "See its ledger entry" link and, while active, "Withdraw", which asks for a reason (up to 300 characters, kept in the ledger only). It needs no bulletin, so an officer can withdraw an alert straight after opening the console.
+- **5. Ledger.** The latest 50 approvals and withdrawals, newest first. An approval is marked "Current alert", "Withdrawn" or "Replaced", a withdrawal "Still withdrawn" or "Replaced", and either "Not uploaded yet" while offline. Each opens into its trace. An approval shows the bulletin and confirmed facts, each draft with its model, time, verdict, problems and prompt, any hand edit, and the approval with who and when. A withdrawal shows the withdrawn text, a link to the approval it withdrew, and who withdrew it, when and why.
 
 **Resident view (phone), planned.**
 
@@ -172,14 +175,15 @@ The approval also refuses to save while the claim-word list hasn't loaded, becau
   - `approvedBy` must be the signed-in user and `approvedAt` the server's time.
   - The area and its signal must be in the fact sheet saved with the alert.
   - Every alert write comes with a new ledger entry in the same batch that records it exactly, and an entry can't be written without its alert. Officers may read the ledger; nobody can change or delete an entry.
+  - Withdrawing adds only a `withdrawal` mark (entry ID, the signed-in officer, the server's time) to an alert that has none, with a `withdrawn` entry in the same batch that names the alert's text and current approval. A withdrawn alert can only be replaced by a new approval.
   - Nobody can delete an alert, and everything else is denied.
-  - Tested on the Firestore emulator (`npm run test:rules`, 65 cases, in CI).
+  - Tested on the Firestore emulator (`npm run test:rules`, 103 cases, in CI). Each withdrawal check was broken on purpose to confirm a test catches it.
 - **Residents** will sign in anonymously and get read access with the resident view. Anonymous sign-in is turned on in the project, but the app doesn't use it yet, and the rules give residents no access today.
 - **AI quota.** Drafting is inside the officer console, so visitors who aren't officers can't use the AI quota. App Check is enforced on AI Logic, with limited-use tokens.
 
 ## Offline
 
-- **Laptop (built).** Nano drafts with Wi-Fi off. The checker is plain code, so it runs offline too. Firestore's persistent cache (`persistentLocalCache` with a multi-tab manager) keeps the saved alerts, the ledger and the officer list. A save made offline, alert and ledger entry together, waits on the laptop, and the card and the ledger say it uploads when the laptop is back online. Remote Config keeps the last fetched values, or the defaults, when it can't fetch.
+- **Laptop (built).** Nano drafts with Wi-Fi off. The checker is plain code, so it runs offline too. Firestore's persistent cache (`persistentLocalCache` with a multi-tab manager) keeps the saved alerts, the ledger and the officer list. A save or a withdrawal made offline, alert and ledger entry together, waits on the laptop, and the card, the saved alerts and the ledger say it uploads when the laptop is back online. If another officer replaced the alert in the meantime, the withdrawal is refused on upload and the console says so. Remote Config keeps the last fetched values, or the defaults, when it can't fetch.
 - **Phone (planned).** The installable offline pack, and the no-AI text search fallback for questions.
 
 ## Configuration
@@ -202,14 +206,14 @@ The approval also refuses to save while the claim-word list hasn't loaded, becau
 - **A model never vouches for itself.** Every alert passes the code checker before approval, and again when it is saved.
 - **The officer approves** every alert, and the officer list is edited only in the Firebase console.
 - **The saved record says who and what.** It includes which model wrote the text (`on_device`, `in_cloud`, `none` when typed, or `unknown`), whether the officer edited it, the approver's user ID (no name or email), the server time, and the confirmed fact sheet, so the alert can be re-checked later.
-- **A locked ledger.** Every approval writes an entry with the drafts and checks behind it, in the same batch as the alert. The rules refuse one without the other, and no one can change or delete an entry, so replacing an alert never erases its history.
+- **A locked ledger.** Every approval writes an entry with the drafts and checks behind it, in the same batch as the alert, and every withdrawal writes one with its reason. The rules refuse one without the other, and no one can change or delete an entry, so replacing or withdrawing an alert never erases its history.
 - **Bounded AI use.** At most three AI calls per alert, and never a second cloud call.
 - **No secrets in the repo.** The Firebase config, reCAPTCHA key and App Check debug token live in `.env.local` and GitHub secrets. The App Check debug token is used only in development builds.
 - **Fictional data** and the demo banner on every page.
 
 ## Testing and CI
 
-- `npm run check`: typecheck, oxlint (warnings fail), Vitest and a production build. On Nov 12: 19 test files, 264 tests.
+- `npm run check`: typecheck, oxlint (warnings fail), Vitest and a production build. On Nov 12: 20 test files, 286 tests.
 - `npm run test:rules`: the Firestore rules on the emulator (Java 21).
 - CI (`.github/workflows/ci.yml`) runs both on every pull request and on pushes to `main`. It never deploys.
 - Gemini Nano can't run in CI or in a cloud session, so Pim tests on-device changes on the laptop before merging.

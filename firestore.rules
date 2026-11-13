@@ -9,9 +9,10 @@ rules_version = '2';
 // documents in the Firebase console, which these rules don't apply to; the
 // app can't write them. Everything not allowed below is denied.
 //
-// Every saved alert has a ledger entry, written in the same batch: the rules
-// refuse an alert without its entry and an entry without its alert. Entries
-// can't be changed or deleted, so the ledger keeps every approval.
+// Every change to a saved alert (an approval or a withdrawal) has a ledger
+// entry, written in the same batch: the rules refuse the change without its
+// entry and an entry without its change. Entries can't be changed or deleted,
+// so the ledger keeps every approval and withdrawal.
 //
 // Residents (anonymous sign-in) get read access to alerts in the resident
 // view step, not yet. They never read the ledger.
@@ -55,11 +56,17 @@ rules_version = '2';
 //   - approvedAt: timestamp, the server's time of the write
 //   - ledgerId: string, the 20-character ID of the ledger entry written in
 //     the same batch, which must record this alert exactly
+//   - withdrawal: map (optional), added when an officer withdraws the alert;
+//     nothing else may change then. A new approval replaces the whole alert,
+//     which clears it.
+//       ledgerId: string, the withdrawal's ledger entry, written in the same batch
+//       by: string, the signed-in officer's user ID
+//       at: timestamp, the server's time of the write
 //
 // Collection: ledger
 // Document ID: a 20-character auto ID made by the app.
-//   One entry per change to a saved alert. Today the only kind is
-//   "approved"; withdrawals and translations add their own kinds later.
+//   One entry per change to a saved alert: "approved" or "withdrawn".
+//   Translations add their own kind later.
 //   Written by src/ledger/record.ts and src/alerts/store.ts. Keep the limits
 //   here the same as LEDGER_LIMITS in src/ledger/record.ts.
 // Fields of an "approved" entry (all required):
@@ -71,6 +78,16 @@ rules_version = '2';
 //   - claimWords: list of strings (1 to 500), the checker's word list
 //   - drafts: list of maps (up to 20), the model calls behind the approval
 //   - draftsOmitted: int, 0 or more, older drafts left out
+//   - by: string, the signed-in officer's user ID
+//   - at: timestamp, the server's time of the write
+// Fields of a "withdrawn" entry (all required):
+//   - kind: "withdrawn"
+//   - alertId: string, the alert withdrawn
+//   - household, area, text: equal to the alert's
+//   - approvalId: string, the alert's ledgerId before the withdrawal, or
+//     empty for an alert saved before the ledger
+//   - reason: string, 1 to 300 characters. Only here, never on the alert:
+//     residents will read alerts, and the reason never passes the checker.
 //   - by: string, the signed-in officer's user ID
 //   - at: timestamp, the server's time of the write
 //
@@ -200,6 +217,59 @@ service cloud.firestore {
       return alert.ledgerId == entryId && alert.approvedAt == request.time;
     }
 
+    // Withdrawing adds the withdrawal field to a saved alert that has none,
+    // and changes nothing else.
+    function isValidWithdrawal(alertId) {
+      let before = resource.data;
+      let after = request.resource.data;
+      let w = after.withdrawal;
+      return !('withdrawal' in before)
+        && after.diff(before).affectedKeys().hasOnly(['withdrawal'])
+        && w is map
+        && w.keys().hasAll(['ledgerId', 'by', 'at'])
+        && w.keys().hasOnly(['ledgerId', 'by', 'at'])
+        && isLedgerId(w.ledgerId)
+        && w.by == request.auth.uid
+        && w.at == request.time
+        && recordsThisWithdrawal(alertId, before, w);
+    }
+
+    // The withdrawal's ledger entry, as it will be after this batch, records
+    // exactly this alert and the approval it withdraws. Its time is this
+    // request's, so it is a new entry written in the same batch.
+    function recordsThisWithdrawal(alertId, before, w) {
+      let entry = getAfter(/databases/$(database)/documents/ledger/$(w.ledgerId)).data;
+      return entry.kind == 'withdrawn'
+        && entry.alertId == alertId
+        && entry.household == before.household
+        && entry.area == before.area
+        && entry.text == before.text
+        && entry.approvalId == before.get('ledgerId', '')
+        && entry.by == w.by
+        && entry.at == w.at;
+    }
+
+    // A withdrawal's entry. Its alert fields are checked through the alert,
+    // whose withdrawal must be written in the same batch and point at it.
+    function isValidWithdrawnEntry(entryId, data) {
+      let fields = ['kind', 'alertId', 'household', 'area', 'text', 'approvalId', 'reason', 'by', 'at'];
+      return data.keys().hasAll(fields)
+        && data.keys().hasOnly(fields)
+        && data.kind == 'withdrawn'
+        && isString(data.alertId, 4, 200)
+        && data.alertId.matches('^[a-z]+__[a-z0-9]+(-[a-z0-9]+)*$')
+        && (data.approvalId == '' || isLedgerId(data.approvalId))
+        && isString(data.reason, 1, 300)
+        && data.by == request.auth.uid
+        && data.at == request.time
+        && isWithdrawnWithItsAlert(entryId, data.alertId);
+    }
+
+    function isWithdrawnWithItsAlert(entryId, alertId) {
+      let alert = getAfter(/databases/$(database)/documents/alerts/$(alertId)).data;
+      return alert.withdrawal.ledgerId == entryId && alert.withdrawal.at == request.time;
+    }
+
     // ---------- Collections ----------
 
     // The officer list: each user may read only their own entry, to learn
@@ -210,18 +280,23 @@ service cloud.firestore {
     }
 
     // Approved alerts. Saving a new approval replaces the old one (update),
-    // always together with a new ledger entry. No deletes from the app.
+    // and withdrawing marks it withdrawn (update), each together with a new
+    // ledger entry. No deletes from the app.
     match /alerts/{alertId} {
       allow read: if isOfficer();
-      allow create, update: if isOfficer() && isValidAlert(alertId, request.resource.data);
+      allow create: if isOfficer() && isValidAlert(alertId, request.resource.data);
+      allow update: if isOfficer()
+        && (isValidAlert(alertId, request.resource.data) || isValidWithdrawal(alertId));
       allow delete: if false;
     }
 
-    // The ledger: written only together with the alert it records, and never
-    // changed or deleted. Officers only.
+    // The ledger: written only together with the change to the alert it
+    // records, and never changed or deleted. Officers only.
     match /ledger/{entryId} {
       allow read: if isOfficer();
-      allow create: if isOfficer() && isValidApprovedEntry(entryId, request.resource.data);
+      allow create: if isOfficer()
+        && (isValidApprovedEntry(entryId, request.resource.data)
+            || isValidWithdrawnEntry(entryId, request.resource.data));
       allow update, delete: if false;
     }
   }

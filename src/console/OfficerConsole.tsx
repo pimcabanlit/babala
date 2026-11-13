@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { canPrepare, describeDeviceStatus } from '../ai/deviceStatus'
-import { alertDocId, approvedAlert, areaKey } from '../alerts/record'
-import { saveApprovedAlert } from '../alerts/store'
+import { alertDocId, approvedAlert, areaKey, type SavedAlert } from '../alerts/record'
+import { newLedgerId, saveApprovedAlert, withdrawAlert } from '../alerts/store'
+import { withdrawalWrites } from '../ledger/record'
 import { SAMPLE_BULLETIN } from '../factsheet/sample'
 import { fromForm, toForm, type FactSheetForm } from '../factsheet/form'
 import { parseBulletin } from '../factsheet/parse'
@@ -11,22 +12,24 @@ import { unrecordedDrafts, writtenBy } from './approval'
 import DraftCard from './DraftCard'
 import FactSheetEditor from './FactSheetEditor'
 import Ledger from './Ledger'
+import SavedAlerts from './SavedAlerts'
 import { attemptLog } from './log'
 import { useDrafts } from './useDrafts'
 import { useHybrid } from './useHybrid'
 import { useLedger } from './useLedger'
 import { useSavedAlerts } from './useSavedAlerts'
 
-/** The officer console: bulletin in, fact sheet confirmed, drafts checked, approved and saved, and the ledger. */
+/**
+ * The officer console: bulletin in, fact sheet confirmed, drafts checked,
+ * approved and saved; the saved alerts, where one can be withdrawn; and the ledger.
+ */
 export default function OfficerConsole({ session }: { session: OfficerSession }) {
   const hybrid = useHybrid()
   const savedAlerts = useSavedAlerts(session.db)
   const ledger = useLedger(session.db)
   const [openEntry, setOpenEntry] = useState<string>()
-  const savedLedgerIds = useMemo(
-    () => (savedAlerts.saved ? new Map([...savedAlerts.saved.byId].map(([id, a]) => [id, a.ledgerId])) : undefined),
-    [savedAlerts.saved],
-  )
+  const savedList = useMemo(() => (savedAlerts.saved ? [...savedAlerts.saved.byId.values()] : undefined), [savedAlerts.saved])
+  const [withdrawErrors, setWithdrawErrors] = useState<Partial<Record<string, string>>>({})
   const [saveErrors, setSaveErrors] = useState<Partial<Record<HouseholdId, string>>>({})
   const [bulletin, setBulletin] = useState('')
   const [form, setForm] = useState<FactSheetForm>()
@@ -84,6 +87,21 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
       drafts.setRecordedThrough(h.id, draft.recordedThrough)
       showError(`Not saved: ${err instanceof Error ? err.message : String(err)}`)
     })
+  }
+
+  /**
+   * Withdrawing marks the saved alert withdrawn and writes its ledger entry
+   * with the reason, in one batch. Offline it waits on the laptop; the saved
+   * alerts list shows that. Returns why it can't start, if it can't.
+   */
+  function withdraw(alert: SavedAlert, reason: string): string | undefined {
+    const writes = withdrawalWrites(alert, newLedgerId(session.db), reason)
+    if (!writes.ok) return writes.reason
+    setWithdrawErrors((all) => ({ ...all, [alert.id]: undefined }))
+    withdrawAlert(session.db, session.uid, writes).catch((err: unknown) => {
+      setWithdrawErrors((all) => ({ ...all, [alert.id]: `Not withdrawn: ${err instanceof Error ? err.message : String(err)}` }))
+    })
+    return undefined
   }
 
   // A second of resolution is enough for the budget and the timers.
@@ -235,14 +253,6 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
               Draft all four
             </button>
           </div>
-          {savedAlerts.error && (
-            <p className="mt-3 rounded bg-red-50 p-2 text-sm text-red-800">Couldn’t read the saved alerts: {savedAlerts.error}</p>
-          )}
-          {savedAlerts.saved && savedAlerts.saved.unreadable.length > 0 && (
-            <p className="mt-3 rounded bg-amber-100 p-2 text-sm text-amber-950">
-              These saved documents aren’t alerts this app can read: {savedAlerts.saved.unreadable.join(', ')}.
-            </p>
-          )}
           <div className="mt-4 space-y-4">
             {HOUSEHOLDS.map((h) => (
               <DraftCard
@@ -283,11 +293,23 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
         </Section>
       )}
 
-      <Section title="4. Ledger">
+      <Section title="4. Saved alerts">
+        <SavedAlerts
+          saved={savedList}
+          unreadable={savedAlerts.saved?.unreadable ?? []}
+          error={savedAlerts.error}
+          uid={session.uid}
+          withdrawErrors={withdrawErrors}
+          onWithdraw={withdraw}
+          onShowLedger={setOpenEntry}
+        />
+      </Section>
+
+      <Section title="5. Ledger">
         <Ledger
           view={ledger.view}
           error={ledger.error}
-          savedLedgerIds={savedLedgerIds}
+          saved={savedAlerts.saved?.byId}
           uid={session.uid}
           openId={openEntry}
           onOpen={setOpenEntry}

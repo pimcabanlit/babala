@@ -15,6 +15,7 @@ import {
   Timestamp,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -27,8 +28,8 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
-import { ALERTS, LIMITS, approvedAlert } from '../../src/alerts/record'
-import { LEDGER, LEDGER_LIMITS, approvalWrites, type Trail } from '../../src/ledger/record'
+import { ALERTS, LIMITS, approvedAlert, readSavedAlert } from '../../src/alerts/record'
+import { LEDGER, LEDGER_LIMITS, approvalWrites, withdrawalWrites, type Trail } from '../../src/ledger/record'
 import { LEDGER_PAGE } from '../../src/ledger/store'
 import { GOOD_DRAFT, SAMPLE_SHEET } from '../../src/checker/fixtures/halimbawa'
 import { CHECKER_CLAIM_WORDS } from '../../src/config/defaults'
@@ -349,7 +350,7 @@ describe('the ledger entry that goes with each alert', () => {
 
   it('stops a kind of entry the rules don’t allow yet', async () => {
     const { alert, entry } = pair()
-    await assertFails(save(officerDb(), { alert, entry: { ...entry, kind: 'withdrawn' } }))
+    await assertFails(save(officerDb(), { alert, entry: { ...entry, kind: 'translated' } }))
   })
 
   it('stops more drafts than the limit', async () => {
@@ -414,6 +415,287 @@ describe('reading and changing the ledger', () => {
   it('does not let an officer delete an entry', async () => {
     await seedApproval()
     await assertFails(deleteDoc(doc(officerDb(), LEDGER, OLD_LEDGER_ID)))
+  })
+})
+
+const WITHDRAWAL_ID = 'WithdrawWithdraw0001'
+
+/**
+ * The alert's withdrawal field and the ledger entry withdrawAlert() writes
+ * for the alert seedApproval() saves, with `withdrawal` and `entry` changed.
+ */
+function withdrawalPair(
+  uid = OFFICER,
+  changes: { withdrawal?: Doc; entry?: Doc } = {},
+  /** The approval the alert points at; null for an alert saved before the ledger. */
+  approvalId: string | null = OLD_LEDGER_ID,
+  reason = 'Sent for the wrong area.',
+): { withdrawal: Doc; entry: Doc } {
+  const saved = readSavedAlert(ALERT_ID, { ...approval().record, ledgerId: approvalId ?? undefined }, undefined, false)
+  if (!saved) throw new Error('The seeded alert is not one the app can read.')
+  const writes = withdrawalWrites(saved, WITHDRAWAL_ID, reason)
+  if (!writes.ok) throw new Error(writes.reason)
+  return {
+    withdrawal: { ...writes.withdrawal, by: uid, at: serverTimestamp(), ...changes.withdrawal },
+    entry: { ...writes.entry, by: uid, at: serverTimestamp(), ...changes.entry },
+  }
+}
+
+/** Commits the withdrawal and its entry in one batch, as withdrawAlert() does. Leave one out to write the other alone. */
+function withdraw(db: TestDb, docs: { withdrawal?: Doc; entry?: Doc; alsoChange?: Doc }, ledgerId = WITHDRAWAL_ID) {
+  const batch = writeBatch(db)
+  if (docs.withdrawal) batch.update(doc(db, ALERTS, ALERT_ID), { withdrawal: docs.withdrawal, ...docs.alsoChange })
+  if (docs.entry) batch.set(doc(db, LEDGER, ledgerId), docs.entry)
+  return batch.commit()
+}
+
+/** Withdraws the seeded alert with the rules off, as an earlier withdrawal. */
+async function seedWithdrawal(ledgerId = 'OldWithdrawal0000001') {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    const at = Timestamp.fromMillis(Date.now() - 30_000)
+    const { withdrawal, entry } = withdrawalPair()
+    await updateDoc(doc(db, ALERTS, ALERT_ID), { withdrawal: { ...withdrawal, ledgerId, at } })
+    await setDoc(doc(db, LEDGER, ledgerId), { ...entry, at })
+  })
+}
+
+describe('withdrawing a saved alert with its ledger entry', () => {
+  it('lets an officer withdraw an alert, with the entry built by withdrawalWrites()', async () => {
+    await seedApproval()
+    await assertSucceeds(withdraw(officerDb(), withdrawalPair()))
+  })
+
+  it('lets another officer withdraw an alert they didn’t approve', async () => {
+    await seedApproval()
+    await assertSucceeds(withdraw(officerDb(OTHER_OFFICER), withdrawalPair(OTHER_OFFICER)))
+  })
+
+  it('lets an officer withdraw an alert saved before the ledger, with no approval to point at', async () => {
+    await seedAlertBeforeLedger()
+    await assertSucceeds(withdraw(officerDb(), withdrawalPair(OFFICER, {}, null)))
+  })
+
+  it('allows a reason right at the limit', async () => {
+    await seedApproval()
+    await assertSucceeds(withdraw(officerDb(), withdrawalPair(OFFICER, {}, OLD_LEDGER_ID, 'x'.repeat(LEDGER_LIMITS.reason))))
+  })
+
+  it('stops a Google user who is not on the officer list', async () => {
+    await seedApproval()
+    await assertFails(withdraw(strangerDb(), withdrawalPair(STRANGER)))
+  })
+
+  it('stops an anonymous user even if their ID is on the officer list', async () => {
+    await seedApproval()
+    await assertFails(withdraw(residentDb(), withdrawalPair(RESIDENT)))
+  })
+
+  it('stops a visitor who is not signed in', async () => {
+    await seedApproval()
+    await assertFails(withdraw(visitorDb(), withdrawalPair()))
+  })
+
+  it('stops withdrawing an alert that is already withdrawn', async () => {
+    await seedApproval()
+    await seedWithdrawal()
+    await assertFails(withdraw(officerDb(), withdrawalPair()))
+  })
+
+  it('stops a withdrawal that makes an alert where none is saved', async () => {
+    const { withdrawal, entry } = withdrawalPair()
+    const db = officerDb()
+    const batch = writeBatch(db)
+    batch.set(doc(db, ALERTS, ALERT_ID), { withdrawal }, { merge: true })
+    batch.set(doc(db, LEDGER, WITHDRAWAL_ID), entry)
+    await assertFails(batch.commit())
+  })
+
+  it('stops a withdrawal that also changes the alert’s text', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), { ...withdrawalPair(), alsoChange: { text: 'Signal No. 1 only. Stay home.' } }))
+  })
+
+  it('stops a withdrawal that also changes another field of the alert', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), { ...withdrawalPair(), alsoChange: { edited: true } }))
+  })
+
+  it('stops a withdrawal with no ledger entry', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), { withdrawal: withdrawalPair().withdrawal }))
+  })
+
+  it('stops a withdrawal entry written without the withdrawal', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), { entry: withdrawalPair().entry }))
+  })
+
+  it('stops a withdrawal pointing at an entry that is not written with it', async () => {
+    await seedApproval()
+    const { withdrawal, entry } = withdrawalPair(OFFICER, { withdrawal: { ledgerId: 'SomeOtherEntry000001' } })
+    await assertFails(withdraw(officerDb(), { withdrawal, entry }))
+  })
+
+  it('stops a second entry written in the same batch as a withdrawal', async () => {
+    await seedApproval()
+    const { withdrawal, entry } = withdrawalPair()
+    const db = officerDb()
+    const batch = writeBatch(db)
+    batch.update(doc(db, ALERTS, ALERT_ID), { withdrawal })
+    batch.set(doc(db, LEDGER, WITHDRAWAL_ID), entry)
+    batch.set(doc(db, LEDGER, 'SecondEntrySecond001'), entry)
+    await assertFails(batch.commit())
+  })
+
+  it('stops a withdrawal entry written alone for an alert that already points at its ID', async () => {
+    await seedApproval()
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const withdrawal = { ledgerId: WITHDRAWAL_ID, by: OFFICER, at: Timestamp.now() }
+      await updateDoc(doc(ctx.firestore(), ALERTS, ALERT_ID), { withdrawal })
+    })
+    await assertFails(withdraw(officerDb(), { entry: withdrawalPair().entry }))
+  })
+
+  it('stops one entry recording the withdrawal of two alerts', async () => {
+    await seedApproval()
+    // A second alert that matches the entry in all but its ID, as a hand edit could make.
+    const twinId = 'general__purok-ilaya-2'
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const { alert } = pair(OFFICER, {}, OLD_LEDGER_ID)
+      await setDoc(doc(ctx.firestore(), ALERTS, twinId), { ...alert, areaKey: 'purok-ilaya-2', approvedAt: Timestamp.now() })
+    })
+    const { withdrawal, entry } = withdrawalPair()
+    const db = officerDb()
+    const batch = writeBatch(db)
+    batch.update(doc(db, ALERTS, ALERT_ID), { withdrawal })
+    batch.update(doc(db, ALERTS, twinId), { withdrawal })
+    batch.set(doc(db, LEDGER, WITHDRAWAL_ID), entry)
+    await assertFails(batch.commit())
+  })
+
+  it('stops a withdrawal pointing back at an earlier entry', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), { withdrawal: withdrawalPair(OFFICER, { withdrawal: { ledgerId: OLD_LEDGER_ID } }).withdrawal }))
+  })
+
+  it('stops a withdrawal pointing at an entry ID the app would never make', async () => {
+    await seedApproval()
+    const { withdrawal, entry } = withdrawalPair(OFFICER, { withdrawal: { ledgerId: 'not-an-auto-id' } })
+    await assertFails(withdraw(officerDb(), { withdrawal, entry }, 'not-an-auto-id'))
+  })
+
+  it('stops an officer naming someone else as the one who withdrew it', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OTHER_OFFICER)))
+  })
+
+  it('stops an officer setting the withdrawal time from the laptop clock', async () => {
+    await seedApproval()
+    const now = Timestamp.now()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { withdrawal: { at: now }, entry: { at: now } })))
+  })
+
+  it('stops a withdrawal with a field the app never writes', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { withdrawal: { reason: 'On the alert.' } })))
+  })
+
+  it('stops an entry with an empty reason', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { reason: '' } })))
+  })
+
+  it('stops an entry with a reason longer than the limit', async () => {
+    await seedApproval()
+    const reason = 'x'.repeat(LEDGER_LIMITS.reason + 1)
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { reason } })))
+  })
+
+  it('stops an entry whose text differs from the alert’s', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { text: 'Another alert.' } })))
+  })
+
+  it('stops an entry naming a different household or area from the alert’s', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { household: 'fishers' } })))
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { area: 'Purok 2' } })))
+  })
+
+  it('stops an entry recording a different alert', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { alertId: 'fishers__purok-ilaya' } })))
+  })
+
+  it('stops an entry naming an approval other than the alert’s', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { approvalId: LEDGER_ID } })))
+  })
+
+  it('stops a withdrawal made before another officer’s new approval reached the server', async () => {
+    await seedApproval()
+    await save(officerDb(OTHER_OFFICER), pair(OTHER_OFFICER))
+    await assertFails(withdraw(officerDb(), withdrawalPair()))
+  })
+
+  it('stops an entry claiming no approval for an alert that has one', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { approvalId: '' } })))
+  })
+
+  it('stops an entry with a field the app never writes', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { notifyResidents: true } })))
+  })
+
+  it('stops an entry missing its reason', async () => {
+    await seedApproval()
+    const { withdrawal, entry } = withdrawalPair()
+    const { reason: _reason, ...noReason } = entry
+    await assertFails(withdraw(officerDb(), { withdrawal, entry: noReason }))
+  })
+
+  it('stops an approval entry written with a withdrawal', async () => {
+    await seedApproval()
+    const { withdrawal } = withdrawalPair()
+    await assertFails(withdraw(officerDb(), { withdrawal, entry: pair(OFFICER, {}, WITHDRAWAL_ID).entry }))
+  })
+})
+
+describe('after a withdrawal', () => {
+  it('lets an officer approve a new alert, which clears the withdrawal', async () => {
+    await seedApproval()
+    await seedWithdrawal()
+    await assertSucceeds(save(officerDb(), pair()))
+    const after = await getDoc(doc(officerDb(), ALERTS, ALERT_ID))
+    if (after.get('withdrawal') !== undefined) throw new Error('The new approval kept the withdrawal.')
+  })
+
+  it('stops an approval that keeps the withdrawal', async () => {
+    await seedApproval()
+    await seedWithdrawal()
+    const { alert, entry } = pair()
+    const withdrawal = { ledgerId: 'OldWithdrawal0000001', by: OFFICER, at: Timestamp.now() }
+    await assertFails(save(officerDb(), { alert: { ...alert, withdrawal }, entry }))
+  })
+
+  it('stops an officer removing the withdrawal without a new approval', async () => {
+    await seedApproval()
+    await seedWithdrawal()
+    await assertFails(updateDoc(doc(officerDb(), ALERTS, ALERT_ID), { withdrawal: deleteField() }))
+  })
+
+  it('does not let an officer change a withdrawal entry', async () => {
+    await seedApproval()
+    await seedWithdrawal()
+    await assertFails(updateDoc(doc(officerDb(), LEDGER, 'OldWithdrawal0000001'), { reason: 'A better reason.' }))
+  })
+
+  it('does not let an officer delete a withdrawal entry', async () => {
+    await seedApproval()
+    await seedWithdrawal()
+    await assertFails(deleteDoc(doc(officerDb(), LEDGER, 'OldWithdrawal0000001')))
   })
 })
 

@@ -170,19 +170,42 @@ export type SavedAlert = {
   pending: boolean
   /** The ledger entry that records this approval. Undefined for alerts saved before the ledger. */
   ledgerId: string | undefined
+  /** Set once an officer withdraws the alert; a new approval clears it. */
+  withdrawn: SavedWithdrawal | undefined
 }
 
-/** Reads a saved alert's fields; undefined if the document isn't one. */
+/** A withdrawal as the console shows it. The reason is only in its ledger entry. */
+export type SavedWithdrawal = {
+  /** The ledger entry that records the withdrawal. */
+  ledgerId: string
+  /** The officer's user ID. */
+  by: string
+  /** The server's time, or the laptop's estimate while it waits to upload. */
+  at: Date | undefined
+}
+
+/**
+ * Reads a saved alert's fields; undefined if the document isn't one. The
+ * caller turns Firestore timestamps into dates: approvedAt, and withdrawnAt
+ * for the time inside the withdrawal.
+ */
 export function readSavedAlert(
   id: string,
   data: Record<string, unknown>,
   approvedAt: Date | undefined,
   pending: boolean,
+  withdrawnAt?: Date,
 ): SavedAlert | undefined {
-  const { household, area, text, source, edited, ledgerId } = data
+  const { household, area, text, source, edited, ledgerId, withdrawal } = data
   if (!HOUSEHOLDS.some((h) => h.id === household)) return undefined
   if (typeof area !== 'string' || typeof text !== 'string' || typeof edited !== 'boolean') return undefined
   if (!ALERT_SOURCES.includes(source as AlertSource)) return undefined
   if (ledgerId !== undefined && typeof ledgerId !== 'string') return undefined
-  return { id, household: household as HouseholdId, area, text, source: source as AlertSource, edited, approvedAt, pending, ledgerId }
+  let withdrawn: SavedWithdrawal | undefined
+  if (withdrawal !== undefined) {
+    const w = withdrawal as Record<string, unknown> | null
+    if (typeof w !== 'object' || w === null || typeof w.ledgerId !== 'string' || typeof w.by !== 'string') return undefined
+    withdrawn = { ledgerId: w.ledgerId, by: w.by, at: withdrawnAt }
+  }
+  return { id, household: household as HouseholdId, area, text, source: source as AlertSource, edited, approvedAt, pending, ledgerId, withdrawn }
 }

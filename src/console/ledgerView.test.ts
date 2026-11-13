@@ -1,24 +1,66 @@
 import { describe, expect, it } from 'vitest'
+import type { SavedAlert } from '../alerts/record'
 import type { LedgerDraft, LedgerEntry } from '../ledger/record'
 import { approverLabel, draftLine, entryStatus, writerLabel } from './ledgerView'
 
-const entry = { id: 'entry-2', alertId: 'general__purok-ilaya' } as LedgerEntry
+const approval = { id: 'entry-2', kind: 'approved', alertId: 'general__purok-ilaya' } as LedgerEntry
+const withdrawal = { id: 'entry-3', kind: 'withdrawn', alertId: 'general__purok-ilaya' } as LedgerEntry
+
+const alert: SavedAlert = {
+  id: 'general__purok-ilaya',
+  household: 'general',
+  area: 'Purok Ilaya',
+  text: 'Signal No. 3 is up over Purok Ilaya.',
+  source: 'on_device',
+  edited: false,
+  approvedAt: undefined,
+  pending: false,
+  ledgerId: 'entry-2',
+  withdrawn: undefined,
+}
+
+function saved(a: SavedAlert): Map<string, SavedAlert> {
+  return new Map([[a.id, a]])
+}
+
+const withdrawnByEntry3 = { ...alert, withdrawn: { ledgerId: 'entry-3', by: 'uid', at: undefined } }
 
 describe('entryStatus', () => {
-  it('says current when the saved alert points at this entry', () => {
-    expect(entryStatus(entry, new Map([['general__purok-ilaya', 'entry-2']]))).toBe('current')
+  it('says current when the saved alert points at this approval', () => {
+    expect(entryStatus(approval, saved(alert))).toBe('current')
   })
 
-  it('says replaced when the saved alert points at a later entry', () => {
-    expect(entryStatus(entry, new Map([['general__purok-ilaya', 'entry-3']]))).toBe('replaced')
+  it('says replaced when the saved alert points at a later approval', () => {
+    expect(entryStatus(approval, saved({ ...alert, ledgerId: 'entry-4' }))).toBe('replaced')
   })
 
   it('says replaced when the saved alert was approved before the ledger existed', () => {
-    expect(entryStatus(entry, new Map([['general__purok-ilaya', undefined]]))).toBe('replaced')
+    expect(entryStatus(approval, saved({ ...alert, ledgerId: undefined }))).toBe('replaced')
+  })
+
+  it('says withdrawn when the approval’s alert was then withdrawn', () => {
+    expect(entryStatus(approval, saved(withdrawnByEntry3))).toBe('withdrawn')
+  })
+
+  it('says current for the withdrawal the saved alert points at', () => {
+    expect(entryStatus(withdrawal, saved(withdrawnByEntry3))).toBe('current')
+  })
+
+  it('says replaced for a withdrawal once a new approval cleared it', () => {
+    expect(entryStatus(withdrawal, saved({ ...alert, ledgerId: 'entry-4' }))).toBe('replaced')
+  })
+
+  it('says replaced for a withdrawal of an earlier approval that was then withdrawn again', () => {
+    const again = { ...alert, ledgerId: 'entry-4', withdrawn: { ledgerId: 'entry-5', by: 'uid', at: undefined } }
+    expect(entryStatus(withdrawal, saved(again))).toBe('replaced')
   })
 
   it('says unknown while the saved alerts are still loading', () => {
-    expect(entryStatus(entry, undefined)).toBe('unknown')
+    expect(entryStatus(approval, undefined)).toBe('unknown')
+  })
+
+  it('says unknown when the alert isn’t among the saved alerts', () => {
+    expect(entryStatus(approval, new Map())).toBe('unknown')
   })
 })
 
