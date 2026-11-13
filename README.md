@@ -60,6 +60,14 @@ alerts. It saves them on the phone, so the page opens with no signal. Offline op
 itself works only in a production build (`npm run build` then `npm run preview`), which adds the
 service worker.
 
+### Hosted app
+
+The demo runs at https://babala-hybrid.web.app (resident view: `/resident`). `npm run preview:hosting`
+serves a production build locally with the same rewrites and headers as the hosted site. Deploying
+is for the project owner only: `npm run deploy:hosting` from an up-to-date `main`, as set out in
+[docs/firebase-setup.md](docs/firebase-setup.md), *Hosting*. A production build never contains the
+App Check debug token: the build stops with an error if it would.
+
 ### Tests for the Firestore rules
 
 `npm run test:rules` starts the Firestore emulator and runs `tests/rules/` against

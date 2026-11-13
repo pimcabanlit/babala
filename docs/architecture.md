@@ -85,7 +85,7 @@ Dashed lines are planned. `src/ai/` is the only module that imports `firebase/ai
 | Translations | `src/translation/`, `src/console/Translations.tsx`, `src/console/useTranslations.ts`, on `residentAlerts` | Cloud-only translation into Filipino and Cebuano, each checked by rule 7 against the English, approved and published by an officer, with a ledger entry | Built |
 | Ledger | `src/ledger/`, `src/console/Ledger.tsx`, Firestore `ledger` | A locked entry per approval, written with the alert: facts, drafts and checks with the model and time, edits, approver. A locked entry per withdrawal, with the reason, and per published translation | Built |
 | Saved alerts | `src/console/SavedAlerts.tsx` | Every saved alert, active or withdrawn, and the place to withdraw one | Built |
-| Hosting | Not started | Public URL for judges until Dec 16, deployed by GitHub Actions | Planned (Phase 4) |
+| Hosting | `firebase.json`, `scripts/check-deploy-source.mjs`, `vite.secrets.ts` | Public URL for judges until Dec 16, deployed by Pim from the laptop | Built, not deployed yet |
 
 ## Screens
 
@@ -227,9 +227,11 @@ The approval also refuses to save while the claim-word list hasn't loaded, becau
 - CI (`.github/workflows/ci.yml`) runs both on every pull request and on pushes to `main`. It never deploys.
 - Gemini Nano can't run in CI or in a cloud session, so Pim tests on-device changes on the laptop before merging.
 
-## Deployment (not set up yet)
+## Deployment
 
-Firebase Hosting, deployed by GitHub Actions, gives judges a public URL that stays up until judging ends (Dec 16). The Firebase settings come from GitHub secrets. A deploy step never runs on pull requests (Phase 4). Hosting must rewrite every path, `/resident` included, to `/index.html`, and serve `sw.js` from the root.
+Firebase Hosting gives judges a public URL, `https://babala-hybrid.web.app`, that stays up until judging ends (Dec 16). Pim deploys from the laptop with `npm run deploy:hosting`, which deploys Hosting only and first checks that the laptop has `main` exactly as on GitHub and that `npm run check` passes. Nothing deploys from a pull request or from CI. The build takes its Firebase settings from the laptop's `.env.local`, and stops if the App Check debug token would end up in it (`vite.secrets.ts`).
+
+`firebase.json` rewrites `/resident` to `/index.html`, serves `sw.js` from the root, and has phones check for a new page, service worker and manifest on every load, so a deploy reaches them at their next visit with a signal. Steps, headers and rollback: [firebase-setup.md](firebase-setup.md), *Hosting*.
 
 ## Cost plan (Spark plan, no billing account)
 
