@@ -86,7 +86,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 ### Phase 4 — Hosting and feature freeze (Nov 24)
 
 1. Firebase Hosting (PR #26), **live at https://babala-hybrid.web.app since Nov 13** and checked on the laptop and an iPhone in airplane mode. Pim deploys from the laptop with `npm run deploy:hosting`, only from `main` as it is on GitHub and after `npm run check` passes; never from a pull request or CI. The settings come from the laptop's `.env.local`, and the build stops if the App Check debug token would be in it. Deploying from GitHub Actions would need a service account key in the repo's secrets, so it was left out.
-2. App Check enforced on Firestore.
+2. App Check enforced on Firestore. PR #30 makes a page opened offline reach Firestore again when the signal returns, and docs/firebase-setup.md (section 4, *Enforcing on Firestore*) has the checks before and after, and the rollback. Pim enforces it in the Firebase console after PR #30 is deployed.
 3. A test officer login for judges, without putting personal data or production keys in the repo, the form or the testing instructions. Built in Phase 2 (item 7); the email and password go only in the private testing instructions.
 4. Against free-tier limits on the Gemini API: a per-user rate limit and a clear "try again shortly" message (*Risks*). Done for residents' questions in PR #28 (6 cloud answers per phone per hour, and "busy right now, try again shortly" on a quota error). Still open: the same message in the console, and optionally a lower AI Logic per-user quota (docs/firebase-setup.md, *Cost and usage*).
 5. Feature freeze.
