@@ -92,6 +92,29 @@ export const TRANSLATION_CLAIMS: Readonly<Record<LanguageCode, readonly Translat
   ],
 }
 
+/**
+ * Phrases that tell a resident to do less than an alert says, for the answer
+ * check (rule 8). Rule 5's words cover severity and safety; these cover an
+ * answer that says "stay home" or "no need to evacuate" when the alert says
+ * leave now. Allowed only when the alert itself says them. English, then
+ * Filipino and Cebuano (written by hand for the demo; a fluent speaker should
+ * review them). Plurals match automatically.
+ */
+export const ANSWER_CLAIM_WORDS: readonly string[] = [
+  // English
+  'stay home', 'stay at home', 'stay inside', 'stay indoors', 'stay put', 'shelter in place', 'no need',
+  'not need', "don't need", "doesn't need", 'not necessary', 'unnecessary', 'not required', 'optional',
+  'not evacuate', "don't evacuate", 'not leave', "don't leave", 'not go to', "don't go to", 'ignore', 'fake',
+  'hoax', 'false alarm', 'cancelled', 'canceled', 'called off', 'is over', 'has passed', 'no typhoon',
+  'no storm', 'wait and see', 'later',
+  // Filipino
+  'hindi kailangan', 'hindi na kailangan', 'di kailangan', 'huwag lumikas', 'huwag umalis', 'huwag pumunta',
+  'manatili sa bahay', 'manatili sa loob', 'sa bahay lang', 'walang bagyo', 'kanselado', 'peke', 'mamaya na',
+  // Cebuano
+  'dili kinahanglan', 'di kinahanglan', 'ayaw pagbakwit', 'ayaw bakwit', 'ayaw mobiya', 'ayaw lakaw',
+  'pabilin sa balay', 'puyo lang sa balay', 'sa balay lang', 'walay bagyo', 'unya na lang',
+]
+
 export const REMOTE_CONFIG_DEFAULTS = {
   /**
    * Cloud model for Firebase AI Logic. Gemini 3+ only, billing not required.
@@ -105,6 +128,15 @@ export const REMOTE_CONFIG_DEFAULTS = {
   checker_claim_words: JSON.stringify(CHECKER_CLAIM_WORDS),
   /** JSON object of claim lists by language code; see TRANSLATION_CLAIMS. */
   checker_translation_claims: JSON.stringify(TRANSLATION_CLAIMS),
+  /** JSON array of strings; see ANSWER_CLAIM_WORDS. */
+  checker_answer_claims: JSON.stringify(ANSWER_CLAIM_WORDS),
+  /**
+   * Cloud answers to residents' questions per phone per hour. Residents sign
+   * in anonymously, so this keeps one phone from using the free tier's quota
+   * that officers need for drafts and translations. On-device answers and
+   * text search are never limited.
+   */
+  ask_cloud_per_hour: 6,
 } as const
 
 export type RemoteConfigKey = keyof typeof REMOTE_CONFIG_DEFAULTS

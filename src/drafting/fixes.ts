@@ -78,6 +78,7 @@ export function fixFor(issue: Issue, sheet: FactSheet, area: string, centre = sh
       }
       return issue.message
     case 'translation':
+    case 'answer':
       return issue.message
   }
 }

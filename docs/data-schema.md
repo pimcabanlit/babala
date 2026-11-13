@@ -1,6 +1,6 @@
 # Data Schema v1
 
-The data contract for Babala: bulletin, fact sheet, draft, check result, saved alert and ledger. Every alert is checked against one fact sheet, which the officer confirms from the bulletin. All data is fictional: the storm, barangay, puroks, evacuation centres and hotline in the demo don't exist.
+The data contract for Babala: bulletin, fact sheet, draft, check result, saved alert, ledger, and answers to residents' questions. Every alert is checked against one fact sheet, which the officer confirms from the bulletin. All data is fictional: the storm, barangay, puroks, evacuation centres and hotline in the demo don't exist.
 
 ## Design principles
 
@@ -109,7 +109,7 @@ Both models answer in JSON that fits one schema (`ALERT_SCHEMA` in `src/drafting
 
 ## Check result
 
-`checkDraft(text, sheet, options)` checks an English draft against rules 1 to 6. `checkTranslation(approvedEnglish, translation, sheet, options)` checks one translation against the approved English alert and its fact sheet: rule 7, with rules 2, 4 and 6. Both return `{pass, issues}`, where `pass` is true only when there are no issues.
+`checkDraft(text, sheet, options)` checks an English draft against rules 1 to 6. `checkTranslation(approvedEnglish, translation, sheet, options)` checks one translation against the approved English alert and its fact sheet: rule 7, with rules 2, 4 and 6. `checkAnswer(answer, alert, options)` checks an AI answer to a resident's question against the approved alert on the phone: rule 8, with rules 4 and 6. All return `{pass, issues}`, where `pass` is true only when there are no issues.
 
 **Options of `checkDraft`:**
 
@@ -130,13 +130,27 @@ Both models answer in JSON that fits one schema (`ALERT_SCHEMA` in `src/drafting
 | `maxSentences` | 3 | Rule 6 |
 | `maxWords` | 90 | Rule 6. Filipino and Cebuano run about a third longer than English |
 
+**`checkAnswer`'s alert and options:**
+
+| Field | Meaning |
+| --- | --- |
+| `alert.english` | The approved English alert |
+| `alert.shown` | The text the resident reads and the answer is in: the English, or a published translation |
+| `alert.names` | The storm and area names shown with the alert |
+| `options.language` | `en`, `fil` or `ceb`. Only English answers get the landfall-time check |
+| `options.claimWords` | Rule 5's list, from Remote Config |
+| `options.answerClaims` | Phrases that tell a resident to do less than an alert (`checker_answer_claims`) |
+| `options.translatedClaims` | Rule 7's Filipino and Cebuano lists together, since an answer can mix languages |
+
+Limits: at most 3 sentences, and 45 words in English or 70 in Filipino and Cebuano.
+
 `keptFacts(approvedEnglish, sheet)` lists the figures and place names in the English alert as written there: what a translation must keep. The translation prompt names them.
 
 **Issue** (one per problem):
 
 | Field | Type | Example |
 | --- | --- | --- |
-| rule | enum | `figures`, `places`, `missing`, `placeholders`, `added-claims`, `plain`, `translation` |
+| rule | enum | `figures`, `places`, `missing`, `placeholders`, `added-claims`, `plain`, `translation`, `answer` |
 | subject | enum, optional | `time`, `landfall`, `date`, `signal`, `phone`, `number`, `place`, `hotline`, `venue`, `area`, `modifier`, `sentences`, `words`, `emoji`, `format`, `script` |
 | message | string | “severe” is not in the bulletin. |
 | span | {start, end, text}, optional | Where it is in the text, so the console can highlight it and the retry can quote it |
@@ -152,6 +166,7 @@ No alert reaches a resident unless it passes every rule below and an officer app
 5. **No added claims.** Flags severity and safety words that aren't in the bulletin, such as "severe", "super typhoon", "safe" or "no threat".
 6. **Plain and short.** At most 3 sentences or 60 words, with no emojis, no Markdown, and only Latin letters and the digits 0 to 9. The script rule was added Nov 12 (PR #16) after Nano wrote the Hindi word "कृपया" into an English alert on the laptop and it passed. Filipino and Cebuano use Latin letters too, so translations are held to the same rule, with up to 90 words.
 7. **Translations say what the English says.** Each translation is checked on its own against the approved English alert and its fact sheet, never against another translation. It has exactly the English alert's figures, none lost and none added; exactly its known place names, written as the fact sheet writes them; and no claim the English doesn't make. Rules 2, 4 and 6 apply to it too.
+8. **Answers say only what the alert says.** An AI answer to a resident's question is checked against the approved alert on the phone (`src/checker/answer.ts`): the English and the text the resident reads. Every figure in it is in the alert. Every place name in it is one the alert names, whole. No claim word or "do less" phrase the alert doesn't say. In an English answer, the landfall time only in a sentence about landfall. At most one word in four new, not counting everyday words. Rules 4 and 6 apply too. Added Nov 13 with Ask.
 
 More detail on each rule:
 
@@ -169,11 +184,17 @@ More detail on each rule:
 - **Claims in translations (rule 7):** an English claim word from rule 5's list is allowed in a translation only when the English alert has it. Each Filipino or Cebuano claim word comes with the English words that back it: "mapanganib" (dangerous) needs "danger", "dangerous" or a word like them in the English alert; "ngayong gabi" and "karong gabii" (tonight) need "tonight"; "ligtas" and "luwas" (safe) need "safe". Each language has its own list, in the Remote Config parameter `checker_translation_claims` (defaults in `TRANSLATION_CLAIMS`, `src/config/defaults.ts`), grouped like rule 5's: severity, hazards, safety, timing and authority. A longer phrase is judged before a word inside it, so "walang panganib" (no danger) is a safety claim, not "panganib" (danger). The lists were written by hand for the demo and need a fluent speaker's review.
 - **Signal and hotline:** the household's area sets which signal number is required. A bulletin with no hotline doesn't require one.
 - **Placeholders are reported once.** They aren't reported again as unknown places.
+- **Answers (rule 8).** The phone has no fact sheet, so the alert is the source of truth:
+  - *Figures* are read by the same code as rule 1 and compared by value, so "6 PM" in an answer matches "6:00 PM" in the alert, and "alas-6 ng gabi" matches both.
+  - *Place names* are read by shape, the same way in the alert and the answer (`placeNames`): a run of capitalised words, numbers and venue words with only spaces between them, holding a venue word or "Purok" or "Barangay", with a leading "the", "sa" or "ang" dropped. The answer's names must each equal one of the alert's, so "the gym", "Halimbawa Municipal Gym" and "Purok 5" fail where the alert says "Halimbawa Elementary School gym" and "Purok Ilaya". "The evacuation centre" names no place.
+  - *Claims*: rule 5's words and the "do less" phrases ("stay home", "no need", "not evacuate", "fake", "hindi kailangan", "pabilin sa balay", and so on, `ANSWER_CLAIM_WORDS`) need the same words in the alert. A Filipino or Cebuano claim word needs them in the alert the resident reads, or its English backing in the English alert, as in rule 7.
+  - *Own words*: the alert's words, the storm and area names, and a short list of everyday words in the three languages (articles, pronouns, "can", "should", "saan", "asa"…) count as the alert's. "Yes", negations and instructions are not on the list, so a bare "Yes." fails, and so does "Cats are soft and warm."
 - **Known limits:**
   - A translation's claims are judged by word lists, so the checker can't read meaning: a negation ("huwag lumikas", do not evacuate) or a changed instruction with no claim word in it passes. That is why the officer reads and approves every translation before it is published.
   - The landfall time's meaning (rule 1) is checked in English only. A translation must have the same time, but the checker doesn't read whether its sentence is about landfall.
   - Spelled-out numbers are read only for hours and signal numbers.
   - The only allowed time is the landfall time, so a bulletin with other times needs them added to the fact sheet first.
+  - Rule 8 can't read meaning either: an answer made only of the alert's own words, in a misleading order, could pass. That is why the alert sentences it rests on are quoted under every AI answer, below the alert itself, and the answer says the barangay didn't write it. The "do less" phrases are hand-written and need a fluent speaker's review, like rule 7's.
 
 ## Firestore
 
@@ -275,7 +296,7 @@ The rules hold a copy equal to `residentCopy()` of its alert as it is after the 
 
 **Access:** anyone signed in, anonymous residents included, may read a copy or list at most 200 of them (4 households for each of up to 30 areas, fetched in one read). Only officers write, as above.
 
-**On the phone** the copies are read as `PackAlert` (`src/resident/pack.ts`) and the whole set is saved in local storage as the offline pack (`babala.pack.v1`), with the time it came from the server. The resident's purok, household and language are saved as `babala.choice.v1`. A copy the app can't read is left out and counted.
+**On the phone** the copies are read as `PackAlert` (`src/resident/pack.ts`) and the whole set is saved in local storage as the offline pack (`babala.pack.v1`), with the time it came from the server. The resident's purok, household and language are saved as `babala.choice.v1`, and the times of this phone's cloud answers in the last hour as `babala.ask.v1` (a JSON array of ms), for the hourly limit. Questions and answers are never stored. A copy the app can't read is left out and counted.
 
 **`ledger/{entryId}`.** A locked record of every change to a saved alert: an `approved` entry for each approval, a `withdrawn` entry for each withdrawal and a `translated` entry for each published translation. Written by `src/ledger/record.ts` (`approvalWrites()`, `withdrawalWrites()`) and `src/alerts/store.ts` (`saveApprovedAlert()`, `withdrawAlert()`). The limits are the same in `LEDGER_LIMITS` in `src/ledger/record.ts` and in the rules.
 
@@ -378,6 +399,8 @@ Fields of a `translated` entry:
 | `ondevice_budget_seconds` | number | 30 | Zero or less uses the default |
 | `checker_claim_words` | string (JSON array of strings) | `CHECKER_CLAIM_WORDS` | Anything other than an array of non-empty strings uses the default |
 | `checker_translation_claims` | string (JSON object) | `TRANSLATION_CLAIMS` | `{"fil": [{"words": [...], "english": [...]}], "ceb": [...]}`. A missing language, an empty list or a claim without words or English words uses the whole default |
+| `checker_answer_claims` | string (JSON array of strings) | `ANSWER_CLAIM_WORDS` | Anything other than an array of non-empty strings uses the default |
+| `ask_cloud_per_hour` | number | 6 | A whole number, 0 or more; 0 turns cloud answers off. Anything else (empty, negative, a fraction, text) uses the default |
 
 Fetched at most once an hour. Offline or on error, the app keeps the last fetched values, or the defaults.
 
@@ -398,6 +421,20 @@ Each attempt also records the area it was drafted for. "Copy test log" turns the
 ## Translation work (in the console only)
 
 Each active saved alert has a box per language under *Saved alerts and translations* (`src/console/Translations.tsx`, `src/console/useTranslations.ts`). "Translate" makes one "only in cloud" call; nothing retries by itself. The answer is JSON with one field (`TRANSLATION_SCHEMA` in `src/translation/prompt.ts`); if it isn't, the raw text goes to the checker. The officer can edit the text or type one, and the checker runs on every change. Each call is recorded like a draft attempt (`LedgerDraft`) and saved in the `translated` entry on publication. Calls for an earlier approval of the alert are dropped once a new approval replaces it.
+
+## Answer to a resident's question (on the phone only)
+
+Both ask models answer in JSON that fits one schema (`ASK_SCHEMA` in `src/ask/prompt.ts`), the same on the device and in the cloud:
+
+| Field | Type | Description given to the model |
+| --- | --- | --- |
+| in_alert | boolean | True if the alert answers the question |
+| sentences | list of integers | The numbers of the alert sentences that answer it (the prompt numbers them from 1) |
+| answer | string | One or two short sentences in the alert's own words, in the resident's language. Empty if `in_alert` is false |
+
+`readAskAnswer()` keeps only sentence numbers the alert has, each once, in order, and refuses anything that isn't JSON of this shape. An answer is shown only if rule 8 passes it. Nothing about a question is saved, in Firestore or on the phone, except the time of each cloud call (`babala.ask.v1`).
+
+For the General alert in Purok Ilaya (`GOOD_DRAFT`), "Where do we go?" answered `{"in_alert": true, "sentences": [2], "answer": "Evacuate now to Halimbawa Elementary School gym."}` passes, and the phone quotes sentence 2 under it. "Evacuate now to the church." fails with “church” is not a place your alert names, and "The storm is weak and you can stay home." fails with “weak” and “stay home” not in the alert, and too many words that aren't in it.
 
 ## Worked example
 

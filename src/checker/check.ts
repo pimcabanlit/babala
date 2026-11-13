@@ -50,7 +50,7 @@ function checkFigures(figures: Figure[], sheet: FactSheet): Issue[] {
 }
 
 /** Words that say the time is when the storm arrives. */
-const LANDFALL_WORDS = /\b(?:landfall|make(?:s)?\s+land|hit(?:s|ting)?|strike(?:s)?|striking)\b/i
+export const LANDFALL_WORDS = /\b(?:landfall|make(?:s)?\s+land|hit(?:s|ting)?|strike(?:s)?|striking)\b/i
 
 /**
  * Rule 1, the meaning of the time: the bulletin's only time is the landfall

@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { CHECKER_CLAIM_WORDS, REMOTE_CONFIG_DEFAULTS } from '../config/defaults'
-import { defaultTranslationClaims, parseTranslationClaims, parseWordList } from './remoteConfig'
+import { ANSWER_CLAIM_WORDS, CHECKER_CLAIM_WORDS, REMOTE_CONFIG_DEFAULTS } from '../config/defaults'
+import { defaultTranslationClaims, parseTranslationClaims, parseWordList, readAskLimit } from './remoteConfig'
 
 describe('parseWordList', () => {
   it('reads the default word list back exactly', () => {
     expect(parseWordList(REMOTE_CONFIG_DEFAULTS.checker_claim_words)).toEqual([...CHECKER_CLAIM_WORDS])
+  })
+
+  it('reads the default answer claim list back exactly', () => {
+    expect(parseWordList(REMOTE_CONFIG_DEFAULTS.checker_answer_claims)).toEqual([...ANSWER_CLAIM_WORDS])
   })
 
   it('accepts a JSON array of words, as typed in the Remote Config console', () => {
@@ -45,5 +49,17 @@ describe('parseTranslationClaims', () => {
     ]) {
       expect(parseTranslationClaims(bad), bad).toBeUndefined()
     }
+  })
+})
+
+describe('readAskLimit', () => {
+  it('accepts a whole number, and 0 turns cloud answers off', () => {
+    expect(readAskLimit('10')).toBe(10)
+    expect(readAskLimit('0')).toBe(0)
+  })
+
+  it('uses the default for anything else, so a typo never turns cloud answers off', () => {
+    for (const bad of ['', ' ', '-1', '2.5', 'six', '6 per hour'])
+      expect(readAskLimit(bad), bad).toBe(REMOTE_CONFIG_DEFAULTS.ask_cloud_per_hour)
   })
 })

@@ -11,9 +11,8 @@ import {
   type TranslationModel,
 } from '../ai'
 import { readDeviceStatus, type DeviceStatus } from '../ai/deviceStatus'
-import { CHECKER_CLAIM_WORDS, REMOTE_CONFIG_DEFAULTS } from '../config/defaults'
 import { getFirebase } from '../firebase'
-import { defaultTranslationClaims, loadTunables, type Tunables } from '../firebase/remoteConfig'
+import { DEFAULT_TUNABLES, loadTunables, type Tunables } from '../firebase/remoteConfig'
 
 export type WarmUp =
   | { state: 'idle' }
@@ -23,27 +22,13 @@ export type WarmUp =
 
 const firebase = getFirebase()
 
-/** Defaults when Firebase isn't configured: the checker still works by hand. */
-const OFFLINE_TUNABLES: Tunables = {
-  cloudModelName: REMOTE_CONFIG_DEFAULTS.cloud_model_name,
-  ondeviceBudgetSeconds: REMOTE_CONFIG_DEFAULTS.ondevice_budget_seconds,
-  checkerClaimWords: [...CHECKER_CLAIM_WORDS],
-  translationClaims: defaultTranslationClaims(),
-  sources: {
-    cloud_model_name: 'default',
-    ondevice_budget_seconds: 'default',
-    checker_claim_words: 'default',
-    checker_translation_claims: 'default',
-  },
-}
-
 /**
  * The console's AI setup: tunables, the two draft models and the translation
  * model, Chrome's on-device
  * status, the network, the download button and the warm-up on open.
  */
 export function useHybrid() {
-  const [tunables, setTunables] = useState<Tunables | undefined>(firebase.ok ? undefined : OFFLINE_TUNABLES)
+  const [tunables, setTunables] = useState<Tunables | undefined>(firebase.ok ? undefined : DEFAULT_TUNABLES)
   const [models, setModels] = useState<DraftModels>()
   const [translationModel, setTranslationModel] = useState<TranslationModel>()
   const [device, setDevice] = useState<DeviceStatus>('unknown')

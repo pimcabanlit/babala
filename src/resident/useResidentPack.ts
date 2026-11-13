@@ -11,7 +11,7 @@ const CHOICE_KEY = 'babala.choice.v1'
  * Storage can be off (private mode, or full). The view still works from the
  * live pack then, so a failure only loses the copy kept for next time.
  */
-function readStorage(key: string): string | null {
+export function readStorage(key: string): string | null {
   try {
     return localStorage.getItem(key)
   } catch {
@@ -20,7 +20,7 @@ function readStorage(key: string): string | null {
   }
 }
 
-function writeStorage(key: string, value: string): string | undefined {
+export function writeStorage(key: string, value: string): string | undefined {
   try {
     localStorage.setItem(key, value)
     return undefined
