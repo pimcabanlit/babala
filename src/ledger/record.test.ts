@@ -41,6 +41,19 @@ const nanoDraft: LedgerDraft = {
 const trail: Trail = { drafts: [nanoDraft], cloudModel: 'gemini-3.5-flash-lite', claimWords: [...CHECKER_CLAIM_WORDS] }
 
 describe('approvalWrites', () => {
+  it('gives residents a copy with the alert’s text and place, and no officer or bulletin', () => {
+    const writes = approvalWrites(approval(), LEDGER_ID, trail)
+    expect(writes.copy).toEqual({
+      household: 'general',
+      area: 'Purok Ilaya',
+      areaKey: 'purok-ilaya',
+      signal: approval().record.signal,
+      stormName: SAMPLE_SHEET.stormName,
+      text: GOOD_DRAFT,
+      status: 'active',
+    })
+  })
+
   it('points the alert at its ledger entry', () => {
     const writes = approvalWrites(approval(), LEDGER_ID, trail)
     expect(writes.alertId).toBe('general__purok-ilaya')
@@ -157,6 +170,12 @@ describe('withdrawalWrites', () => {
     if (!writes.ok) throw new Error(writes.reason)
     expect(writes.alertId).toBe('general__purok-ilaya')
     expect(writes.withdrawal).toEqual({ ledgerId: WITHDRAWAL_ID })
+  })
+
+  it('gives residents a copy that says the alert is withdrawn, without its text', () => {
+    const writes = withdrawalWrites(saved, WITHDRAWAL_ID, 'Wrong area.')
+    if (!writes.ok) throw new Error(writes.reason)
+    expect(writes.copy).toEqual({ household: 'general', area: 'Purok Ilaya', areaKey: 'purok-ilaya', status: 'withdrawn' })
   })
 
   it('records the withdrawn text, the approval it withdraws and the reason', () => {

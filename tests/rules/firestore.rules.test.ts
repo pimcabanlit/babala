@@ -29,6 +29,8 @@ import {
 } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
 import { ALERTS, LIMITS, approvedAlert, readSavedAlert } from '../../src/alerts/record'
+import { RESIDENT_ALERTS } from '../../src/alerts/residentCopy'
+import { PACK_LIMIT } from '../../src/resident/store'
 import { LEDGER, LEDGER_LIMITS, approvalWrites, withdrawalWrites, type Trail } from '../../src/ledger/record'
 import { LEDGER_PAGE } from '../../src/ledger/store'
 import { GOOD_DRAFT, SAMPLE_SHEET } from '../../src/checker/fixtures/halimbawa'
@@ -129,11 +131,41 @@ function pair(uid = OFFICER, both: Doc = {}, ledgerId = LEDGER_ID): { alert: Doc
   }
 }
 
-/** Commits the alert and the entry in one batch, as the app does. Leave one out to write the other alone. */
-function save(db: TestDb, docs: { alert?: Doc; entry?: Doc }, ids: { alertId?: string; ledgerId?: string } = {}) {
+/**
+ * The resident copy saveApprovedAlert() writes for an alert document, read
+ * from the document itself, so a test that changes the alert gets a copy that
+ * still matches it and fails for the reason it names.
+ */
+function copyOf(alert: Doc): Doc {
+  const sheet = alert.factSheet as Doc | undefined
+  return {
+    household: alert.household,
+    area: alert.area,
+    areaKey: alert.areaKey,
+    signal: alert.signal,
+    stormName: sheet?.stormName,
+    text: alert.text,
+    status: 'active',
+    updatedAt: alert.approvedAt,
+  }
+}
+
+/**
+ * Commits the alert, the entry and the resident copy in one batch, as the app
+ * does. Leave one out to write the others alone. The copy defaults to the one
+ * that matches the alert; pass `copy: null` to leave it out.
+ */
+function save(
+  db: TestDb,
+  docs: { alert?: Doc; entry?: Doc; copy?: Doc | null },
+  ids: { alertId?: string; ledgerId?: string } = {},
+) {
+  const alertId = ids.alertId ?? ALERT_ID
   const batch = writeBatch(db)
-  if (docs.alert) batch.set(doc(db, ALERTS, ids.alertId ?? ALERT_ID), docs.alert)
+  if (docs.alert) batch.set(doc(db, ALERTS, alertId), docs.alert)
   if (docs.entry) batch.set(doc(db, LEDGER, ids.ledgerId ?? LEDGER_ID), docs.entry)
+  const copy = docs.copy === undefined && docs.alert ? copyOf(docs.alert) : docs.copy
+  if (copy) batch.set(doc(db, RESIDENT_ALERTS, alertId), copy)
   return batch.commit()
 }
 
@@ -145,10 +177,11 @@ async function seedApproval(ledgerId = OLD_LEDGER_ID) {
     const at = Timestamp.fromMillis(Date.now() - 60_000)
     await setDoc(doc(db, ALERTS, ALERT_ID), { ...alert, approvedAt: at })
     await setDoc(doc(db, LEDGER, ledgerId), { ...entry, at })
+    await setDoc(doc(db, RESIDENT_ALERTS, ALERT_ID), copyOf({ ...alert, approvedAt: at }))
   })
 }
 
-/** Saves an alert from before the ledger, with no ledgerId, with the rules off. */
+/** Saves an alert from before the ledger, with no ledgerId and no resident copy, with the rules off. */
 async function seedAlertBeforeLedger() {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const { ledgerId: _ledgerId, ...alert } = pair().alert
@@ -430,22 +463,40 @@ function withdrawalPair(
   /** The approval the alert points at; null for an alert saved before the ledger. */
   approvalId: string | null = OLD_LEDGER_ID,
   reason = 'Sent for the wrong area.',
-): { withdrawal: Doc; entry: Doc } {
+): { withdrawal: Doc; entry: Doc; copy: Doc } {
   const saved = readSavedAlert(ALERT_ID, { ...approval().record, ledgerId: approvalId ?? undefined }, undefined, false)
   if (!saved) throw new Error('The seeded alert is not one the app can read.')
   const writes = withdrawalWrites(saved, WITHDRAWAL_ID, reason)
   if (!writes.ok) throw new Error(writes.reason)
+  const withdrawal = { ...writes.withdrawal, by: uid, at: serverTimestamp(), ...changes.withdrawal }
   return {
-    withdrawal: { ...writes.withdrawal, by: uid, at: serverTimestamp(), ...changes.withdrawal },
+    withdrawal,
     entry: { ...writes.entry, by: uid, at: serverTimestamp(), ...changes.entry },
+    // Stamped like the withdrawal, so a test that changes its time still gets a matching copy.
+    copy: { ...writes.copy, updatedAt: withdrawal.at },
   }
 }
 
-/** Commits the withdrawal and its entry in one batch, as withdrawAlert() does. Leave one out to write the other alone. */
-function withdraw(db: TestDb, docs: { withdrawal?: Doc; entry?: Doc; alsoChange?: Doc }, ledgerId = WITHDRAWAL_ID) {
+/** The withdrawn resident copy for the seeded alert, stamped like the withdrawal. */
+function withdrawnCopyOf(withdrawal: Doc): Doc {
+  return { household: 'general', area: 'Purok Ilaya', areaKey: 'purok-ilaya', status: 'withdrawn', updatedAt: withdrawal.at }
+}
+
+/**
+ * Commits the withdrawal, its entry and the resident copy in one batch, as
+ * withdrawAlert() does. Leave one out to write the others alone. The copy
+ * defaults to the one that matches the withdrawal; pass `copy: null` to leave it out.
+ */
+function withdraw(
+  db: TestDb,
+  docs: { withdrawal?: Doc; entry?: Doc; copy?: Doc | null; alsoChange?: Doc },
+  ledgerId = WITHDRAWAL_ID,
+) {
   const batch = writeBatch(db)
   if (docs.withdrawal) batch.update(doc(db, ALERTS, ALERT_ID), { withdrawal: docs.withdrawal, ...docs.alsoChange })
   if (docs.entry) batch.set(doc(db, LEDGER, ledgerId), docs.entry)
+  const copy = docs.copy === undefined && docs.withdrawal ? withdrawnCopyOf(docs.withdrawal) : docs.copy
+  if (copy) batch.set(doc(db, RESIDENT_ALERTS, ALERT_ID), copy)
   return batch.commit()
 }
 
@@ -454,9 +505,10 @@ async function seedWithdrawal(ledgerId = 'OldWithdrawal0000001') {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
     const at = Timestamp.fromMillis(Date.now() - 30_000)
-    const { withdrawal, entry } = withdrawalPair()
+    const { withdrawal, entry, copy } = withdrawalPair()
     await updateDoc(doc(db, ALERTS, ALERT_ID), { withdrawal: { ...withdrawal, ledgerId, at } })
     await setDoc(doc(db, LEDGER, ledgerId), { ...entry, at })
+    await setDoc(doc(db, RESIDENT_ALERTS, ALERT_ID), { ...copy, updatedAt: at })
   })
 }
 
@@ -508,6 +560,7 @@ describe('withdrawing a saved alert with its ledger entry', () => {
     const batch = writeBatch(db)
     batch.set(doc(db, ALERTS, ALERT_ID), { withdrawal }, { merge: true })
     batch.set(doc(db, LEDGER, WITHDRAWAL_ID), entry)
+    batch.set(doc(db, RESIDENT_ALERTS, ALERT_ID), withdrawnCopyOf(withdrawal))
     await assertFails(batch.commit())
   })
 
@@ -545,6 +598,7 @@ describe('withdrawing a saved alert with its ledger entry', () => {
     batch.update(doc(db, ALERTS, ALERT_ID), { withdrawal })
     batch.set(doc(db, LEDGER, WITHDRAWAL_ID), entry)
     batch.set(doc(db, LEDGER, 'SecondEntrySecond001'), entry)
+    batch.set(doc(db, RESIDENT_ALERTS, ALERT_ID), withdrawnCopyOf(withdrawal))
     await assertFails(batch.commit())
   })
 
@@ -571,6 +625,8 @@ describe('withdrawing a saved alert with its ledger entry', () => {
     batch.update(doc(db, ALERTS, ALERT_ID), { withdrawal })
     batch.update(doc(db, ALERTS, twinId), { withdrawal })
     batch.set(doc(db, LEDGER, WITHDRAWAL_ID), entry)
+    batch.set(doc(db, RESIDENT_ALERTS, ALERT_ID), withdrawnCopyOf(withdrawal))
+    batch.set(doc(db, RESIDENT_ALERTS, twinId), { ...withdrawnCopyOf(withdrawal), areaKey: 'purok-ilaya-2' })
     await assertFails(batch.commit())
   })
 
@@ -705,12 +761,12 @@ describe('reading and deleting alerts', () => {
     await assertSucceeds(getDocs(collection(officerDb(), ALERTS)))
   })
 
-  it('does not let a Google user who is not on the list read alerts yet', async () => {
+  it('does not let a Google user who is not on the list read alerts', async () => {
     await seedApproval()
     await assertFails(getDoc(doc(strangerDb(), ALERTS, ALERT_ID)))
   })
 
-  it('does not let an anonymous resident read alerts yet', async () => {
+  it('does not let an anonymous resident read alerts, which hold officers’ user IDs', async () => {
     await seedApproval()
     await assertFails(getDocs(collection(residentDb(), ALERTS)))
   })
@@ -753,6 +809,182 @@ describe('the officer list', () => {
 
   it('does not let an officer remove themselves from the list', async () => {
     await assertFails(deleteDoc(doc(officerDb(), 'officers', OFFICER)))
+  })
+})
+
+/** The resident copy as stored, read with the rules off. */
+async function storedCopy(): Promise<Doc | undefined> {
+  let data: Doc | undefined
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    data = (await getDoc(doc(ctx.firestore(), RESIDENT_ALERTS, ALERT_ID))).data()
+  })
+  return data
+}
+
+const packQuery = (db: TestDb, max = PACK_LIMIT) => query(collection(db, RESIDENT_ALERTS), limit(max))
+
+describe('reading the copy residents get', () => {
+  it('lets an anonymous resident read the whole pack, asking for at most the limit', async () => {
+    await seedApproval()
+    await assertSucceeds(getDocs(packQuery(residentDb())))
+  })
+
+  it('lets an anonymous resident read one alert’s copy', async () => {
+    await seedApproval()
+    await assertSucceeds(getDoc(doc(residentDb(), RESIDENT_ALERTS, ALERT_ID)))
+  })
+
+  it('stops a resident listing the copies with no limit', async () => {
+    await seedApproval()
+    await assertFails(getDocs(collection(residentDb(), RESIDENT_ALERTS)))
+  })
+
+  it('stops a resident asking for more copies than the limit', async () => {
+    await seedApproval()
+    await assertFails(getDocs(packQuery(residentDb(), PACK_LIMIT + 1)))
+  })
+
+  it('lets an officer read the copies', async () => {
+    await seedApproval()
+    await assertSucceeds(getDocs(packQuery(officerDb())))
+  })
+
+  it('does not let a visitor who is not signed in read the copies', async () => {
+    await seedApproval()
+    await assertFails(getDocs(packQuery(visitorDb())))
+    await assertFails(getDoc(doc(visitorDb(), RESIDENT_ALERTS, ALERT_ID)))
+  })
+})
+
+describe('the copy residents get, written with each approval', () => {
+  it('saves the alert’s text and place, with no officer’s user ID and no bulletin', async () => {
+    await assertSucceeds(save(officerDb(), pair()))
+    const copy = await storedCopy()
+    if (copy?.text !== GOOD_DRAFT || copy.status !== 'active') throw new Error('The copy does not carry the approved alert.')
+    const keys = Object.keys(copy).sort().join(',')
+    if (keys !== 'area,areaKey,household,signal,status,stormName,text,updatedAt') throw new Error(`Unexpected fields: ${keys}`)
+    if (JSON.stringify(copy).includes(OFFICER)) throw new Error('The copy holds the officer’s user ID.')
+  })
+
+  it('stops an approval without the copy', async () => {
+    await assertFails(save(officerDb(), { ...pair(), copy: null }))
+  })
+
+  it('stops a replacing approval that leaves the old copy for residents', async () => {
+    await seedApproval()
+    await assertFails(save(officerDb(OTHER_OFFICER), { ...pair(OTHER_OFFICER), copy: null }))
+  })
+
+  it('stops a copy whose text differs from the alert', async () => {
+    const { alert, entry } = pair()
+    await assertFails(save(officerDb(), { alert, entry, copy: { ...copyOf(alert), text: 'Signal No. 1 only. Stay home.' } }))
+  })
+
+  it('stops a copy with a different signal or storm name', async () => {
+    const { alert, entry } = pair()
+    await assertFails(save(officerDb(), { alert, entry, copy: { ...copyOf(alert), signal: 1 } }))
+    await assertFails(save(officerDb(), { alert, entry, copy: { ...copyOf(alert), stormName: 'Typhoon Other' } }))
+  })
+
+  it('stops a copy that names the approving officer', async () => {
+    const { alert, entry } = pair()
+    await assertFails(save(officerDb(), { alert, entry, copy: { ...copyOf(alert), approvedBy: OFFICER } }))
+  })
+
+  it('stops a copy with a field the rules don’t check yet, such as a translation', async () => {
+    const { alert, entry } = pair()
+    const translations = { fil: { text: 'Hindi pa ito nasuri.', ledgerId: LEDGER_ID } }
+    await assertFails(save(officerDb(), { alert, entry, copy: { ...copyOf(alert), translations } }))
+  })
+
+  it('stops a copy stamped with the laptop clock', async () => {
+    const { alert, entry } = pair()
+    await assertFails(save(officerDb(), { alert, entry, copy: { ...copyOf(alert), updatedAt: Timestamp.now() } }))
+  })
+
+  it('stops a copy that says the alert is withdrawn when it is not', async () => {
+    const { alert, entry } = pair()
+    await assertFails(save(officerDb(), { alert, entry, copy: withdrawnCopyOf({ at: serverTimestamp() }) }))
+  })
+})
+
+describe('a copy written on its own', () => {
+  it('lets an officer copy an alert saved before copies existed', async () => {
+    await seedAlertBeforeLedger()
+    let alert: Doc | undefined
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      alert = (await getDoc(doc(ctx.firestore(), ALERTS, ALERT_ID))).data()
+    })
+    await assertSucceeds(setDoc(doc(officerDb(), RESIDENT_ALERTS, ALERT_ID), copyOf(alert!)))
+  })
+
+  it('stops a copy that differs from its saved alert', async () => {
+    await seedApproval()
+    const copy = await storedCopy()
+    await assertFails(setDoc(doc(officerDb(), RESIDENT_ALERTS, ALERT_ID), { ...copy, text: 'Signal No. 1 only. Stay home.' }))
+  })
+
+  it('stops a copy for an alert that is not saved', async () => {
+    const { alert } = pair()
+    await assertFails(setDoc(doc(officerDb(), RESIDENT_ALERTS, ALERT_ID), { ...copyOf(alert), updatedAt: Timestamp.now() }))
+  })
+
+  it('stops a resident writing a copy, even one that matches the alert', async () => {
+    await seedApproval()
+    const copy = await storedCopy()
+    await assertFails(setDoc(doc(residentDb(), RESIDENT_ALERTS, ALERT_ID), copy!))
+  })
+
+  it('stops a Google user who is not on the officer list writing a copy', async () => {
+    await seedApproval()
+    const copy = await storedCopy()
+    await assertFails(setDoc(doc(strangerDb(), RESIDENT_ALERTS, ALERT_ID), copy!))
+  })
+
+  it('does not let an officer delete a copy', async () => {
+    await seedApproval()
+    await assertFails(deleteDoc(doc(officerDb(), RESIDENT_ALERTS, ALERT_ID)))
+  })
+})
+
+describe('the copy residents get, after a withdrawal', () => {
+  it('keeps no text and no officer’s user ID', async () => {
+    await seedApproval()
+    await assertSucceeds(withdraw(officerDb(), withdrawalPair()))
+    const copy = await storedCopy()
+    const keys = Object.keys(copy ?? {}).sort().join(',')
+    if (keys !== 'area,areaKey,household,status,updatedAt' || copy?.status !== 'withdrawn') throw new Error(`Unexpected copy: ${keys}`)
+    if (JSON.stringify(copy).includes(OFFICER)) throw new Error('The copy holds the officer’s user ID.')
+  })
+
+  it('stops a withdrawal that leaves the copy for residents', async () => {
+    await seedApproval()
+    await assertFails(withdraw(officerDb(), { ...withdrawalPair(), copy: null }))
+  })
+
+  it('stops a withdrawal whose copy keeps the text', async () => {
+    await seedApproval()
+    const { withdrawal, entry } = withdrawalPair()
+    const stillActive = { ...(await storedCopy()), updatedAt: serverTimestamp() }
+    await assertFails(withdraw(officerDb(), { withdrawal, entry, copy: stillActive }))
+  })
+
+  it('stops a withdrawn copy written for an alert that is not withdrawn', async () => {
+    await seedApproval()
+    await assertFails(setDoc(doc(officerDb(), RESIDENT_ALERTS, ALERT_ID), withdrawnCopyOf({ at: serverTimestamp() })))
+  })
+
+  it('brings the text back for residents with a new approval', async () => {
+    await seedApproval()
+    await seedWithdrawal()
+    await assertSucceeds(save(officerDb(), pair()))
+    if ((await storedCopy())?.text !== GOOD_DRAFT) throw new Error('The new approval did not reach residents.')
+  })
+
+  it('stops a new approval that leaves the withdrawn copy', async () => {
+    await seedApproval()
+    await seedWithdrawal()
+    await assertFails(save(officerDb(), { ...pair(), copy: null }))
   })
 })
 

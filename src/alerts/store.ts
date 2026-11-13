@@ -15,17 +15,19 @@ import {
 } from 'firebase/firestore'
 import { LEDGER, approvalWrites, type Trail, type WithdrawalWrites } from '../ledger/record'
 import { ALERTS, readSavedAlert, type Approval, type SavedAlert } from './record'
+import { RESIDENT_ALERTS } from './residentCopy'
 
 type Approved = Extract<Approval, { ok: true }>
 
 /**
- * Saves an approved alert and its ledger entry in one batch, replacing the
- * last alert for its household and area. Earlier ledger entries stay.
+ * Saves an approved alert, its ledger entry and the copy residents read in one
+ * batch, replacing the last alert for its household and area. Earlier ledger
+ * entries stay.
  * Offline, the batch is kept on the laptop and the promise settles only when
  * it uploads, so callers show progress from watchSavedAlerts, not from this.
  * firestore.rules refuses the alert without its entry and the entry without
  * its alert, requires the signed-in officer as the approver, and the server's
- * time on both.
+ * time on both, and the resident copy to match the alert.
  */
 export function saveApprovedAlert(db: Firestore, uid: string, approval: Approved, trail: Trail): Promise<void> {
   const writes = approvalWrites(approval, newLedgerId(db), trail)
@@ -33,6 +35,7 @@ export function saveApprovedAlert(db: Firestore, uid: string, approval: Approved
   const batch = writeBatch(db)
   batch.set(doc(db, ALERTS, writes.alertId), { ...writes.alert, approvedBy: uid, approvedAt: at })
   batch.set(doc(db, LEDGER, writes.ledgerId), { ...writes.entry, by: uid, at })
+  batch.set(doc(db, RESIDENT_ALERTS, writes.alertId), { ...writes.copy, updatedAt: at })
   return batch.commit()
 }
 
@@ -42,8 +45,9 @@ export function newLedgerId(db: Firestore): string {
 }
 
 /**
- * Withdraws a saved alert: adds the withdrawal field to it and writes the
- * withdrawal's ledger entry, in one batch. Nothing else on the alert changes,
+ * Withdraws a saved alert: adds the withdrawal field to it, writes the
+ * withdrawal's ledger entry, and replaces the resident copy with one that has
+ * no text, in one batch. Nothing else on the alert changes,
  * and a new approval later replaces the whole alert. Like saving, offline it
  * waits on the laptop and the promise settles when it uploads.
  * firestore.rules refuses one write without the other, a second withdrawal,
@@ -54,6 +58,7 @@ export function withdrawAlert(db: Firestore, uid: string, writes: WithdrawalWrit
   const batch = writeBatch(db)
   batch.update(doc(db, ALERTS, writes.alertId), { withdrawal: { ...writes.withdrawal, by: uid, at } })
   batch.set(doc(db, LEDGER, writes.ledgerId), { ...writes.entry, by: uid, at })
+  batch.set(doc(db, RESIDENT_ALERTS, writes.alertId), { ...writes.copy, updatedAt: at })
   return batch.commit()
 }
 
