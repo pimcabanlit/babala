@@ -6,8 +6,8 @@
 import { extractFigures, normalizeDate, normalizePhone, type Figure } from './figures'
 import { checkPlaces, findCentres, findKnownPlaces, knownPlaces } from './places'
 import { checkAddedClaims, checkPlaceholders, checkPlain } from './rules'
-import { findAll, mask, phrasePattern, sentenceAt } from './text'
-import type { CheckOptions, CheckResult, FactSheet, Issue, RequiredFact, Span } from './types'
+import { findAll, mask, overlaps, phrasePattern, sentenceAt } from './text'
+import type { CheckOptions, CheckResult, FactSheet, Issue, RequiredFact, Span, TranslationOptions } from './types'
 
 export const DEFAULT_REQUIRED: RequiredFact[] = ['signal', 'time', 'place', 'hotline']
 export const DEFAULT_MAX_SENTENCES = 3
@@ -138,39 +138,121 @@ export function checkDraft(draft: string, sheet: FactSheet, options: CheckOption
 
 const figureKey = (f: Figure) => `${f.kind}:${f.value}`
 
-/**
- * Rule 7: a translation keeps every figure and place name of the approved
- * English alert, unchanged. Also rejects placeholders, emojis and formatting.
- * Claim words can't be checked in other languages with the English list, which
- * is why the figures and names must match exactly.
- */
-export function checkTranslation(approvedEnglish: string, translation: string, sheet: FactSheet): CheckResult {
+/** Rule 6 for translations: Filipino and Cebuano run longer than English, so more words, the same sentences. */
+export const TRANSLATION_MAX_SENTENCES = 3
+export const TRANSLATION_MAX_WORDS = 90
+
+/** Rule 7, figures: the same figures as the English alert, in either direction. */
+function compareFigures(english: string, translation: string, sheet: FactSheet): Issue[] {
   const issues: Issue[] = []
-  const english = extractFigures(approvedEnglish, placeNumberSpans(approvedEnglish, sheet))
-  const translated = extractFigures(translation, placeNumberSpans(translation, sheet))
-  const englishKeys = new Set(english.map(figureKey))
-  const translatedKeys = new Set(translated.map(figureKey))
-
-  for (const f of english)
-    if (!translatedKeys.has(figureKey(f)))
+  const inEnglish = extractFigures(english, placeNumberSpans(english, sheet))
+  const inTranslation = extractFigures(translation, placeNumberSpans(translation, sheet))
+  const englishKeys = new Set(inEnglish.map(figureKey))
+  const translatedKeys = new Set(inTranslation.map(figureKey))
+  const lost = new Set<string>()
+  for (const f of inEnglish)
+    if (!translatedKeys.has(figureKey(f)) && !lost.has(figureKey(f))) {
+      lost.add(figureKey(f))
       issues.push({ rule: 'translation', message: `The translation lost “${f.span.text}” from the English alert.` })
-  for (const f of translated)
+    }
+  for (const f of inTranslation)
     if (!englishKeys.has(figureKey(f)))
-      issues.push({
-        rule: 'translation',
-        message: `“${f.span.text}” is in the translation but not in the English alert.`,
-        span: f.span,
-      })
+      issues.push({ rule: 'translation', message: `“${f.span.text}” is in the translation but not in the English alert.`, span: f.span })
+  return issues
+}
 
-  for (const name of knownPlaces(sheet)) {
-    if (!phrasePattern(name).test(approvedEnglish)) continue
-    if (!phrasePattern(name).test(translation))
+/** A place name in one form, so "Barangay  hall" and "Barangay Hall" compare equal. */
+const placeKey = (text: string) => text.toLowerCase().replace(/\s+/g, ' ')
+
+/** Rule 7, places: the same known place names as the English alert, written exactly as the fact sheet does. */
+function comparePlaces(english: string, translation: string, sheet: FactSheet): Issue[] {
+  const issues: Issue[] = []
+  const englishNames = new Set(findKnownPlaces(english, sheet).map((s) => placeKey(s.text)))
+  const translated = findKnownPlaces(translation, sheet)
+  const translatedNames = new Set(translated.map((s) => placeKey(s.text)))
+  for (const name of knownPlaces(sheet))
+    if (englishNames.has(placeKey(name)) && !translatedNames.has(placeKey(name)))
       issues.push({ rule: 'translation', message: `The translation must keep the place name “${name}” exactly.` })
+  const added = new Set<string>()
+  for (const span of translated) {
+    const key = placeKey(span.text)
+    if (englishNames.has(key) || added.has(key)) continue
+    added.add(key)
+    issues.push({ rule: 'translation', message: `“${span.text}” is in the translation but not in the English alert.`, span })
   }
+  return issues
+}
 
+/**
+ * Rule 7, claims: a word that adds severity, a hazard, safety, timing or
+ * authority is allowed in a translation only when the approved English alert
+ * says the same. English claim words (rule 5's list) must be in the English
+ * alert; a Filipino or Cebuano one needs one of its English words there.
+ * Longer phrases win, so "walang panganib" (no danger) is judged as itself,
+ * not as "panganib" (danger).
+ */
+function compareClaims(english: string, translation: string, options: TranslationOptions): Issue[] {
+  type Claim = { word: string; backedBy: string[]; meaning?: string; plural: boolean }
+  const claims: Claim[] = [
+    ...options.claimWords.map((w) => ({ word: w, backedBy: [w], plural: true })),
+    ...options.translatedClaims.flatMap((c) =>
+      c.words.map((w) => ({ word: w, backedBy: c.english, meaning: c.english[0], plural: false })),
+    ),
+  ]
+    .filter((c) => c.word.trim() !== '')
+    .sort((a, b) => b.word.trim().length - a.word.trim().length)
+  const taken: Span[] = []
+  const issues: Issue[] = []
+  for (const claim of claims) {
+    const backed = claim.backedBy.some((b) => b.trim() !== '' && phrasePattern(b, { plural: true }).test(english))
+    for (const span of findAll(translation, phrasePattern(claim.word, { plural: claim.plural }))) {
+      if (taken.some((t) => overlaps(span, t))) continue
+      taken.push(span)
+      if (backed) continue
+      const meaning = claim.meaning ? ` (“${claim.meaning}”)` : ''
+      issues.push({ rule: 'translation', message: `“${span.text}”${meaning} is not in the English alert.`, span })
+    }
+  }
+  return issues
+}
+
+/**
+ * Rule 7: a translation says what the approved English alert says, checked on
+ * its own against that English text and the fact sheet, never against another
+ * translation. It keeps every figure and place name, adds none, and adds no
+ * claim the English doesn't make. It is also held to rules 2 (no other places,
+ * including Filipino and Cebuano words for a venue), 4 (no placeholders) and 6
+ * (plain and short, Latin letters only).
+ */
+export function checkTranslation(
+  approvedEnglish: string,
+  translation: string,
+  sheet: FactSheet,
+  options: TranslationOptions,
+): CheckResult {
+  const placeholders = checkPlaceholders(translation)
+  const withoutPlaceholders = mask(translation, placeholders.flatMap((i) => (i.span ? [i.span] : [])))
   return result([
-    ...checkPlaceholders(translation),
-    ...issues,
-    ...checkPlain(translation, 0, 0, { length: false }),
+    ...placeholders,
+    ...compareFigures(approvedEnglish, translation, sheet),
+    ...comparePlaces(approvedEnglish, translation, sheet),
+    // Placeholders are reported once, not again as unknown places.
+    ...checkPlaces(withoutPlaceholders, sheet),
+    ...compareClaims(approvedEnglish, translation, options),
+    ...checkPlain(
+      translation,
+      options.maxSentences ?? TRANSLATION_MAX_SENTENCES,
+      options.maxWords ?? TRANSLATION_MAX_WORDS,
+    ),
   ])
+}
+
+/**
+ * The figures and place names in an approved English alert, as written there:
+ * what a translation must keep. For the translation prompt and the console.
+ */
+export function keptFacts(approvedEnglish: string, sheet: FactSheet): { figures: string[]; places: string[] } {
+  const figures = extractFigures(approvedEnglish, placeNumberSpans(approvedEnglish, sheet)).map((f) => f.span.text)
+  const places = findKnownPlaces(approvedEnglish, sheet).map((s) => s.text)
+  return { figures: [...new Set(figures)], places: [...new Set(places)] }
 }

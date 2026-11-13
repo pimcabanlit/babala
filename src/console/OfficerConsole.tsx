@@ -18,10 +18,12 @@ import { useDrafts } from './useDrafts'
 import { useHybrid } from './useHybrid'
 import { useLedger } from './useLedger'
 import { useSavedAlerts } from './useSavedAlerts'
+import { usePublishedTranslations, useTranslations } from './useTranslations'
 
 /**
  * The officer console: bulletin in, fact sheet confirmed, drafts checked,
- * approved and saved; the saved alerts, where one can be withdrawn; and the ledger.
+ * approved and saved; the saved alerts, where one can be translated or
+ * withdrawn; and the ledger.
  */
 export default function OfficerConsole({ session }: { session: OfficerSession }) {
   const hybrid = useHybrid()
@@ -41,6 +43,15 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
   const sheet = parsed?.ok && confirmed ? parsed.sheet : undefined
   const areas = parsed?.ok ? parsed.sheet.signals.map((s) => s.area) : []
   const claimWords = hybrid.tunables?.checkerClaimWords ?? []
+  const published = usePublishedTranslations(session.db)
+  const translations = useTranslations({
+    db: session.db,
+    uid: session.uid,
+    model: hybrid.translationModel,
+    cloudModel: hybrid.tunables?.cloudModelName ?? '',
+    claimWords,
+    translationClaims: hybrid.tunables?.translationClaims,
+  })
 
   const drafts = useDrafts({
     sheet,
@@ -293,7 +304,7 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
         </Section>
       )}
 
-      <Section title="4. Saved alerts">
+      <Section title="4. Saved alerts and translations">
         <SavedAlerts
           saved={savedList}
           unreadable={savedAlerts.saved?.unreadable ?? []}
@@ -302,6 +313,14 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
           withdrawErrors={withdrawErrors}
           onWithdraw={withdraw}
           onShowLedger={setOpenEntry}
+          translations={{
+            published: published.published,
+            error: published.error,
+            actions: translations,
+            canTranslate: Boolean(hybrid.translationModel && hybrid.online),
+            claimWords,
+            translationClaims: hybrid.tunables?.translationClaims,
+          }}
         />
       </Section>
 
@@ -310,6 +329,7 @@ export default function OfficerConsole({ session }: { session: OfficerSession })
           view={ledger.view}
           error={ledger.error}
           saved={savedAlerts.saved?.byId}
+          published={published.published}
           uid={session.uid}
           openId={openEntry}
           onOpen={setOpenEntry}

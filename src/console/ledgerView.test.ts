@@ -17,6 +17,7 @@ const alert: SavedAlert = {
   pending: false,
   ledgerId: 'entry-2',
   withdrawn: undefined,
+  factSheet: undefined,
 }
 
 function saved(a: SavedAlert): Map<string, SavedAlert> {
@@ -24,6 +25,31 @@ function saved(a: SavedAlert): Map<string, SavedAlert> {
 }
 
 const withdrawnByEntry3 = { ...alert, withdrawn: { ledgerId: 'entry-3', by: 'uid', at: undefined } }
+
+const translation = { id: 'entry-6', kind: 'translated', alertId: 'general__purok-ilaya', lang: 'fil', approvalId: 'entry-2' } as LedgerEntry
+const publishedAs = (ledgerId: string) => new Map([['general__purok-ilaya', { fil: { text: 'Nakataas ang Signal No. 3.', ledgerId, pending: false } }]])
+
+describe('entryStatus of a translation', () => {
+  it('says current when residents get this translation', () => {
+    expect(entryStatus(translation, saved(alert), publishedAs('entry-6'))).toBe('current')
+  })
+
+  it('says replaced when a later translation in the same language is published', () => {
+    expect(entryStatus(translation, saved(alert), publishedAs('entry-7'))).toBe('replaced')
+  })
+
+  it('says replaced when a new approval replaced the English it translates', () => {
+    expect(entryStatus(translation, saved({ ...alert, ledgerId: 'entry-4' }), publishedAs('entry-6'))).toBe('replaced')
+  })
+
+  it('says withdrawn when the alert it translates was withdrawn', () => {
+    expect(entryStatus(translation, saved(withdrawnByEntry3), new Map())).toBe('withdrawn')
+  })
+
+  it('says unknown while the published translations are still loading', () => {
+    expect(entryStatus(translation, saved(alert), undefined)).toBe('unknown')
+  })
+})
 
 describe('entryStatus', () => {
   it('says current when the saved alert points at this approval', () => {

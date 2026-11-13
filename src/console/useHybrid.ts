@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ALERT_SCHEMA } from '../drafting/structured'
-import { createDraftModels, prepareOnDeviceModel, warmUpOnDevice, type DraftModels, type Source } from '../ai'
+import { TRANSLATION_SCHEMA } from '../translation/prompt'
+import {
+  createDraftModels,
+  createTranslationModel,
+  prepareOnDeviceModel,
+  warmUpOnDevice,
+  type DraftModels,
+  type Source,
+  type TranslationModel,
+} from '../ai'
 import { readDeviceStatus, type DeviceStatus } from '../ai/deviceStatus'
 import { CHECKER_CLAIM_WORDS, REMOTE_CONFIG_DEFAULTS } from '../config/defaults'
 import { getFirebase } from '../firebase'
-import { loadTunables, type Tunables } from '../firebase/remoteConfig'
+import { defaultTranslationClaims, loadTunables, type Tunables } from '../firebase/remoteConfig'
 
 export type WarmUp =
   | { state: 'idle' }
@@ -19,16 +28,24 @@ const OFFLINE_TUNABLES: Tunables = {
   cloudModelName: REMOTE_CONFIG_DEFAULTS.cloud_model_name,
   ondeviceBudgetSeconds: REMOTE_CONFIG_DEFAULTS.ondevice_budget_seconds,
   checkerClaimWords: [...CHECKER_CLAIM_WORDS],
-  sources: { cloud_model_name: 'default', ondevice_budget_seconds: 'default', checker_claim_words: 'default' },
+  translationClaims: defaultTranslationClaims(),
+  sources: {
+    cloud_model_name: 'default',
+    ondevice_budget_seconds: 'default',
+    checker_claim_words: 'default',
+    checker_translation_claims: 'default',
+  },
 }
 
 /**
- * The console's AI setup: tunables, the two draft models, Chrome's on-device
+ * The console's AI setup: tunables, the two draft models and the translation
+ * model, Chrome's on-device
  * status, the network, the download button and the warm-up on open.
  */
 export function useHybrid() {
   const [tunables, setTunables] = useState<Tunables | undefined>(firebase.ok ? undefined : OFFLINE_TUNABLES)
   const [models, setModels] = useState<DraftModels>()
+  const [translationModel, setTranslationModel] = useState<TranslationModel>()
   const [device, setDevice] = useState<DeviceStatus>('unknown')
   const [online, setOnline] = useState(navigator.onLine)
   const [download, setDownload] = useState<number>()
@@ -59,6 +76,7 @@ export function useHybrid() {
         const m = createDraftModels(firebase.app, t.cloudModelName, ALERT_SCHEMA)
         setTunables(t)
         setModels(m)
+        setTranslationModel(createTranslationModel(firebase.app, t.cloudModelName, TRANSLATION_SCHEMA))
         return refreshDevice(m)
       })
     else void readDeviceStatus().then(setDevice)
@@ -86,6 +104,8 @@ export function useHybrid() {
     configured: firebase.ok,
     tunables,
     models,
+    /** The cloud-only model for Filipino and Cebuano translations. */
+    translationModel,
     device,
     deviceRef,
     online,

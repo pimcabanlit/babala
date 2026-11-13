@@ -116,6 +116,15 @@ describe('readSavedAlert', () => {
     })
   })
 
+  it('reads the fact sheet saved with the alert, which translations are checked against', () => {
+    expect(readSavedAlert('x', { ...data, factSheet: SAMPLE_SHEET }, at, false)?.factSheet).toEqual(SAMPLE_SHEET)
+  })
+
+  it('reads an alert whose fact sheet it can’t read, without one', () => {
+    const saved = readSavedAlert('x', { ...data, factSheet: { stormName: 'Typhoon Sample' } }, at, false)
+    expect([saved?.text, saved?.factSheet]).toEqual(['Alert text.', undefined])
+  })
+
   it('ignores a document with an unknown household', () => {
     expect(readSavedAlert('x', { ...data, household: 'tourists' }, at, false)).toBeUndefined()
   })

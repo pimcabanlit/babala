@@ -136,8 +136,36 @@ describe('readLedgerEntry', () => {
     })
   })
 
-  it('ignores a kind of entry this app doesn’t write yet', () => {
-    expect(readLedgerEntry(LEDGER_ID, { ...data, kind: 'translated' }, at, false)).toBeUndefined()
+  it('ignores a kind of entry this app doesn’t write', () => {
+    expect(readLedgerEntry(LEDGER_ID, { ...data, kind: 'archived' }, at, false)).toBeUndefined()
+  })
+
+  it('reads a translation entry, without the word lists', () => {
+    const translated = {
+      kind: 'translated',
+      alertId: 'general__purok-ilaya',
+      household: 'general',
+      area: 'Purok Ilaya',
+      lang: 'ceb',
+      approvalId: LEDGER_ID,
+      english: GOOD_DRAFT,
+      text: 'Gipataas ang Signal No. 3 sa Purok Ilaya.',
+      source: 'in_cloud',
+      edited: true,
+      cloudModel: 'gemini-3.5-flash-lite',
+      claimWords: ['severe'],
+      translatedClaims: [{ words: ['kuyaw'], english: ['dangerous'] }],
+      drafts: [],
+      draftsOmitted: 0,
+      by: 'officer-1',
+    }
+    const { claimWords: _c, translatedClaims: _t, ...shown } = translated
+    expect(readLedgerEntry('TranslateTranslate01', translated, at, false)).toEqual({ ...shown, id: 'TranslateTranslate01', at, pending: false })
+  })
+
+  it('ignores a translation entry in a language this app doesn’t publish', () => {
+    const translated = { ...data, kind: 'translated', lang: 'tl', approvalId: LEDGER_ID, english: GOOD_DRAFT, source: 'in_cloud' }
+    expect(readLedgerEntry(LEDGER_ID, translated, at, false)).toBeUndefined()
   })
 
   it('ignores an entry with a draft it can’t read', () => {
@@ -163,6 +191,7 @@ describe('withdrawalWrites', () => {
     pending: false,
     ledgerId: LEDGER_ID,
     withdrawn: undefined,
+    factSheet: undefined,
   }
 
   it('points the alert at the withdrawal’s entry and nothing else', () => {

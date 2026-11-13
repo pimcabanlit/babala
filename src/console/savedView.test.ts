@@ -14,6 +14,7 @@ function alert(household: SavedAlert['household'], area: string): SavedAlert {
     pending: false,
     ledgerId: undefined,
     withdrawn: undefined,
+    factSheet: undefined,
   }
 }
 

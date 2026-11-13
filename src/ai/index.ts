@@ -21,6 +21,15 @@ export type Route = 'prefer_on_device' | 'only_in_cloud'
 export type DraftModels = Record<Route, GenerativeModel>
 
 /**
+ * Firebase AI Logic with the Gemini Developer API. Limited-use App Check
+ * tokens: required by newer models for replay protection (Firebase AI Logic
+ * agent skill, web usage patterns).
+ */
+function aiFor(app: FirebaseApp) {
+  return getAI(app, { backend: new GoogleAIBackend(), useLimitedUseAppCheckTokens: true })
+}
+
+/**
  * Two models for drafting: "prefer on-device" (Nano when Chrome has it ready,
  * otherwise the cloud) and "only in cloud". The cloud model name comes from
  * Remote Config.
@@ -35,9 +44,7 @@ export function createDraftModels(
   cloudModelName: string,
   jsonSchema?: Record<string, unknown>,
 ): DraftModels {
-  // Limited-use App Check tokens: required by newer models for replay protection
-  // (Firebase AI Logic agent skill, web usage patterns).
-  const ai = getAI(app, { backend: new GoogleAIBackend(), useLimitedUseAppCheckTokens: true })
+  const ai = aiFor(app)
   const generationConfig = {
     temperature: 0.2,
     ...(jsonSchema ? { responseMimeType: 'application/json', responseJsonSchema: jsonSchema } : {}),
@@ -108,4 +115,36 @@ export async function warmUpOnDevice(models: DraftModels): Promise<Source | unde
   // The model may have a JSON schema; a one-word answer fits any string field.
   const result = await models.prefer_on_device.generateContent('Fill every field with the word "ready".')
   return result.response.inferenceSource
+}
+
+export type TranslationModel = GenerativeModel
+
+/**
+ * The translation model: "only in cloud", because Gemini Nano writes only
+ * German, English, Spanish, French and Japanese, not Filipino or Cebuano. It
+ * answers in JSON that fits `jsonSchema`. The cloud model name comes from
+ * Remote Config.
+ */
+export function createTranslationModel(
+  app: FirebaseApp,
+  cloudModelName: string,
+  jsonSchema: Record<string, unknown>,
+): TranslationModel {
+  return getGenerativeModel(aiFor(app), {
+    mode: InferenceMode.ONLY_IN_CLOUD,
+    inCloudParams: {
+      model: cloudModelName,
+      generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseJsonSchema: jsonSchema },
+    },
+  })
+}
+
+/**
+ * One translation call, not streamed: the cloud answers a short alert in a
+ * few seconds, and the officer reviews the whole text. One call per click;
+ * nothing here retries.
+ */
+export async function translateOnce(model: TranslationModel, prompt: string, signal?: AbortSignal): Promise<StreamResult> {
+  const result = await model.generateContent(prompt, { signal })
+  return { text: result.response.text(), source: result.response.inferenceSource }
 }

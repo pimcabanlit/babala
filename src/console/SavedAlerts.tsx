@@ -5,6 +5,9 @@ import { LEDGER_LIMITS } from '../ledger/record'
 import { formatTime } from './format'
 import { approverLabel } from './ledgerView'
 import { inDisplayOrder } from './savedView'
+import Translations, { type TranslationActions } from './Translations'
+import type { TranslationClaims } from '../firebase/remoteConfig'
+import type { PublishedTranslations } from '../translation/record'
 
 type Props = {
   saved: SavedAlert[] | undefined
@@ -17,20 +20,35 @@ type Props = {
   /** Starts a withdrawal; returns why it can't start, or undefined once it is saved on the laptop. */
   onWithdraw: (alert: SavedAlert, reason: string) => string | undefined
   onShowLedger: (ledgerId: string) => void
+  translations: TranslationProps
+}
+
+/** What each active alert's translations need. */
+export type TranslationProps = {
+  /** Translations published on each resident copy, by alert ID; undefined while loading. */
+  published: ReadonlyMap<string, PublishedTranslations> | undefined
+  /** Why the published translations couldn't be read. */
+  error: string | undefined
+  actions: TranslationActions
+  canTranslate: boolean
+  claimWords: string[]
+  translationClaims: TranslationClaims | undefined
 }
 
 /**
- * Every saved alert, in every area: what residents will get, and the place to
- * withdraw one. It needs no bulletin, so an officer can withdraw an alert
- * straight after opening the console.
+ * Every saved alert, in every area: what residents will get, the place to
+ * translate an active one, and the place to withdraw one. It needs no
+ * bulletin, so an officer can act on an alert straight after opening the console.
  */
-export default function SavedAlerts({ saved, unreadable, error, uid, withdrawErrors, onWithdraw, onShowLedger }: Props) {
+export default function SavedAlerts({ saved, unreadable, error, uid, withdrawErrors, onWithdraw, onShowLedger, translations }: Props) {
   return (
     <div className="space-y-2 text-sm">
       <p className="text-slate-700">
         One alert per household and area. Withdrawing one keeps its text and its record, marks it withdrawn so residents no
-        longer get it, and adds the reason to the ledger. Approving a new alert for the same household and area replaces it.
+        longer get it or its translations, and adds the reason to the ledger. Approving a new alert for the same household and
+        area replaces it, and its translations need publishing again.
       </p>
+      {translations.error && <p className="rounded bg-red-50 p-2 text-red-800">Couldn’t read the published translations: {translations.error}</p>}
       {error && <p className="rounded bg-red-50 p-2 text-red-800">Couldn’t read the saved alerts: {error}</p>}
       {!saved && !error && <p className="text-slate-600">Loading the saved alerts…</p>}
       {saved && saved.length === 0 && <p className="text-slate-600">No alerts saved yet.</p>}
@@ -49,6 +67,7 @@ export default function SavedAlerts({ saved, unreadable, error, uid, withdrawErr
                 error={withdrawErrors[alert.id]}
                 onWithdraw={(reason) => onWithdraw(alert, reason)}
                 onShowLedger={onShowLedger}
+                translations={translations}
               />
             </li>
           ))}
@@ -63,12 +82,14 @@ function Row({
   error,
   onWithdraw,
   onShowLedger,
+  translations,
 }: {
   alert: SavedAlert
   uid: string
   error: string | undefined
   onWithdraw: (reason: string) => string | undefined
   onShowLedger: (ledgerId: string) => void
+  translations: TranslationProps
 }) {
   const [form, setForm] = useState<{ reason: string; problem?: string }>()
   const household = HOUSEHOLDS.find((h) => h.id === alert.household)?.label ?? alert.household
@@ -119,6 +140,17 @@ function Row({
         )}
       </p>
       {error && <p className="mt-2 rounded bg-red-50 p-2 text-red-800">{error}</p>}
+      {!withdrawn && (
+        <Translations
+          alert={alert}
+          published={translations.published?.get(alert.id)}
+          actions={translations.actions}
+          canTranslate={translations.canTranslate}
+          claimWords={translations.claimWords}
+          translationClaims={translations.translationClaims}
+          onShowLedger={onShowLedger}
+        />
+      )}
       {form && (
         <div className="mt-2 rounded border border-red-200 bg-red-50 p-2">
           <label className="block text-xs font-medium text-red-950" htmlFor={`reason-${alert.id}`}>

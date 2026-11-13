@@ -1,22 +1,13 @@
 import { useMemo } from 'react'
 import { InferenceSource } from '../ai'
 import type { SavedAlert } from '../alerts/record'
-import type { FactSheet, Rule } from '../checker'
+import type { FactSheet } from '../checker'
 import type { Household } from '../drafting/households'
 import { formatTime } from './format'
-import { inReadingOrder, segments } from './segments'
+import Problems from './Problems'
+import { inReadingOrder } from './segments'
 import { checkFor } from '../drafting/check'
 import type { Attempt, Draft } from './useDrafts'
-
-const RULE_LABEL: Record<Rule, string> = {
-  figures: 'Figure',
-  places: 'Place',
-  missing: 'Missing',
-  placeholders: 'Placeholder',
-  'added-claims': 'Added claim',
-  plain: 'Style',
-  translation: 'Translation',
-}
 
 type Props = {
   household: Household
@@ -130,30 +121,7 @@ export default function DraftCard(props: Props) {
       {props.saveError && <p className="mt-2 rounded bg-red-50 p-2 text-sm text-red-800">{props.saveError}</p>}
       {props.saved && <Saved saved={props.saved} current={draft.text.trim()} onShowLedger={props.onShowLedger} />}
 
-      {result && !result.pass && !draft.running && (
-        <div className="mt-2">
-          <p className="whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm leading-6">
-            {segments(draft.text, result.issues).map((s, i) =>
-              s.issue ? (
-                <mark key={i} title={s.issue.message} className="rounded bg-red-200 px-0.5 text-red-950">
-                  {s.text}
-                </mark>
-              ) : (
-                <span key={i}>{s.text}</span>
-              ),
-            )}
-          </p>
-          {result.issues.length > 0 && (
-            <ul className="mt-2 space-y-0.5 text-sm text-red-800">
-              {inReadingOrder(result.issues).map((issue, i) => (
-                <li key={i}>
-                  <span className="font-semibold">{RULE_LABEL[issue.rule]}:</span> {issue.message}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      {result && !result.pass && !draft.running && <Problems text={draft.text} issues={result.issues} />}
     </article>
   )
 }

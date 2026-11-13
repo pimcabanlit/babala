@@ -43,3 +43,7 @@ export const GOOD_FILIPINO =
  */
 export const NANO_HINDI_DRAFT =
   'Signal No. 3 is raised in Purok 1, Barangay Halimbawa, and Typhoon Sample will make landfall at 6:00 PM on Nov 14. Residents are advised to evacuate immediately to the Halimbawa Elementary School gym or Barangay Hall. For assistance, कृपया call the hotline, 0917 555 0100.'
+
+/** A Cebuano translation of GOOD_DRAFT that keeps every figure and name. */
+export const GOOD_CEBUANO =
+  'Gipataas ang Signal No. 3 sa Purok Ilaya. Gidahom nga motugpa ang bagyo sa alas-6 sa gabii sa Nov 14, busa bakwit na karon sa Halimbawa Elementary School gym. Para sa tabang, tawag sa 0917 555 0100.'

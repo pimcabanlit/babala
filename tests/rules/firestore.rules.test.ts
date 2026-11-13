@@ -33,8 +33,10 @@ import { RESIDENT_ALERTS } from '../../src/alerts/residentCopy'
 import { PACK_LIMIT } from '../../src/resident/store'
 import { LEDGER, LEDGER_LIMITS, approvalWrites, withdrawalWrites, type Trail } from '../../src/ledger/record'
 import { LEDGER_PAGE } from '../../src/ledger/store'
-import { GOOD_DRAFT, SAMPLE_SHEET } from '../../src/checker/fixtures/halimbawa'
-import { CHECKER_CLAIM_WORDS } from '../../src/config/defaults'
+import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET } from '../../src/checker/fixtures/halimbawa'
+import { CHECKER_CLAIM_WORDS, TRANSLATION_CLAIMS } from '../../src/config/defaults'
+import type { LanguageCode } from '../../src/translation/languages'
+import { TRANSLATION_TEXT_LIMIT, translationWrites, type TranslationTrail } from '../../src/translation/record'
 import { HOUSEHOLDS } from '../../src/drafting/households'
 
 const OFFICER = 'officer-1'
@@ -891,7 +893,7 @@ describe('the copy residents get, written with each approval', () => {
     await assertFails(save(officerDb(), { alert, entry, copy: { ...copyOf(alert), approvedBy: OFFICER } }))
   })
 
-  it('stops a copy with a field the rules don’t check yet, such as a translation', async () => {
+  it('stops an approval whose copy carries a translation, which needs its own entry', async () => {
     const { alert, entry } = pair()
     const translations = { fil: { text: 'Hindi pa ito nasuri.', ledgerId: LEDGER_ID } }
     await assertFails(save(officerDb(), { alert, entry, copy: { ...copyOf(alert), translations } }))
@@ -985,6 +987,277 @@ describe('the copy residents get, after a withdrawal', () => {
     await seedApproval()
     await seedWithdrawal()
     await assertFails(save(officerDb(), { ...pair(), copy: null }))
+  })
+})
+
+const TRANSLATION_ID = 'TranslateTranslate01'
+
+/** One passing cloud translation, as the console records it. */
+function translationTrail(lang: LanguageCode, text: string): TranslationTrail {
+  return {
+    drafts: [
+      {
+        round: 1,
+        route: 'only_in_cloud',
+        retry: false,
+        area: 'Purok Ilaya',
+        source: 'in_cloud',
+        prompt: 'Translate this typhoon alert from English into…',
+        text,
+        outcome: 'passed',
+        issues: [],
+        error: '',
+        startedAtMs: 1_794_700_100_000,
+        firstTextMs: null,
+        totalMs: 2_100,
+      },
+    ],
+    cloudModel: 'gemini-3.5-flash-lite',
+    claimWords: [...CHECKER_CLAIM_WORDS],
+    translatedClaims: [...TRANSLATION_CLAIMS[lang]],
+  }
+}
+
+/**
+ * The translation and ledger entry publishTranslation() writes for the alert
+ * seedApproval() saves, built by translationWrites(), with each changed.
+ */
+function translationPair(
+  uid = OFFICER,
+  changes: { translation?: Doc; entry?: Doc } = {},
+  lang: LanguageCode = 'fil',
+  ledgerId = TRANSLATION_ID,
+): { translation: Doc; entry: Doc } {
+  const saved = readSavedAlert(ALERT_ID, { ...approval().record, ledgerId: OLD_LEDGER_ID }, undefined, false)
+  if (!saved) throw new Error('The seeded alert is not one the app can read.')
+  const text = lang === 'fil' ? GOOD_FILIPINO : GOOD_CEBUANO
+  const writes = translationWrites({ saved, lang, text, source: 'in_cloud', edited: false, trail: translationTrail(lang, text) }, ledgerId)
+  if (!writes.ok) throw new Error(writes.reason)
+  return {
+    translation: { ...writes.translation, ...changes.translation },
+    entry: { ...writes.entry, by: uid, at: serverTimestamp(), ...changes.entry },
+  }
+}
+
+/**
+ * Commits the translation on the resident copy and its entry in one batch, as
+ * publishTranslation() does. Leave one out to write the other alone.
+ */
+function publish(
+  db: TestDb,
+  docs: { translation?: Doc; entry?: Doc; lang?: string; alsoChange?: Doc },
+  ledgerId = TRANSLATION_ID,
+) {
+  const batch = writeBatch(db)
+  if (docs.translation)
+    batch.update(doc(db, RESIDENT_ALERTS, ALERT_ID), { [`translations.${docs.lang ?? 'fil'}`]: docs.translation, ...docs.alsoChange })
+  if (docs.entry) batch.set(doc(db, LEDGER, ledgerId), docs.entry)
+  return batch.commit()
+}
+
+/** Publishes a translation of the seeded alert with the rules off, as an earlier one. */
+async function seedTranslation(lang: LanguageCode = 'fil', ledgerId = 'OldTranslation000001') {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    const { translation, entry } = translationPair(OFFICER, {}, lang, ledgerId)
+    await updateDoc(doc(db, RESIDENT_ALERTS, ALERT_ID), { [`translations.${lang}`]: translation })
+    await setDoc(doc(db, LEDGER, ledgerId), { ...entry, at: Timestamp.fromMillis(Date.now() - 20_000) })
+  })
+}
+
+describe('publishing a translation with its ledger entry', () => {
+  it('lets an officer publish a Filipino translation, built by translationWrites()', async () => {
+    await seedApproval()
+    await assertSucceeds(publish(officerDb(), translationPair()))
+    const copy = await storedCopy()
+    const fil = (copy?.translations as Record<string, Doc> | undefined)?.fil
+    if (fil?.text !== GOOD_FILIPINO || copy?.text !== GOOD_DRAFT) throw new Error('The copy does not carry the translation next to the English.')
+  })
+
+  it('lets an officer publish Cebuano next to an earlier Filipino translation', async () => {
+    await seedApproval()
+    await seedTranslation('fil')
+    await assertSucceeds(publish(officerDb(), { ...translationPair(OFFICER, {}, 'ceb'), lang: 'ceb' }))
+  })
+
+  it('lets another officer replace a published translation, keeping the old entry', async () => {
+    await seedApproval()
+    await seedTranslation('fil')
+    await assertSucceeds(publish(officerDb(OTHER_OFFICER), translationPair(OTHER_OFFICER)))
+    await assertSucceeds(getDoc(doc(officerDb(), LEDGER, 'OldTranslation000001')))
+  })
+
+  it('lets an anonymous resident read the translation, with no officer’s user ID on the copy', async () => {
+    await seedApproval()
+    await seedTranslation('fil')
+    const copy = (await getDoc(doc(residentDb(), RESIDENT_ALERTS, ALERT_ID))).data()
+    if (!JSON.stringify(copy).includes(GOOD_FILIPINO)) throw new Error('The resident did not get the translation.')
+    if (JSON.stringify(copy).includes(OFFICER)) throw new Error('The copy holds the officer’s user ID.')
+  })
+
+  it('stops a Google user who is not on the officer list', async () => {
+    await seedApproval()
+    await assertFails(publish(strangerDb(), translationPair(STRANGER)))
+  })
+
+  it('stops an anonymous user even if their ID is on the officer list', async () => {
+    await seedApproval()
+    await assertFails(publish(residentDb(), translationPair(RESIDENT)))
+  })
+
+  it('stops a translation with no ledger entry', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), { translation: translationPair().translation }))
+  })
+
+  it('stops an entry written without its translation', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), { entry: translationPair().entry }))
+  })
+
+  it('stops a translation whose text differs from its entry’s', async () => {
+    await seedApproval()
+    const { translation, entry } = translationPair()
+    await assertFails(publish(officerDb(), { translation: { ...translation, text: 'Walang bagyo. Manatili sa bahay.' }, entry }))
+  })
+
+  it('stops an entry recording the other language', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { lang: 'ceb' } })))
+  })
+
+  it('stops an entry whose English differs from the alert’s', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { english: 'Signal No. 1 only. Stay home.' } })))
+  })
+
+  it('stops a translation of an approval that is no longer the alert’s', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { approvalId: 'EarlierApproval00001' } })))
+  })
+
+  it('stops an entry naming a different household or area from the alert’s', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { household: 'fishers' } })))
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { area: 'Purok 2' } })))
+  })
+
+  it('stops translating a withdrawn alert', async () => {
+    await seedApproval()
+    await seedWithdrawal()
+    await assertFails(publish(officerDb(), translationPair()))
+  })
+
+  it('stops a translation that also changes the English on the copy', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), { ...translationPair(), alsoChange: { text: 'Signal No. 1 only. Stay home.' } }))
+  })
+
+  it('stops publishing two languages in one write', async () => {
+    await seedApproval()
+    const { translation, entry } = translationPair()
+    const db = officerDb()
+    const batch = writeBatch(db)
+    batch.update(doc(db, RESIDENT_ALERTS, ALERT_ID), { 'translations.fil': translation, 'translations.ceb': translation })
+    batch.set(doc(db, LEDGER, TRANSLATION_ID), entry)
+    await assertFails(batch.commit())
+  })
+
+  it('stops an officer removing a published translation', async () => {
+    await seedApproval()
+    await seedTranslation('fil')
+    await assertFails(updateDoc(doc(officerDb(), RESIDENT_ALERTS, ALERT_ID), { 'translations.fil': deleteField() }))
+  })
+
+  it('stops a language the app doesn’t publish', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), { ...translationPair(OFFICER, { entry: { lang: 'tl' } }), lang: 'tl' }))
+  })
+
+  it('stops a translation with a field the app never writes', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { translation: { by: OFFICER } })))
+  })
+
+  it('stops pointing the copy back at an earlier translation’s entry, with no new entry', async () => {
+    await seedApproval()
+    await seedTranslation('fil', 'OldTranslation000001')
+    await seedTranslation('fil', 'NewerTranslation0001')
+    const { translation } = translationPair(OFFICER, {}, 'fil', 'OldTranslation000001')
+    await assertFails(publish(officerDb(), { translation }))
+  })
+
+  it('stops a translation pointing at an entry ID the app would never make', async () => {
+    await seedApproval()
+    const { translation, entry } = translationPair()
+    await assertFails(publish(officerDb(), { translation: { ...translation, ledgerId: 'short' }, entry }, 'short'))
+  })
+
+  it('stops translation text longer than the limit', async () => {
+    await seedApproval()
+    const text = 'a'.repeat(TRANSLATION_TEXT_LIMIT + 1)
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { translation: { text }, entry: { text } })))
+  })
+
+  it('allows translation text right at the limit', async () => {
+    await seedApproval()
+    const text = 'a'.repeat(TRANSLATION_TEXT_LIMIT)
+    await assertSucceeds(publish(officerDb(), translationPair(OFFICER, { translation: { text }, entry: { text } })))
+  })
+
+  it('stops an entry stamped with the laptop clock', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { at: Timestamp.now() } })))
+  })
+
+  it('stops an entry naming someone else as the officer', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OTHER_OFFICER)))
+  })
+
+  it('stops an entry with a field the app never writes', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { note: 'extra' } })))
+  })
+
+  it('stops an entry with no claim words for its language', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { translatedClaims: [] } })))
+  })
+
+  it('stops an unknown source', async () => {
+    await seedApproval()
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { source: 'on_device' } })))
+  })
+
+  it('does not let an officer change or delete a translation’s entry', async () => {
+    await seedApproval()
+    await seedTranslation('fil')
+    await assertFails(updateDoc(doc(officerDb(), LEDGER, 'OldTranslation000001'), { text: 'Changed later.' }))
+    await assertFails(deleteDoc(doc(officerDb(), LEDGER, 'OldTranslation000001')))
+  })
+})
+
+describe('translations after the alert changes', () => {
+  it('clears the translations with a new approval', async () => {
+    await seedApproval()
+    await seedTranslation('fil')
+    await assertSucceeds(save(officerDb(), pair()))
+    if ((await storedCopy())?.translations !== undefined) throw new Error('A translation of the old alert reached residents.')
+  })
+
+  it('clears the translations with a withdrawal', async () => {
+    await seedApproval()
+    await seedTranslation('fil')
+    await assertSucceeds(withdraw(officerDb(), withdrawalPair()))
+    if ((await storedCopy())?.translations !== undefined) throw new Error('A translation of a withdrawn alert reached residents.')
+  })
+
+  it('stops a copy rewritten on its own that drops the translations', async () => {
+    await seedApproval()
+    await seedTranslation('fil')
+    const { translations: _translations, ...copy } = (await storedCopy())!
+    await assertFails(setDoc(doc(officerDb(), RESIDENT_ALERTS, ALERT_ID), copy))
   })
 })
 

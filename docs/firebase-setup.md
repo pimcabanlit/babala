@@ -14,7 +14,7 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, registered for "Babala web" | **Enforced on AI Logic.** Not yet enforced on Firestore (turn on near the end). A debug token is registered for local work and kept in `.env.local` |
 | Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12). The `officers` documents are added by hand |
 | Authentication | Google and Anonymous sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background |
-| Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name` and `checker_claim_words` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
+| Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name`, `checker_claim_words` and `checker_translation_claims` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
 | Hosting | Not set up | Planned for Phase 4, deployed by GitHub Actions |
 | GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets used yet |
 | Agent skills | Firebase's official skills in `.claude/skills/`, commit `99954a3` (Nov 9) | See `.claude/skills/README.md`. `CLAUDE.md` wins where they differ |
@@ -96,6 +96,7 @@ Parameters, with their in-app defaults in `src/config/defaults.ts`:
 | `ondevice_budget_seconds` | Number | `30` (published) |
 | `cloud_model_name` | String | Not published; the default is `gemini-3.5-flash-lite`. Optional: publishing it lets the cloud model be switched without a redeploy. Gemini 3 or later only, never 1.x or 2.x |
 | `checker_claim_words` | String, a JSON array of strings | Not published; the default is the list in `CHECKER_CLAIM_WORDS`. Changes to the list are better made in a reviewed PR |
+| `checker_translation_claims` | String, a JSON object: `{"fil": [{"words": [...], "english": [...]}], "ceb": [...]}` | Not published; the default is `TRANSLATION_CLAIMS`. Nothing to do. Publishing it lets a fluent speaker fix a Filipino or Cebuano claim word without a redeploy; a value the app can't read falls back to the whole default |
 
 Publish after each change. The app fetches at most once an hour, so a change can take up to an hour to show.
 
@@ -159,6 +160,8 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 - [ ] Publish the rules from the withdrawal PR right after it merges, then withdraw a test alert on the laptop and check the ledger shows the reason. Until then the server refuses withdrawals, and the console shows "Not withdrawn".
 - [ ] Optional: publish `cloud_model_name` in Remote Config, so the cloud model can be switched during judging without a redeploy.
 - [ ] Publish the rules from the resident view PR right after it merges. Then approve one alert on the laptop, open `/resident` on a phone, pick its purok and household, and check it shows. Turn on airplane mode and reopen it. Alerts saved before then reach residents at their next approval.
+- [ ] Publish the rules from the translations PR right after it merges (after the resident view PR's). Then, on the laptop and online, open *Saved alerts and translations*, press "Translate into both" on an active alert, check each result, publish it, and check `/resident` shows the language choice. Nothing to set up in the console besides the rules.
+- [ ] Have a fluent Filipino and Cebuano speaker review `TRANSLATION_CLAIMS` in `src/config/defaults.ts`, the claim words a translation may only use when the English backs them.
 - [ ] Hosting, GitHub secrets, and the hosted domain in Authentication's authorized domains (Phase 4).
 - [ ] App Check enforced on Firestore (Phase 4).
 - [ ] A test officer login for judges (Phase 4).
