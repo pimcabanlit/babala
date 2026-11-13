@@ -37,9 +37,9 @@ let services: FirebaseServices | undefined
  *
  * Starts Firebase once: App Check first, because it is enforced on AI Logic
  * (and on Firestore, docs/firebase-setup.md section 4), so Firestore's first
- * request already carries a token. If the
- * page opened with no signal, the reCAPTCHA script App Check needs is loaded
- * again when the signal returns (recaptchaRetry.ts).
+ * request already carries a token. If the page opened with no signal, the
+ * reCAPTCHA script App Check needs is loaded again when the signal returns
+ * (recaptchaRetry.ts).
  */
 export function getFirebase(): FirebaseServices {
   if (services) return services
