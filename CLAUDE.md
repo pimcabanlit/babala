@@ -48,7 +48,7 @@ The docs in `docs/` are the source of truth. The first plan doc (https://claude.
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, enforced on AI Logic; debug token locally |
 | Data | Firestore (`(default)`, asia-southeast1) with offline cache |
 | Auth | Google sign-in for officers, one email and password test officer for judges, anonymous sign-in for residents |
-| Config | Remote Config (`ondevice_budget_seconds` = 30, `cloud_model_name`, `checker_claim_words`, `checker_translation_claims`) |
+| Config | Remote Config (`ondevice_budget_seconds` = 30, `cloud_model_name`, `checker_claim_words`, `checker_translation_claims`, `checker_answer_claims`, `ask_cloud_per_hour`) |
 | Hosting | Firebase Hosting (`https://babala-hybrid.web.app`), deployed by Pim from the laptop |
 | Tests | Vitest for the checker and routing logic |
 

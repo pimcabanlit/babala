@@ -148,3 +148,53 @@ export async function translateOnce(model: TranslationModel, prompt: string, sig
   const result = await model.generateContent(prompt, { signal })
   return { text: result.response.text(), source: result.response.inferenceSource }
 }
+
+/** The two models that answer residents' questions (src/ask/). */
+export type AskModels = { on_device: GenerativeModel; cloud: GenerativeModel }
+
+/**
+ * Models for residents' questions, both answering in JSON that fits
+ * `jsonSchema`. The on-device one is "only on device", not "prefer on-device",
+ * so a question routed to the device never reaches the cloud unseen: the
+ * cloud has its own route, with its own limit per phone. It is used only
+ * when Chrome reports Nano downloaded; the resident view never starts a
+ * download. Temperature 0: the answer should be the alert's own words.
+ */
+export function createAskModels(app: FirebaseApp, cloudModelName: string, jsonSchema: Record<string, unknown>): AskModels {
+  const ai = aiFor(app)
+  return {
+    on_device: getGenerativeModel(ai, {
+      mode: InferenceMode.ONLY_ON_DEVICE,
+      onDeviceParams: {
+        createOptions: { ...ON_DEVICE_IO },
+        promptOptions: { responseConstraint: jsonSchema },
+      },
+    }),
+    cloud: getGenerativeModel(ai, {
+      mode: InferenceMode.ONLY_IN_CLOUD,
+      inCloudParams: {
+        model: cloudModelName,
+        generationConfig: { temperature: 0, responseMimeType: 'application/json', responseJsonSchema: jsonSchema },
+      },
+    }),
+  }
+}
+
+/**
+ * One answer, not streamed: residents see an answer only after the checker
+ * passes it, so there is nothing to show while it is written. The signal
+ * stops a cloud call; the SDK can't stop an on-device one.
+ */
+export async function askOnce(models: AskModels, route: keyof AskModels, prompt: string, signal?: AbortSignal): Promise<StreamResult> {
+  const result = await models[route].generateContent(prompt, { signal })
+  return { text: result.response.text(), source: result.response.inferenceSource }
+}
+
+/**
+ * Loads Gemini Nano before the resident's first question, when they start
+ * typing one: the first on-device call on the laptop took 32 s, later ones
+ * about 7 s. On-device only, so it never uses the cloud.
+ */
+export async function warmUpAsk(models: AskModels): Promise<void> {
+  await models.on_device.generateContent('Fill every field: in_alert false, sentences empty, answer empty.')
+}

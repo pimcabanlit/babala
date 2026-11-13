@@ -9,6 +9,7 @@ const RULE_LABEL: Record<Rule, string> = {
   'added-claims': 'Added claim',
   plain: 'Style',
   translation: 'Translation',
+  answer: 'Answer',
 }
 
 /** The checked text with each problem highlighted, then every problem in reading order. */

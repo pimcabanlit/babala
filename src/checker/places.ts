@@ -6,7 +6,7 @@ import { findAll, inside, phrasePattern } from './text'
 import type { FactSheet, Issue, Span } from './types'
 
 /** Words that name a kind of place. Each one in a draft must sit inside a known name. */
-const VENUE_WORDS = [
+export const VENUE_WORDS: readonly string[] = [
   'gym', 'gymnasium', 'school', 'elementary', 'hall', 'church', 'chapel', 'cathedral', 'mosque',
   'center', 'centre', 'court', 'plaza', 'stadium', 'arena', 'auditorium', 'covered court',
   'multi-purpose', 'multipurpose', 'barangay hall', 'municipal hall', 'town hall', 'capitol',

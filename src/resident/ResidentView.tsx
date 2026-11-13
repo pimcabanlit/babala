@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import Ask from './Ask'
 import { formatTime } from '../console/format'
 import { HOUSEHOLDS, type HouseholdId } from '../drafting/households'
 import { getFirebase } from '../firebase'
 import { startOfflineApp, type OfflineApp } from '../offline/register'
 import { LANGUAGES, alertFor, languagesOf, packAreas, textIn, type Language, type PackAlert } from './pack'
+import { useAskSetup, type AskSetup } from './useAsk'
 import { useChoice, useResidentPack } from './useResidentPack'
 import { syncLine } from './view'
 
@@ -22,6 +24,7 @@ const at = (ms: number) => formatTime(new Date(ms))
  */
 export default function ResidentView() {
   const { pack, sync } = useResidentPack(getFirebase())
+  const askSetup = useAskSetup(getFirebase())
   const [choice, choose] = useChoice()
   const areas = packAreas(pack)
   const areaKey = areas.some((a) => a.areaKey === choice.areaKey) ? choice.areaKey : undefined
@@ -80,7 +83,15 @@ export default function ResidentView() {
       </div>
 
       {areaKey ? (
-        <AlertCard alert={alert} household={household} area={areas.find((a) => a.areaKey === areaKey)?.area ?? ''} language={choice.language ?? 'en'} onLanguage={(language) => choose({ language })} />
+        <AlertCard
+          alert={alert}
+          household={household}
+          area={areas.find((a) => a.areaKey === areaKey)?.area ?? ''}
+          language={choice.language ?? 'en'}
+          onLanguage={(language) => choose({ language })}
+          askSetup={askSetup}
+          online={sync.online}
+        />
       ) : (
         areas.length > 0 && <p className="text-slate-700">Choose your purok to see your alert. This phone remembers it.</p>
       )}
@@ -100,12 +111,16 @@ function AlertCard({
   area,
   language,
   onLanguage,
+  askSetup,
+  online,
 }: {
   alert: PackAlert | undefined
   household: HouseholdId
   area: string
   language: Language
   onLanguage: (language: Language) => void
+  askSetup: AskSetup
+  online: boolean
 }) {
   const who = `${householdLabel(household)} households in ${area}`
   if (!alert) {
@@ -154,6 +169,15 @@ function AlertCard({
         {alert.updatedAtMs !== null && <>Last updated {at(alert.updatedAtMs)}. </>}
         Approved by a barangay officer after a code check against the storm bulletin.
       </p>
+      <Ask
+        key={`${alert.id}__${shown.language}`}
+        setup={askSetup}
+        online={online}
+        english={alert.texts.en}
+        shown={shown.text}
+        language={shown.language}
+        names={[alert.stormName, alert.area]}
+      />
     </article>
   )
 }

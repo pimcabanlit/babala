@@ -14,7 +14,7 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, registered for "Babala web" | **Enforced on AI Logic.** Not yet enforced on Firestore (turn on near the end). A debug token is registered for local work and kept in `.env.local` |
 | Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12, then PRs #21 to #24 together, Nov 13). The `officers` documents are added by hand |
 | Authentication | Google, Anonymous and Email/Password sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background. Email/Password for the judges' test officer only (*Test officer for judges* below), set up Nov 13 |
-| Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name`, `checker_claim_words` and `checker_translation_claims` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
+| Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name`, `checker_claim_words`, `checker_translation_claims`, `checker_answer_claims` and `ask_cloud_per_hour` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
 | Hosting | Live at `https://babala-hybrid.web.app` since Nov 13 | Pim deploys from the laptop with `npm run deploy:hosting` (section 8). First deploy Nov 13, 12:59 PM, checked on the laptop and an iPhone |
 | GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets |
 | Agent skills | Firebase's official skills in `.claude/skills/`, commit `99954a3` (Nov 9) | See `.claude/skills/README.md`. `CLAUDE.md` wins where they differ |
@@ -120,6 +120,8 @@ Parameters, with their in-app defaults in `src/config/defaults.ts`:
 | `cloud_model_name` | String | Not published; the default is `gemini-3.5-flash-lite`. Optional: publishing it lets the cloud model be switched without a redeploy. Gemini 3 or later only, never 1.x or 2.x |
 | `checker_claim_words` | String, a JSON array of strings | Not published; the default is the list in `CHECKER_CLAIM_WORDS`. Changes to the list are better made in a reviewed PR |
 | `checker_translation_claims` | String, a JSON object: `{"fil": [{"words": [...], "english": [...]}], "ceb": [...]}` | Not published; the default is `TRANSLATION_CLAIMS`. Nothing to do. Publishing it lets a fluent speaker fix a Filipino or Cebuano claim word without a redeploy; a value the app can't read falls back to the whole default |
+| `checker_answer_claims` | String, a JSON array of strings | Not published; the default is `ANSWER_CLAIM_WORDS`. Nothing to do. Publishing it lets you add a "do less" phrase an answer got past the checker with, during judging, without a redeploy |
+| `ask_cloud_per_hour` | Number | Not published; the default is `6`. Nothing to do. Publishing `0` turns residents' cloud answers off (on-device answers and text search keep working), for example if the free tier runs low during judging |
 
 Publish after each change. The app fetches at most once an hour, so a change can take up to an hour to show.
 
@@ -244,7 +246,9 @@ Every draft in the first runs, on-device and cloud, added claims or placeholders
 
 ## Cost and usage
 
-On Spark there is no bill. Heavy use ends in quota errors, which the app must show as a clear "try again shortly" (Phase 4). Drafting is limited to signed-in officers, with at most one cloud call per alert, and App Check stops other clients using the quota. No usage numbers have been recorded yet.
+On Spark there is no bill. Heavy use ends in quota errors, which the app must show as a clear "try again shortly" (Phase 4; done for residents' questions). Drafting is limited to signed-in officers, with at most one cloud call per alert, and App Check stops other clients using the quota. No usage numbers have been recorded yet.
+
+Since Ask, anonymous residents can use the cloud too: one cloud call per question, at most 6 per phone per hour (`ask_cloud_per_hour`). That limit is kept on the phone, so someone clearing the site's storage gets a new hour. The hard limit is AI Logic's own per-user quota, "Generate content requests" per user per minute, 100 by default ([rate limits and quotas](https://firebase.google.com/docs/ai-logic/quotas)). Optional, before judging: lower it in the Google Cloud console → APIs & Services → **Firebase AI Logic API** → **Manage** → **Quotas & System Limits** → filter for "Generate content requests" → select it → **Edit quota**, for example to 10. It applies to officers too, and a drafting card makes at most one cloud call, so 10 a minute leaves plenty. Each cloud call also takes a limited-use App Check token, so check reCAPTCHA's usage in the Google Cloud console (Security → reCAPTCHA) after judging starts.
 
 ## Follow-ups
 
@@ -261,5 +265,8 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 - [x] Hosting (Nov 13): turned on, reCAPTCHA key limited to the two hosted domains (`localhost` removed), Auth's authorized domains checked, deployed and checked on the laptop and an iPhone (section 8).
 - [ ] Look at the 5 high `npm audit` findings: all in `@grpc/grpc-js` (Node gRPC, through `firebase` and `@firebase/rules-unit-testing`). The browser build talks to Firestore over WebChannel, not gRPC, so the hosted app isn't expected to be affected. Don't run `npm audit fix --force`: it would downgrade `firebase` to 9.x.
 - [ ] App Check enforced on Firestore (Phase 4).
+- [ ] Ask (Ask PR): after it merges and is deployed, check on the laptop that a question is answered on the device with Nano, offline too, and in the cloud online; and on the iPhone that it is answered in the cloud online and by text search in airplane mode.
+- [ ] Optional: lower AI Logic's per-user quota before judging (*Cost and usage*).
+- [ ] Have a fluent Filipino and Cebuano speaker review the "do less" phrases in `ANSWER_CLAIM_WORDS` with `TRANSLATION_CLAIMS`.
 - [x] Test officer for judges set up (Nov 13): Email/Password on, user actions set, `test-officer@example.com` added with its `officers` document, and signed in on the laptop. Its password is in Pim's password manager.
 - [ ] Put the test officer's email and password in the private testing instructions (Phase 5).

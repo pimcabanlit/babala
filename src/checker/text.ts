@@ -78,3 +78,17 @@ export function sentenceAt(text: string, index: number): Span {
   }
   return { start, end: text.length, text: text.slice(start) }
 }
+
+/** The text's sentences (or lines), as sentenceAt splits them, trimmed, without empty ones. */
+export function sentences(text: string): Span[] {
+  const out: Span[] = []
+  let index = 0
+  while (index < text.length) {
+    const s = sentenceAt(text, index)
+    const lead = s.text.length - s.text.trimStart().length
+    const trimmed = s.text.trim()
+    if (trimmed !== '') out.push({ start: s.start + lead, end: s.start + lead + trimmed.length, text: trimmed })
+    index = s.end
+  }
+  return out
+}

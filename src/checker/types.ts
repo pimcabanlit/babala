@@ -33,6 +33,7 @@ export type Rule =
   | 'added-claims'
   | 'plain'
   | 'translation'
+  | 'answer'
 
 /** Where in the draft an issue is, so the console can highlight it. */
 export type Span = { start: number; end: number; text: string }
