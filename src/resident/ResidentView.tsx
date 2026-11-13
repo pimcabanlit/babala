@@ -8,11 +8,13 @@ import { LANGUAGES, alertFor, languagesOf, packAreas, textIn, type Language, typ
 import { useAskSetup, type AskSetup } from './useAsk'
 import { useChoice, useResidentPack } from './useResidentPack'
 import { syncLine } from './view'
+import Button from '../ui/Button'
+import Notice from '../ui/Notice'
 
 const TONES = {
-  ok: 'bg-emerald-50 text-emerald-900',
-  offline: 'bg-slate-200 text-slate-900',
-  problem: 'bg-red-50 text-red-800',
+  ok: 'success',
+  offline: 'neutral',
+  problem: 'error',
 } as const
 
 const at = (ms: number) => formatTime(new Date(ms))
@@ -35,23 +37,23 @@ export default function ResidentView() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-bold">Your typhoon alert</h2>
-        <p className={`mt-2 rounded p-2 text-sm ${TONES[line.tone]}`} role="status">
+        <h2 className="text-headline-sm">Your typhoon alert</h2>
+        <Notice tone={TONES[line.tone]} role="status" className="mt-3">
           {line.text}
-        </p>
+        </Notice>
         {sync.unreadable > 0 && (
-          <p className="mt-2 rounded bg-amber-100 p-2 text-sm text-amber-950">
+          <Notice tone="warning" className="mt-3">
             {sync.unreadable} alert{sync.unreadable === 1 ? '' : 's'} from the barangay couldn’t be read by this version of the
             app. Reload the page to get the latest version.
-          </p>
+          </Notice>
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm font-semibold">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block text-body-md font-medium">
           Your purok
           <select
-            className="mt-1 block w-full rounded border border-slate-300 bg-white p-2 text-base font-normal"
+            className="field mt-1 block font-normal"
             value={areaKey ?? ''}
             onChange={(e) => choose({ areaKey: e.target.value })}
             disabled={areas.length === 0}
@@ -66,10 +68,10 @@ export default function ResidentView() {
             ))}
           </select>
         </label>
-        <label className="block text-sm font-semibold">
+        <label className="block text-body-md font-medium">
           Your household
           <select
-            className="mt-1 block w-full rounded border border-slate-300 bg-white p-2 text-base font-normal"
+            className="field mt-1 block font-normal"
             value={household}
             onChange={(e) => choose({ household: e.target.value as HouseholdId })}
           >
@@ -93,7 +95,7 @@ export default function ResidentView() {
           online={sync.online}
         />
       ) : (
-        areas.length > 0 && <p className="text-slate-700">Choose your purok to see your alert. This phone remembers it.</p>
+        areas.length > 0 && <p className="text-body-lg text-on-surface-variant">Choose your purok to see your alert. This phone remembers it.</p>
       )}
 
       <InstallHint />
@@ -125,32 +127,32 @@ function AlertCard({
   const who = `${householdLabel(household)} households in ${area}`
   if (!alert) {
     return (
-      <p className="rounded border border-slate-300 bg-white p-4 text-slate-800">
+      <p className="rounded-lg border border-outline-variant bg-surface-container-lowest p-4 text-body-lg">
         No alert for {who} right now. Check again later, and listen to your barangay officials.
       </p>
     )
   }
   if (alert.status === 'withdrawn') {
     return (
-      <div className="rounded border border-slate-400 bg-white p-4 text-slate-800" role="alert">
-        <p className="font-semibold">The barangay withdrew the alert for {who}.</p>
+      <div className="rounded-lg border border-outline bg-surface-container-high p-4 text-body-lg" role="alert">
+        <p className="text-title-md">The barangay withdrew the alert for {who}.</p>
         <p className="mt-1">Don’t follow it. Wait for a new alert, and listen to your barangay officials.</p>
-        {alert.updatedAtMs !== null && <p className="mt-2 text-sm text-slate-600">Withdrawn {at(alert.updatedAtMs)}</p>}
+        {alert.updatedAtMs !== null && <p className="mt-2 text-body-md text-on-surface-variant">Withdrawn {at(alert.updatedAtMs)}</p>}
       </div>
     )
   }
   const languages = languagesOf(alert)
   const shown = textIn(alert, language)
   return (
-    <article className="rounded border-2 border-red-700 bg-white p-4">
-      <p className="text-sm font-semibold text-red-800">
+    <article className="rounded-lg border-2 border-error bg-surface-container-lowest p-4">
+      <p className="text-title-sm text-error">
         {alert.stormName} · Signal No. {alert.signal} · {who}
       </p>
       {languages.length > 1 && (
-        <label className="mt-3 block text-sm font-semibold">
+        <label className="mt-4 block text-body-md font-medium">
           Language
           <select
-            className="mt-1 block w-full rounded border border-slate-300 bg-white p-2 text-base font-normal"
+            className="field mt-1 block font-normal"
             value={shown.language}
             onChange={(e) => onLanguage(e.target.value as Language)}
           >
@@ -162,10 +164,10 @@ function AlertCard({
           </select>
         </label>
       )}
-      <p className="mt-3 text-lg leading-relaxed" lang={shown.language}>
+      <p className="mt-4 text-title-lg leading-8" lang={shown.language}>
         {shown.text}
       </p>
-      <p className="mt-3 text-sm text-slate-600">
+      <p className="mt-4 text-body-md text-on-surface-variant">
         {alert.updatedAtMs !== null && <>Last updated {at(alert.updatedAtMs)}. </>}
         Approved by a barangay officer after a code check against the storm bulletin.
       </p>
@@ -232,14 +234,14 @@ function InstallHint() {
   }
 
   return (
-    <div className="rounded bg-slate-100 p-3 text-sm text-slate-700">
+    <div className="rounded-md bg-surface-container p-4 text-body-md text-on-surface-variant">
       <p>{offlineAppText(offlineApp)} Add it to your home screen to find it fast.</p>
       {prompt && (
-        <button type="button" className="mt-2 rounded bg-slate-900 px-3 py-2 font-semibold text-white" onClick={install}>
+        <Button size="lg" variant="tonal" className="mt-3" onClick={install}>
           Install on this phone
-        </button>
+        </Button>
       )}
-      {installError && <p className="mt-1 text-red-800">Couldn’t install: {installError}</p>}
+      {installError && <p className="mt-2 text-error">Couldn’t install: {installError}</p>}
     </div>
   )
 }

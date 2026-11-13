@@ -6,6 +6,9 @@ import { searchAlert } from '../ask/search'
 import { formatTime } from '../console/format'
 import type { Language } from './pack'
 import { useAsk, type AskSetup } from './useAsk'
+import Button from '../ui/Button'
+import { AssistChip, StatusChip, type Tone } from '../ui/Chip'
+import type { IconName } from '../ui/Icon'
 
 /** Example questions in the language the resident reads the alert in. */
 const EXAMPLES: Record<Language, string[]> = {
@@ -20,10 +23,10 @@ const ROUTE_LABEL: Record<AiRoute | 'search', string> = {
   search: 'No AI: text search of the saved alert',
 }
 
-const BADGE: Record<AiRoute | 'search', string> = {
-  on_device: 'bg-emerald-100 text-emerald-900',
-  cloud: 'bg-sky-100 text-sky-900',
-  search: 'bg-slate-200 text-slate-900',
+const BADGE: Record<AiRoute | 'search', { tone: Tone; icon: IconName }> = {
+  on_device: { tone: 'success', icon: 'computer' },
+  cloud: { tone: 'primary', icon: 'cloud' },
+  search: { tone: 'neutral', icon: 'search' },
 }
 
 type Props = {
@@ -61,17 +64,17 @@ export default function Ask({ setup, online, english, shown, language, names }: 
   }
 
   return (
-    <section aria-labelledby="ask-title" className="mt-4 border-t border-slate-200 pt-4">
-      <h3 id="ask-title" className="text-base font-bold">
+    <section aria-labelledby="ask-title" className="mt-6 border-t border-outline-variant pt-6">
+      <h3 id="ask-title" className="text-title-md">
         Ask about your alert
       </h3>
-      <form className="mt-2 flex gap-2" onSubmit={onSubmit}>
+      <form className="mt-3 flex gap-2" onSubmit={onSubmit}>
         <label className="sr-only" htmlFor="ask-question">
           Your question
         </label>
         <input
           id="ask-question"
-          className="min-w-0 flex-1 rounded border border-slate-300 bg-white p-2 text-base"
+          className="field h-12 min-w-0 flex-1"
           value={question}
           maxLength={QUESTION_MAX}
           placeholder={EXAMPLES[language][0]}
@@ -80,29 +83,18 @@ export default function Ask({ setup, online, english, shown, language, names }: 
           onFocus={setup.warmUp}
           onChange={(e) => setQuestion(e.target.value)}
         />
-        <button
-          type="submit"
-          className="rounded bg-slate-900 px-4 py-2 font-semibold text-white disabled:opacity-50"
-          disabled={running || question.trim() === ''}
-        >
+        <Button type="submit" variant="filled" size="lg" disabled={running || question.trim() === ''}>
           Ask
-        </button>
+        </Button>
       </form>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-x-2 gap-y-4 py-2">
         {EXAMPLES[language].map((example) => (
-          <button
-            key={example}
-            type="button"
-            lang={language}
-            className="rounded-full border border-slate-300 bg-white px-3 py-1 text-sm disabled:opacity-50"
-            disabled={running}
-            onClick={() => submit(example)}
-          >
+          <AssistChip key={example} lang={language} disabled={running} onClick={() => submit(example)}>
             {example}
-          </button>
+          </AssistChip>
         ))}
       </div>
-      <p className="mt-2 text-xs text-slate-600">
+      <p className="mt-2 text-body-sm text-on-surface-variant">
         {!running && <>Answers now: {ROUTE_LABEL[nextRoute]}. </>}
         {online && setup.configured && (
           <>
@@ -128,7 +120,7 @@ function Running({ route, startedAt }: { route: AiRoute | 'search'; startedAt: n
   }, [])
   const seconds = Math.max(0, Math.round((now - startedAt) / 1000))
   return (
-    <p className="mt-3 rounded bg-slate-100 p-3 text-sm" role="status">
+    <p className="mt-4 rounded-md bg-surface-container p-3 text-body-md" role="status">
       Answering with {ROUTE_LABEL[route].toLowerCase()}… {seconds} s
       {route === 'on_device' && ' (the first answer on this device can take about 30 s)'}
     </p>
@@ -163,20 +155,22 @@ function Outcome({ question, outcome, shown, language }: { question: string; out
   const hotline = searchAlert(shown, 'hotline call')
   const notes = [...outcome.tries.map(tryText), ...(outcome.kind === 'search' && outcome.reason ? [outcome.reason] : [])]
   return (
-    <div className="mt-3 rounded border border-slate-300 bg-white p-3" aria-live="polite">
+    <div className="mt-4 rounded-md border border-outline-variant bg-surface-container-lowest p-4" aria-live="polite">
       <p>
-        <span className={`rounded px-2 py-0.5 text-xs font-semibold ${BADGE[route]}`}>{ROUTE_LABEL[route]}</span>
+        <StatusChip tone={BADGE[route].tone} icon={BADGE[route].icon}>
+          {ROUTE_LABEL[route]}
+        </StatusChip>
       </p>
-      <p className="mt-2 text-sm text-slate-600" lang={language}>
+      <p className="mt-3 text-body-md text-on-surface-variant" lang={language}>
         You asked: “{question}”
       </p>
       {outcome.kind === 'answer' && (
         <>
-          <p className="mt-2 text-lg" lang={language}>
+          <p className="mt-2 text-title-lg" lang={language}>
             {outcome.answer}
           </p>
           <Quotes label="From your alert, word for word:" quotes={outcome.quotes} language={language} />
-          <p className="mt-2 text-xs text-slate-600">
+          <p className="mt-3 text-body-sm text-on-surface-variant">
             Written by AI and checked by code against your alert: same figures and places, nothing added. The barangay didn’t
             write this answer; follow the alert itself.
           </p>
@@ -198,7 +192,7 @@ function Outcome({ question, outcome, shown, language }: { question: string; out
           </>
         ))}
       {notes.length > 0 && (
-        <ul className="mt-2 space-y-0.5 text-xs text-slate-600">
+        <ul className="mt-3 space-y-1 text-body-sm text-on-surface-variant">
           {notes.map((n, i) => (
             <li key={i}>{n}</li>
           ))}
@@ -211,8 +205,8 @@ function Outcome({ question, outcome, shown, language }: { question: string; out
 function Quotes({ label, quotes, language }: { label: string; quotes: string[]; language: Language }) {
   return (
     <figure className="mt-2">
-      <figcaption className="text-sm font-semibold text-slate-700">{label}</figcaption>
-      <blockquote className="mt-1 border-l-4 border-red-700 pl-3 text-base" lang={language}>
+      <figcaption className="text-title-sm text-on-surface-variant">{label}</figcaption>
+      <blockquote className="mt-1 border-l-4 border-error pl-3 text-body-lg" lang={language}>
         {quotes.join(' ')}
       </blockquote>
     </figure>

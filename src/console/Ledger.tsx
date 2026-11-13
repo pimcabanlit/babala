@@ -8,6 +8,9 @@ import { languageLabel } from '../translation/languages'
 import type { PublishedTranslations } from '../translation/record'
 import { formatTime } from './format'
 import { approverLabel, draftLine, entryStatus, writerLabel, type EntryStatus } from './ledgerView'
+import { LinkButton } from '../ui/Button'
+import { StatusChip } from '../ui/Chip'
+import Notice from '../ui/Notice'
 
 type Props = {
   view: LedgerView | undefined
@@ -25,21 +28,21 @@ type Props = {
 /** The latest approvals, withdrawals and translations, newest first. Each opens into its trace. */
 export default function Ledger({ view, error, saved, published, uid, openId, onOpen }: Props) {
   return (
-    <div className="space-y-2 text-sm">
-      <p className="text-slate-700">
+    <div className="space-y-3 text-body-md">
+      <p className="text-on-surface-variant">
         Every approval, withdrawal and published translation is saved with its record: the facts, each model draft and the
         checker’s verdict, any hand edit, and who did it when. Records can’t be changed or deleted, so a new approval or a
         withdrawal changes an alert but not its history.
       </p>
-      {error && <p className="rounded bg-red-50 p-2 text-red-800">Couldn’t read the ledger: {error}</p>}
-      {!view && !error && <p className="text-slate-600">Loading the ledger…</p>}
-      {view && view.entries.length === 0 && <p className="text-slate-600">No approvals yet.</p>}
+      {error && <Notice tone="error">Couldn’t read the ledger: {error}</Notice>}
+      {!view && !error && <p className="text-on-surface-variant">Loading the ledger…</p>}
+      {view && view.entries.length === 0 && <p className="text-on-surface-variant">No approvals yet.</p>}
       {view && view.unreadable.length > 0 && (
-        <p className="rounded bg-amber-100 p-2 text-amber-950">
+        <Notice tone="warning">
           These ledger documents aren’t entries this app can read: {view.unreadable.join(', ')}.
-        </p>
+        </Notice>
       )}
-      {view && view.entries.length >= LEDGER_PAGE && <p className="text-slate-600">Showing the latest {LEDGER_PAGE} entries.</p>}
+      {view && view.entries.length >= LEDGER_PAGE && <p className="text-on-surface-variant">Showing the latest {LEDGER_PAGE} entries.</p>}
       <ol className="space-y-2">
         {view?.entries.map((entry) => (
           <li key={entry.id}>
@@ -94,9 +97,9 @@ function Entry({
         // Only report a change the officer made, not the one React just rendered.
         if (e.currentTarget.open !== open) onToggle(e.currentTarget.open)
       }}
-      className="rounded border border-slate-200 p-2"
+      className="rounded-md border border-outline-variant p-3"
     >
-      <summary className="cursor-pointer">
+      <summary className="cursor-pointer leading-8">
         <span className="font-medium">
           {entry.at ? formatTime(entry.at) : 'Time pending'} · {KIND_LABEL[entry.kind]}
           {entry.kind === 'translated' && ` into ${languageLabel(entry.lang)}`} · {household} · {entry.area}
@@ -114,7 +117,7 @@ function ApprovedTrace({ entry, status, uid }: { entry: ApprovedLedgerEntry; sta
   const sheet = entry.factSheet
   const centres = sheet.evacuationCentres.join(', ')
   return (
-    <ol className="mt-3 space-y-3 border-l-2 border-slate-200 pl-3">
+    <ol className="mt-3 space-y-4 border-l-2 border-outline-variant pl-4">
       <Step title="Bulletin and confirmed facts">
         <p>
           {sheet.stormName || 'Storm name not given'} · Signal No. {entry.signal} over {entry.area} · landfall at{' '}
@@ -123,19 +126,19 @@ function ApprovedTrace({ entry, status, uid }: { entry: ApprovedLedgerEntry; sta
           {sheet.hotline ? ` · hotline ${sheet.hotline}` : ''}
         </p>
         <details className="mt-1">
-          <summary className="cursor-pointer text-slate-700 underline">Show the bulletin</summary>
-          <pre className="mt-1 whitespace-pre-wrap rounded bg-slate-50 p-2 font-mono text-xs">{sheet.bulletinText}</pre>
+          <summary className="cursor-pointer text-primary underline">Show the bulletin</summary>
+          <pre className="mt-1 whitespace-pre-wrap rounded-sm bg-surface-container-low p-2 font-mono text-body-sm">{sheet.bulletinText}</pre>
         </details>
       </Step>
 
       <Step title="Drafts and checks">
         {entry.draftsOmitted > 0 && (
-          <p className="text-slate-600">
+          <p className="text-on-surface-variant">
             {entry.draftsOmitted} older draft{entry.draftsOmitted === 1 ? '' : 's'} left out to keep the record small.
           </p>
         )}
         {entry.drafts.length === 0 ? (
-          <p className="text-slate-600">
+          <p className="text-on-surface-variant">
             {entry.source === 'none'
               ? 'No model drafted this alert: the officer typed it.'
               : 'No new model drafts since this card’s last approval. The earlier entry for this alert has them.'}
@@ -157,8 +160,8 @@ function ApprovedTrace({ entry, status, uid }: { entry: ApprovedLedgerEntry; sta
           Written by {writerLabel(entry.source, entry.cloudModel)}. Approved by {approverLabel(entry.by, uid)}
           {entry.at ? ` at ${formatTime(entry.at)}` : ''}. The checker passed this exact text again before it was saved.
         </p>
-        <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-emerald-300 pl-2">{entry.text}</blockquote>
-        <p className="mt-1 text-slate-700">{statusText('approved', status, entry.pending)}</p>
+        <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-success pl-3">{entry.text}</blockquote>
+        <p className="mt-1 text-on-surface-variant">{statusText('approved', status, entry.pending)}</p>
       </Step>
     </ol>
   )
@@ -176,14 +179,12 @@ function WithdrawnTrace({
   onOpen: (id: string) => void
 }) {
   return (
-    <ol className="mt-3 space-y-3 border-l-2 border-slate-200 pl-3">
+    <ol className="mt-3 space-y-4 border-l-2 border-outline-variant pl-4">
       <Step title="The alert that was withdrawn">
-        <blockquote className="whitespace-pre-wrap border-l-4 border-slate-300 pl-2 text-slate-600 line-through">{entry.text}</blockquote>
+        <blockquote className="whitespace-pre-wrap border-l-4 border-outline-variant pl-3 text-on-surface-variant line-through">{entry.text}</blockquote>
         <p className="mt-1">
           {entry.approvalId ? (
-            <button type="button" onClick={() => onOpen(entry.approvalId)} className="font-semibold underline">
-              See the approval it withdrew
-            </button>
+            <LinkButton onClick={() => onOpen(entry.approvalId)}>See the approval it withdrew</LinkButton>
           ) : (
             'It was approved before the ledger, so its approval has no entry.'
           )}
@@ -194,8 +195,8 @@ function WithdrawnTrace({
           Withdrawn by {approverLabel(entry.by, uid)}
           {entry.at ? ` at ${formatTime(entry.at)}` : ''}. Reason, kept in the ledger only:
         </p>
-        <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-amber-300 pl-2">{entry.reason}</blockquote>
-        <p className="mt-1 text-slate-700">{statusText('withdrawn', status, entry.pending)}</p>
+        <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-warning pl-3">{entry.reason}</blockquote>
+        <p className="mt-1 text-on-surface-variant">{statusText('withdrawn', status, entry.pending)}</p>
       </Step>
     </ol>
   )
@@ -214,24 +215,22 @@ function TranslatedTrace({
 }) {
   const language = languageLabel(entry.lang)
   return (
-    <ol className="mt-3 space-y-3 border-l-2 border-slate-200 pl-3">
+    <ol className="mt-3 space-y-4 border-l-2 border-outline-variant pl-4">
       <Step title="The approved English alert">
-        <blockquote className="whitespace-pre-wrap border-l-4 border-slate-300 pl-2">{entry.english}</blockquote>
+        <blockquote className="whitespace-pre-wrap border-l-4 border-outline-variant pl-3">{entry.english}</blockquote>
         <p className="mt-1">
-          <button type="button" onClick={() => onOpen(entry.approvalId)} className="font-semibold underline">
-            See the approval it translates
-          </button>
+          <LinkButton onClick={() => onOpen(entry.approvalId)}>See the approval it translates</LinkButton>
         </p>
       </Step>
 
       <Step title="Translations and checks">
         {entry.draftsOmitted > 0 && (
-          <p className="text-slate-600">
+          <p className="text-on-surface-variant">
             {entry.draftsOmitted} older translation{entry.draftsOmitted === 1 ? '' : 's'} left out to keep the record small.
           </p>
         )}
         {entry.drafts.length === 0 ? (
-          <p className="text-slate-600">No model translated this alert: the officer typed it.</p>
+          <p className="text-on-surface-variant">No model translated this alert: the officer typed it.</p>
         ) : (
           <DraftList drafts={entry.drafts} cloudModel={entry.cloudModel} area={entry.area} />
         )}
@@ -249,10 +248,10 @@ function TranslatedTrace({
           {entry.at ? ` at ${formatTime(entry.at)}` : ''}. The checker passed this exact text against the English alert again
           before it was published.
         </p>
-        <blockquote lang={entry.lang} className="mt-1 whitespace-pre-wrap border-l-4 border-emerald-300 pl-2">
+        <blockquote lang={entry.lang} className="mt-1 whitespace-pre-wrap border-l-4 border-success pl-3">
           {entry.text}
         </blockquote>
-        <p className="mt-1 text-slate-700">{statusText('translated', status, entry.pending)}</p>
+        <p className="mt-1 text-on-surface-variant">{statusText('translated', status, entry.pending)}</p>
       </Step>
     </ol>
   )
@@ -266,19 +265,19 @@ function DraftList({ drafts, cloudModel, area }: { drafts: LedgerDraft[]; cloudM
         <li key={i}>
           <p className="font-medium">
             {draftLine(d, cloudModel)}
-            {d.area !== area && <span className="font-normal text-slate-600"> · drafted for {d.area}</span>}
+            {d.area !== area && <span className="font-normal text-on-surface-variant"> · drafted for {d.area}</span>}
           </p>
-          {d.text && <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-slate-300 pl-2 text-slate-800">{d.text}</blockquote>}
+          {d.text && <blockquote className="mt-1 whitespace-pre-wrap border-l-4 border-outline-variant pl-3">{d.text}</blockquote>}
           {d.issues.length > 0 && (
-            <ul className="mt-1 list-disc pl-5 text-red-800">
+            <ul className="mt-1 list-disc pl-5 text-on-error-container">
               {d.issues.map((issue, j) => (
                 <li key={j}>{issue.message}</li>
               ))}
             </ul>
           )}
           <details className="mt-1">
-            <summary className="cursor-pointer text-xs text-slate-600 underline">Show the prompt</summary>
-            <pre className="mt-1 whitespace-pre-wrap rounded bg-slate-50 p-2 font-mono text-xs">{d.prompt}</pre>
+            <summary className="cursor-pointer text-body-sm text-primary underline">Show the prompt</summary>
+            <pre className="mt-1 whitespace-pre-wrap rounded-sm bg-surface-container-low p-2 font-mono text-body-sm">{d.prompt}</pre>
           </details>
         </li>
       ))}
@@ -289,7 +288,7 @@ function DraftList({ drafts, cloudModel, area }: { drafts: LedgerDraft[]; cloudM
 function Step({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <li>
-      <h4 className="font-semibold">{title}</h4>
+      <h4 className="text-title-sm">{title}</h4>
       <div className="mt-1">{children}</div>
     </li>
   )
@@ -315,22 +314,29 @@ function statusText(kind: LedgerEntry['kind'], status: EntryStatus, pending: boo
 }
 
 function StatusBadge({ kind, status, pending }: { kind: LedgerEntry['kind']; status: EntryStatus; pending: boolean }) {
-  const [label, style] =
-    status === 'current'
-      ? kind === 'approved'
-        ? ['Current alert', 'bg-emerald-100 text-emerald-900']
-        : kind === 'translated'
-          ? ['Current translation', 'bg-emerald-100 text-emerald-900']
-          : ['Still withdrawn', 'bg-amber-100 text-amber-950']
-      : status === 'withdrawn'
-        ? ['Withdrawn', 'bg-amber-100 text-amber-950']
-        : status === 'replaced'
-          ? ['Replaced', 'bg-slate-200 text-slate-700']
-          : [undefined, '']
   return (
-    <>
-      {label && <span className={`rounded px-1.5 text-xs font-semibold ${style}`}>{label}</span>}
-      {pending && <span className="ml-1 rounded bg-orange-100 px-1.5 text-xs font-semibold text-orange-950">Not uploaded yet</span>}
-    </>
+    <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
+      {status === 'current' &&
+        (kind === 'withdrawn' ? (
+          <StatusChip tone="warning" icon="block">
+            Still withdrawn
+          </StatusChip>
+        ) : (
+          <StatusChip tone="success" icon="check_circle">
+            {kind === 'approved' ? 'Current alert' : 'Current translation'}
+          </StatusChip>
+        ))}
+      {status === 'withdrawn' && (
+        <StatusChip tone="warning" icon="block">
+          Withdrawn
+        </StatusChip>
+      )}
+      {status === 'replaced' && <StatusChip tone="neutral">Replaced</StatusChip>}
+      {pending && (
+        <StatusChip tone="warning" icon="cloud_upload">
+          Not uploaded yet
+        </StatusChip>
+      )}
+    </span>
   )
 }

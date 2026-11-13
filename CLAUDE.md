@@ -43,7 +43,8 @@ The docs in `docs/` are the source of truth. The first plan doc (https://claude.
 
 | Layer | Choice |
 | --- | --- |
-| Front end | Vite, React, TypeScript (strict), Tailwind, installable offline web app |
+| Front end | Vite, React, TypeScript (strict), Tailwind with Material Design 3 tokens (`src/index.css`), installable offline web app |
+| Type and icons | Google Sans (OFL, self-hosted in `src/assets/fonts/`), Material Symbols Rounded as inline SVG (`src/ui/Icon.tsx`) |
 | AI | Firebase AI Logic (Gemini Developer API backend), hybrid inference modes |
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, enforced on AI Logic and Firestore; debug token locally |
 | Data | Firestore (`(default)`, asia-southeast1) with offline cache |

@@ -6,6 +6,10 @@ import { LANGUAGES, type Language } from '../translation/languages'
 import type { PublishedTranslations } from '../translation/record'
 import Problems from './Problems'
 import type { TranslationDraft } from './useTranslations'
+import Button, { LinkButton } from '../ui/Button'
+import { StatusChip } from '../ui/Chip'
+import Icon from '../ui/Icon'
+import Notice from '../ui/Notice'
 
 export type TranslationActions = {
   draftFor: (alert: SavedAlert, lang: Language['code']) => TranslationDraft | undefined
@@ -43,27 +47,28 @@ export default function Translations(props: Props) {
   const anyRunning = LANGUAGES.some((l) => actions.draftFor(alert, l.code)?.running)
 
   return (
-    <div className="mt-2 rounded border border-sky-200 bg-sky-50/50 p-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-sky-900">Translations</h4>
-        <span className="text-xs text-slate-600">Cloud only, each checked against the English alert, then published by you.</span>
+    <div className="mt-4 rounded-md bg-surface-container-low p-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h4 className="text-title-sm">Translations</h4>
+        <span className="text-body-sm text-on-surface-variant">Cloud only, each checked against the English alert, then published by you.</span>
         {!blocked && (
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="tonal"
             onClick={() => LANGUAGES.forEach((l) => void actions.translate(alert, l.code))}
             disabled={!canTranslate || anyRunning}
-            className="ml-auto rounded border border-sky-300 bg-white px-2 py-0.5 text-xs font-medium hover:bg-sky-100 disabled:opacity-50"
+            className="ml-auto"
           >
             Translate into both
-          </button>
+          </Button>
         )}
       </div>
-      {blocked && <p className="mt-1 text-xs text-slate-600">{blocked}</p>}
+      {blocked && <p className="mt-2 text-body-sm text-on-surface-variant">{blocked}</p>}
       {!blocked && !canTranslate && (
-        <p className="mt-1 text-xs text-slate-600">Translating needs the cloud: connect to the internet. You can still type one yourself.</p>
+        <p className="mt-2 text-body-sm text-on-surface-variant">Translating needs the cloud: connect to the internet. You can still type one yourself.</p>
       )}
       {!blocked && (
-        <div className="mt-2 grid gap-2 md:grid-cols-2">
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
           {LANGUAGES.map((language) => (
             <LanguageBox key={language.code} {...props} language={language} />
           ))}
@@ -98,51 +103,52 @@ function LanguageBox({
   const id = `translation-${alert.id}-${language.code}`
 
   return (
-    <section aria-label={`${language.label} translation`} className="rounded border border-slate-200 bg-white p-2">
+    <section aria-label={`${language.label} translation`} className="rounded-md border border-outline-variant bg-surface-container-lowest p-3">
       <header className="flex flex-wrap items-center gap-2">
-        <h5 className="font-medium">{language.label}</h5>
+        <h5 className="text-title-sm">{language.label}</h5>
         {current ? (
-          <span className="rounded bg-emerald-100 px-1.5 text-xs font-semibold text-emerald-900">Published</span>
+          <StatusChip tone="success" icon="check_circle">
+            Published
+          </StatusChip>
         ) : (
-          <span className="rounded bg-slate-200 px-1.5 text-xs font-semibold text-slate-700">Not published</span>
+          <StatusChip tone="neutral">Not published</StatusChip>
         )}
-        {current?.pending && <span className="rounded bg-orange-100 px-1.5 text-xs font-semibold text-orange-950">Not uploaded yet</span>}
-        <div className="ml-auto flex gap-1">
-          <button
-            type="button"
+        {current?.pending && (
+          <StatusChip tone="warning" icon="cloud_upload">
+            Not uploaded yet
+          </StatusChip>
+        )}
+        <div className="ml-auto flex gap-2">
+          <Button
+            size="sm"
             onClick={() => void actions.translate(alert, language.code)}
             disabled={!canTranslate || draft?.running || draft?.publishing}
-            className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium hover:bg-slate-100 disabled:opacity-50"
           >
             {draft?.attempts.length || current ? 'Translate again' : 'Translate'}
-          </button>
+          </Button>
           {!draft && (
-            <button
-              type="button"
-              onClick={() => actions.edit(alert, language.code, current?.text ?? '')}
-              className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium hover:bg-slate-100"
-            >
+            <Button size="sm" variant="text" onClick={() => actions.edit(alert, language.code, current?.text ?? '')}>
               {current ? 'Edit' : 'Write it yourself'}
-            </button>
+            </Button>
           )}
         </div>
       </header>
 
       {current && (
-        <p className="mt-1 text-sm">
+        <p className="mt-2 text-body-md">
           <span lang={language.code} className="whitespace-pre-wrap">
             {current.text}
           </span>{' '}
-          <button type="button" onClick={() => onShowLedger(current.ledgerId)} className="text-xs font-semibold underline">
+          <LinkButton onClick={() => onShowLedger(current.ledgerId)} className="text-body-sm">
             See its ledger entry
-          </button>
+          </LinkButton>
         </p>
       )}
 
-      {draft?.running && <p className="mt-1 text-sm text-slate-600">Translating in the cloud…</p>}
+      {draft?.running && <p className="mt-2 text-body-md text-on-surface-variant">Translating in the cloud…</p>}
       {draft && !draft.running && (
-        <div className="mt-2">
-          <label className="block text-xs font-medium text-slate-700" htmlFor={id}>
+        <div className="mt-3">
+          <label className="block text-body-sm font-medium text-on-surface-variant" htmlFor={id}>
             {draft.source === 'none' ? 'Typed by you' : draft.edited ? 'The cloud’s translation, edited by you' : 'The cloud’s translation'}
             {' · checked against the English on every change'}
           </label>
@@ -153,21 +159,31 @@ function LanguageBox({
             onChange={(e) => actions.edit(alert, language.code, e.target.value)}
             readOnly={draft.publishing}
             rows={4}
-            className="mt-1 w-full rounded border border-slate-300 p-2 text-sm"
+            className="field mt-1"
           />
           {result && !result.pass && <Problems text={draft.text} issues={result.issues} />}
-          {result?.pass && <p className="mt-1 text-sm text-emerald-800">Passes the checker against the English alert.</p>}
-          <button
-            type="button"
+          {result?.pass && (
+            <p className="mt-2 flex items-center gap-1 text-body-md text-success">
+              <Icon name="check_circle" className="size-4" />
+              Passes the checker against the English alert.
+            </p>
+          )}
+          <Button
+            size="sm"
+            variant="filled"
             onClick={() => actions.publish(alert, language.code)}
             disabled={!result?.pass || draft.publishing}
-            className="mt-2 rounded bg-emerald-700 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-600 disabled:bg-slate-300"
+            className="mt-3"
           >
             {draft.publishing ? 'Publishing… (uploads when online)' : `Approve and publish ${language.label}`}
-          </button>
+          </Button>
         </div>
       )}
-      {draft?.error && <p className="mt-2 rounded bg-red-50 p-2 text-sm text-red-800">{draft.error}</p>}
+      {draft?.error && (
+        <Notice tone="error" className="mt-3">
+          {draft.error}
+        </Notice>
+      )}
     </section>
   )
 }
