@@ -28,7 +28,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 | Officers | Google sign-in, plus a document in `officers` that Pim adds by hand in the Firebase console. Judges share one test officer account, with an email and password, on the same list |
 | Translations | Filipino and Cebuano, cloud only ("only in cloud" mode), because Nano writes only de, en, es, fr and ja. Each is checked on its own against the approved English (rule 7, with Filipino and Cebuano claim words in Remote Config), approved by an officer, and published on the resident copy with a `translated` ledger entry |
 | Ask | A resident's question is answered on the device (Nano, English only, only when already downloaded), in the cloud (online, at most 6 cloud answers per phone per hour, Remote Config `ask_cloud_per_hour`), or by a no-AI text search of the saved alert. At most one call per route. An AI answer is shown only after rule 8 passes it, with the alert sentences it rests on quoted word for word. Questions aren't saved (`src/ask/`) |
-| App Check | reCAPTCHA Enterprise (Fraud Defense), enforced on AI Logic, with limited-use tokens. Firestore enforcement comes near the end. Classic reCAPTCHA is deprecated, so it isn't used |
+| App Check | reCAPTCHA Enterprise (Fraud Defense), enforced on AI Logic, with limited-use tokens, and on Firestore (Nov 13). Classic reCAPTCHA is deprecated, so it isn't used |
 
 ## Phases
 
@@ -86,7 +86,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 ### Phase 4 — Hosting and feature freeze (Nov 24)
 
 1. Firebase Hosting (PR #26), **live at https://babala-hybrid.web.app since Nov 13** and checked on the laptop and an iPhone in airplane mode. Pim deploys from the laptop with `npm run deploy:hosting`, only from `main` as it is on GitHub and after `npm run check` passes; never from a pull request or CI. The settings come from the laptop's `.env.local`, and the build stops if the App Check debug token would be in it. Deploying from GitHub Actions would need a service account key in the repo's secrets, so it was left out.
-2. App Check enforced on Firestore. PR #30 makes a page opened offline reach Firestore again when the signal returns, and docs/firebase-setup.md (section 4, *Enforcing on Firestore*) has the checks before and after, and the rollback. Pim enforces it in the Firebase console after PR #30 is deployed.
+2. App Check enforced on Firestore, **done Nov 13**. PR #30 made a page opened offline reach Firestore again when the signal returns; Pim enforced it after deploying that, and it was checked on the laptop, local dev and the iPhone, with a refusal test (docs/firebase-setup.md, section 4, *Enforcing on Firestore*).
 3. A test officer login for judges, without putting personal data or production keys in the repo, the form or the testing instructions. Built in Phase 2 (item 7); the email and password go only in the private testing instructions.
 4. Against free-tier limits on the Gemini API: a per-user rate limit and a clear "try again shortly" message (*Risks*). Done for residents' questions in PR #28 (6 cloud answers per phone per hour, and "busy right now, try again shortly" on a quota error). Still open: the same message in the console, and optionally a lower AI Logic per-user quota (docs/firebase-setup.md, *Cost and usage*).
 5. Feature freeze.
@@ -115,7 +115,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
    - [ ] Public GitHub repo, with the Apache-2.0 license showing in the About section
    - [ ] Firebase AI Logic imported and called at runtime, and the README links to those calls
    - [ ] README covers the value proposition, setup, testing instructions, and the AI coding tools used. It also states that no pre-existing code was reused
-   - [ ] App Check enforced, with debug-token steps for running locally
+   - [x] App Check enforced (AI Logic and Firestore), with debug-token steps for running locally
    - [ ] Hosted URL that is free, needs no login for residents, gives judges a test officer login, and stays up until Dec 16
    - [ ] Video under 3 minutes, public on YouTube, in English
    - [ ] Text description: features, how Firebase AI Logic is used, value proposition, and what was built during the contest (all of it)
