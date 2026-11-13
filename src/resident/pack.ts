@@ -5,14 +5,15 @@
  * picking the resident's alert and language.
  */
 import { HOUSEHOLDS, type HouseholdId } from '../drafting/households'
+import { LANGUAGES as TRANSLATIONS, type LanguageCode } from '../translation/languages'
 
 /** English always; Filipino and Cebuano once an alert has a checked translation. */
-export type Language = 'en' | 'fil' | 'ceb'
+export type Language = 'en' | LanguageCode
 
+/** English first, then the translation languages with the labels the console uses. */
 export const LANGUAGES: readonly { id: Language; label: string }[] = [
   { id: 'en', label: 'English' },
-  { id: 'fil', label: 'Filipino' },
-  { id: 'ceb', label: 'Cebuano (Bisaya)' },
+  ...TRANSLATIONS.map((l) => ({ id: l.code, label: l.label })),
 ]
 
 type Place = {
