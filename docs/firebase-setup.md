@@ -12,8 +12,8 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | Web app | "Babala web" | Its config lives in `.env.local` and, for hosting, GitHub secrets |
 | AI Logic | Gemini Developer API backend | The app calls it with limited-use App Check tokens (`src/ai/index.ts`) |
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, registered for "Babala web" | **Enforced on AI Logic.** Not yet enforced on Firestore (turn on near the end). A debug token is registered for local work and kept in `.env.local` |
-| Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12). The `officers` documents are added by hand |
-| Authentication | Google and Anonymous sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background. Email/Password for the judges' test officer: to turn on (*Test officer for judges* below) |
+| Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12, then PRs #21 to #24 together, Nov 13). The `officers` documents are added by hand |
+| Authentication | Google, Anonymous and Email/Password sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background. Email/Password for the judges' test officer only (*Test officer for judges* below), set up Nov 13 |
 | Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name`, `checker_claim_words` and `checker_translation_claims` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
 | Hosting | Not set up | Planned for Phase 4, deployed by GitHub Actions |
 | GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets used yet |
@@ -98,7 +98,7 @@ Judges share one email and password account, on the officer list like any office
 ### 6. Firestore
 
 1. Database `(default)`, **Standard** edition, location **asia-southeast1**, started in production mode.
-2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15 and PR #19. Withdrawals need the rules from the withdrawal PR, and the test officer the rules from its PR, which include the withdrawal rules. The resident view needs the rules from its PR: until they are published the server refuses every approval and withdrawal (each now writes a resident copy, which the old rules don't allow), and residents can't read anything.
+2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15, PR #19, and once for PRs #21 to #24 (withdrawals, test officer, resident view and translations) on Nov 13. Since the resident view, an app that writes resident copies needs these rules: older rules refuse every approval and withdrawal.
 
    Publish right after the PR that changes them merges, not before. The app and the rules change together: for PR #19, the app on `main` before the merge saves alerts without a ledger entry, which the new rules refuse, and the new app saves a ledger entry, which the old rules refuse. To try a rules change before merging, use the emulators (`npm run emulators`), which load `firestore.rules` from the branch.
 3. **Add an officer:**
@@ -180,11 +180,13 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 - [x] Firestore rules from PR #15 published; officer sign-in and saving tested on the laptop.
 - [x] Purok 1 General alert, saved before PR #16 with "कृपया" in it, redrafted and re-approved (Nov 12).
 - [x] Ledger rules from PR #19 published right after it merged, and checked on the laptop with a real Nano approval (Nov 12, 9:09 PM). Alerts saved before then stay readable and show "Saved before the ledger" until their next approval.
-- [ ] Publish the rules from the withdrawal PR right after it merges, then withdraw a test alert on the laptop and check the ledger shows the reason. Until then the server refuses withdrawals, and the console shows "Not withdrawn".
+- [x] Rules from PRs #21 to #24 (withdrawals, test officer, resident view, translations) published once after all four merged (Nov 13, 11:47 AM). Checked on the laptop as the test officer: a Nano approval saved online, then withdrawn with a reason the ledger shows, then re-approved (the ledger marks the withdrawal "Replaced").
 - [ ] Optional: publish `cloud_model_name` in Remote Config, so the cloud model can be switched during judging without a redeploy.
-- [ ] Publish the rules from the resident view PR right after it merges. Then approve one alert on the laptop, open `/resident` on a phone, pick its purok and household, and check it shows. Turn on airplane mode and reopen it. Alerts saved before then reach residents at their next approval.
-- [ ] Publish the rules from the translations PR right after it merges (after the resident view PR's). Then, on the laptop and online, open *Saved alerts and translations*, press "Translate into both" on an active alert, check each result, publish it, and check `/resident` shows the language choice. Nothing to set up in the console besides the rules.
+- [x] Resident view checked on the laptop (Nov 13): `/resident` showed the General alert for Purok Ilaya live, with the language choice.
+- [ ] Resident view offline on a phone: open `/resident` on the hosted site (Phase 4), pick a purok and household, turn on airplane mode and reopen it. The dev server doesn't save the page for offline use. Alerts saved before Nov 13 reach residents at their next approval.
+- [x] Translations checked on the laptop (Nov 13): "Translate into both" on General · Purok Ilaya, both passed the checker and were published, and `/resident` shows Filipino and Cebuano. The cloud's Filipino said "tumama na ang Bagyong Sample sa lupa" (has already made landfall) for an English "makes landfall at 6:00 PM": the figures matched, so the checker passed it. Pim edited it to "tatama sa lupa" and published again. The checker can't see tense, so the officer's reading is the guard.
 - [ ] Have a fluent Filipino and Cebuano speaker review `TRANSLATION_CLAIMS` in `src/config/defaults.ts`, the claim words a translation may only use when the English backs them.
 - [ ] Hosting, GitHub secrets, and the hosted domain in Authentication's authorized domains (Phase 4).
 - [ ] App Check enforced on Firestore (Phase 4).
-- [ ] Test officer for judges: after its PR merges, publish its rules, turn on Email/Password, add the account and its `officers` document, and check it (*Test officer for judges*). Put the email and password in the private testing instructions (Phase 5).
+- [x] Test officer for judges set up (Nov 13): Email/Password on, user actions set, `test-officer@example.com` added with its `officers` document, and signed in on the laptop. Its password is in Pim's password manager.
+- [ ] Put the test officer's email and password in the private testing instructions (Phase 5).
