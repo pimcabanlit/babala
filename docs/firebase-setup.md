@@ -15,7 +15,7 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12, then PRs #21 to #24 together, Nov 13). The `officers` documents are added by hand |
 | Authentication | Google, Anonymous and Email/Password sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background. Email/Password for the judges' test officer only (*Test officer for judges* below), set up Nov 13 |
 | Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name`, `checker_claim_words` and `checker_translation_claims` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
-| Hosting | Config in `firebase.json`; not deployed yet | Pim deploys from the laptop with `npm run deploy:hosting` (section 8) |
+| Hosting | Live at `https://babala-hybrid.web.app` since Nov 13 | Pim deploys from the laptop with `npm run deploy:hosting` (section 8). First deploy Nov 13, 12:59 PM, checked on the laptop and an iPhone |
 | GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets |
 | Agent skills | Firebase's official skills in `.claude/skills/`, commit `99954a3` (Nov 9) | See `.claude/skills/README.md`. `CLAUDE.md` wins where they differ |
 
@@ -161,7 +161,7 @@ Firebase Hosting serves the production build from `dist/` at `https://babala-hyb
    npm run deploy:hosting
    ```
 
-   The CLI ends with `Hosting URL: https://babala-hybrid.web.app`.
+   The CLI ends with `Hosting URL: https://babala-hybrid.web.app`. (Done Nov 13, 12:59 PM. `npm ci` warned about install scripts it didn't run, for `@firebase/util` and `protobufjs`; neither is needed for the build. The CLI's first `npx` run downloads it, about 1 to 3 minutes.)
 6. **Check it** (*Check the hosted site* below).
 
 #### Later deploys
@@ -188,6 +188,18 @@ On a phone (Chrome on Android, or Safari on iPhone):
 2. Optional: install it (Chrome's *Install app*, or Safari's *Share* → *Add to Home Screen*).
 3. Turn on airplane mode (and Wi-Fi off). Close the tab or app completely, then open the page or app again. It opens and shows the saved alert, with the offline status line.
 4. Turn airplane mode off and reload: the status line says *Live*.
+
+**On iPhone, an app added to the Home Screen has its own storage**, separate from Safari's. Open it once from its icon with a signal and pick the purok and household again before it works offline. Opened offline before that, it shows the page with "no alerts are saved on this phone yet".
+
+**Checked Nov 13** (screenshots in the project's `hosting/` folder):
+
+| Check | Result |
+| --- | --- |
+| Nano draft on the hosted site, laptop Chrome | General · Purok 1, written on the laptop in 14.2 s, passed the checker |
+| Cloud call through App Check (real reCAPTCHA, no debug token) | "Translate again" on Filipino, General · Purok Ilaya: returned and passed |
+| `/resident` opened directly, laptop | Live, General · Purok Ilaya, with Cebuano |
+| iPhone, Safari tab, airplane mode | Opened offline |
+| iPhone, Home Screen app, airplane mode | After one online opening: "Offline. Showing the alerts saved on this phone at Nov 13 at 1:16 PM", with the alert |
 
 ### 9. Verify
 
@@ -243,10 +255,11 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 - [x] Rules from PRs #21 to #24 (withdrawals, test officer, resident view, translations) published once after all four merged (Nov 13, 11:47 AM). Checked on the laptop as the test officer: a Nano approval saved online, then withdrawn with a reason the ledger shows, then re-approved (the ledger marks the withdrawal "Replaced").
 - [ ] Optional: publish `cloud_model_name` in Remote Config, so the cloud model can be switched during judging without a redeploy.
 - [x] Resident view checked on the laptop (Nov 13): `/resident` showed the General alert for Purok Ilaya live, with the language choice.
-- [ ] Resident view offline on a phone: open `/resident` on the hosted site (Phase 4), pick a purok and household, turn on airplane mode and reopen it. The dev server doesn't save the page for offline use. Alerts saved before Nov 13 reach residents at their next approval.
+- [x] Resident view offline on a phone (Nov 13): on the hosted site, an iPhone opened `/resident` in airplane mode from Safari and from the Home Screen, with the saved alert (section 8, *Check the hosted site*).
 - [x] Translations checked on the laptop (Nov 13): "Translate into both" on General · Purok Ilaya, both passed the checker and were published, and `/resident` shows Filipino and Cebuano. The cloud's Filipino said "tumama na ang Bagyong Sample sa lupa" (has already made landfall) for an English "makes landfall at 6:00 PM": the figures matched, so the checker passed it. Pim edited it to "tatama sa lupa" and published again. The checker can't see tense, so the officer's reading is the guard.
 - [ ] Have a fluent Filipino and Cebuano speaker review `TRANSLATION_CLAIMS` in `src/config/defaults.ts`, the claim words a translation may only use when the English backs them.
-- [ ] Hosting: turn it on, add the hosted domains to the reCAPTCHA key and check Auth's authorized domains, deploy, and check the hosted site (section 8, Phase 4).
+- [x] Hosting (Nov 13): turned on, reCAPTCHA key limited to the two hosted domains (`localhost` removed), Auth's authorized domains checked, deployed and checked on the laptop and an iPhone (section 8).
+- [ ] Look at the 5 high `npm audit` findings: all in `@grpc/grpc-js` (Node gRPC, through `firebase` and `@firebase/rules-unit-testing`). The browser build talks to Firestore over WebChannel, not gRPC, so the hosted app isn't expected to be affected. Don't run `npm audit fix --force`: it would downgrade `firebase` to 9.x.
 - [ ] App Check enforced on Firestore (Phase 4).
 - [x] Test officer for judges set up (Nov 13): Email/Password on, user actions set, `test-officer@example.com` added with its `officers` document, and signed in on the laptop. Its password is in Pim's password manager.
 - [ ] Put the test officer's email and password in the private testing instructions (Phase 5).
