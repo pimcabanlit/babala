@@ -81,7 +81,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
    The model answers in JSON: whether the alert answers the question, which numbered sentences do, and a short answer in the resident's language. Rule 8 checks that answer against the approved alert, and only a passing answer is shown, with the sentences it cites quoted under it. A failed check, an error or a slow device moves on to the next route, and the resident sees why. The question is fenced off in the prompt and never saved. Tested with Vitest and in Chrome offline and with simulated cloud answers; Nano and the real cloud need Pim's test on the laptop and phone.
 6. **Cloud reading of bulletins.** Free-form bulletins are turned into a fact sheet in the cloud when online, with every fact confirmed by the officer. A long bulletin is summarised in the cloud.
 
-**Done when:** a phone with no signal opens its saved alert in the resident's language, and a question gets an answer by one of the three routes (video, 1:25–2:00). Built; waiting on Pim's laptop and phone test of PR #28.
+**Done when:** a phone with no signal opens its saved alert in the resident's language, and a question gets an answer by one of the three routes (video, 1:25–2:00). Built, and checked on the laptop Nov 13 (docs/firebase-setup.md, *Follow-ups*); the iPhone check waits for the deploy.
 
 ### Phase 4 — Hosting and feature freeze (Nov 24)
 
