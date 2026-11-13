@@ -4,10 +4,13 @@ rules_version = '2';
 // Babala Firestore rules
 // ===============================================================
 //
-// Only officers save alerts. An officer is someone signed in with Google
-// whose user ID has a document in `officers`. The project owner adds those
-// documents in the Firebase console, which these rules don't apply to; the
-// app can't write them. Everything not allowed below is denied.
+// Only officers save alerts. An officer is someone signed in with Google, or
+// with an email and password (the judges' shared test officer account, which
+// the project owner makes in the Firebase console), whose user ID has a
+// document in `officers`. The project owner adds those documents in the
+// Firebase console, which these rules don't apply to; the app can't write
+// them. Being on the list is what makes an officer: an email account that
+// isn't on it gets nothing. Everything not allowed below is denied.
 //
 // Every change to a saved alert (an approval or a withdrawal) has a ledger
 // entry, written in the same batch: the rules refuse the change without its
@@ -102,12 +105,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isGoogleUser() {
-      return isSignedIn() && request.auth.token.firebase.sign_in_provider == 'google.com';
+    // Google for officers, email and password for the judges' test officer.
+    // Never anonymous (residents), even for a user ID on the list.
+    function usesOfficerSignIn() {
+      return isSignedIn()
+        && request.auth.token.firebase.sign_in_provider in ['google.com', 'password'];
     }
 
     function isOfficer() {
-      return isGoogleUser()
+      return usesOfficerSignIn()
         && exists(/databases/$(database)/documents/officers/$(request.auth.uid));
     }
 

@@ -24,7 +24,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 | Checker | Seven rules in deterministic TypeScript, never a model ([data-schema.md](data-schema.md), *Checker rules*). The claim-word list is in Remote Config (`checker_claim_words`) |
 | Saved alerts | One current alert per household and area at `alerts/{household}__{areaKey}`, replaced by the next approval. The app can't delete them. An officer can withdraw one with a reason: the alert is marked withdrawn and keeps its text, and the reason is kept in the ledger only |
 | Ledger | One locked entry per approval or withdrawal at `ledger/{autoId}`, written in the same batch as the alert, with the drafts and checks behind an approval and the reason for a withdrawal. The rules refuse one without the other, and nothing can change or delete an entry. Officers only (`src/ledger/`) |
-| Officers | Google sign-in, plus a document in `officers` that Pim adds by hand in the Firebase console |
+| Officers | Google sign-in, plus a document in `officers` that Pim adds by hand in the Firebase console. Judges share one test officer account, with an email and password, on the same list |
 | Translations | Cloud only ("only in cloud" mode), because Nano writes only de, en, es, fr and ja. The video storyboard uses Filipino and Cebuano. The local languages are not confirmed yet |
 | App Check | reCAPTCHA Enterprise (Fraud Defense), enforced on AI Logic, with limited-use tokens. Firestore enforcement comes near the end. Classic reCAPTCHA is deprecated, so it isn't used |
 
@@ -61,7 +61,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 4. **Officer sign-in and saving** (PR #15). The console opens only for an officer. "Approve and save" runs the checker again on the exact text and saves the alert to Firestore. Offline, the save waits on the laptop and uploads when the connection is back. The Firestore rules are tested on the emulator in CI and published.
 5. **Ledger** (PR #19). Each approval writes a locked entry in the same batch as the alert: the fact sheet and bulletin, every draft on that card since its last approval with its model, time, verdict and problems, any hand edit, the claim words, and who approved it when. The rules refuse an alert without its entry, and nobody can change or delete an entry. The console's *Ledger* section traces each alert from the bulletin to the saved text. Drafts that never lead to an approval stay in the test log only. Rules published Nov 12. The first real trace on the laptop: Nano wrote the General alert for Purok Ilaya in 14.9 s, it passed on the first draft, and the entry shows it (9:09 PM).
 6. **Withdrawing an alert** (this PR). The console's *Saved alerts* section lists every saved alert, and "Withdraw" asks for a reason. The alert is marked withdrawn and keeps its text, and a `withdrawn` ledger entry records the text, the approval it withdraws, the reason, and who withdrew it when, in the same batch. The reason stays in the ledger, never on the alert, because residents will read alerts. A new approval for the same household and area replaces a withdrawn alert. Offline, the withdrawal waits on the laptop; if another officer replaced the alert meanwhile, the rules refuse it on upload. The rules need publishing after the merge.
-7. **Still to build:** a test officer login for judges.
+7. **Test officer login for judges** (this PR). One email and password account, made by Pim in the Firebase console and added to `officers` like any officer. The sign-in panel has a folded "Judges: sign in with the test officer account" form, and the rules accept an email and password sign-in for officers. The test officer can do what any officer can and nothing more, and the ledger records what it does. Email/Password sign-in, the account and the rules need Pim in the console (docs/firebase-setup.md, *Test officer for judges*).
 
 Translations add a `translated` ledger entry in Phase 3.
 
@@ -82,7 +82,7 @@ Translations add a `translated` ledger entry in Phase 3.
 
 1. Firebase Hosting, deployed by GitHub Actions from `main`, never from a pull request. The Firebase settings come from GitHub secrets.
 2. App Check enforced on Firestore.
-3. A test officer login for judges, without putting personal data or production keys in the repo, the form or the testing instructions.
+3. A test officer login for judges, without putting personal data or production keys in the repo, the form or the testing instructions. Built in Phase 2 (item 7); the email and password go only in the private testing instructions.
 4. Against free-tier limits on the Gemini API: a per-user rate limit and a clear "try again shortly" message (*Risks*).
 5. Feature freeze.
 
