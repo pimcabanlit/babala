@@ -23,6 +23,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 | Fact sheet | Plain code reads the demo bulletin format, and the officer confirms every fact. Reading free-form bulletins in the cloud is planned, not built |
 | Checker | Seven rules in deterministic TypeScript, never a model ([data-schema.md](data-schema.md), *Checker rules*). The claim-word list is in Remote Config (`checker_claim_words`) |
 | Saved alerts | One current alert per household and area at `alerts/{household}__{areaKey}`, replaced by the next approval. The app can't delete them. An officer can withdraw one with a reason: the alert is marked withdrawn and keeps its text, and the reason is kept in the ledger only |
+| Resident copy | Residents read `residentAlerts/{household}__{areaKey}`, never `alerts`: the alert's text, place, signal, storm and time, without officers' user IDs or the bulletin. It is written with every approval and withdrawal, the rules hold it equal to the alert, and a withdrawn alert's copy has no text |
 | Ledger | One locked entry per approval or withdrawal at `ledger/{autoId}`, written in the same batch as the alert, with the drafts and checks behind an approval and the reason for a withdrawal. The rules refuse one without the other, and nothing can change or delete an entry. Officers only (`src/ledger/`) |
 | Officers | Google sign-in, plus a document in `officers` that Pim adds by hand in the Firebase console |
 | Translations | Cloud only ("only in cloud" mode), because Nano writes only de, en, es, fr and ja. The video storyboard uses Filipino and Cebuano. The local languages are not confirmed yet |
@@ -69,9 +70,9 @@ Translations add a `translated` ledger entry in Phase 3.
 
 ### Phase 3 — Resident view, offline pack and translations (Nov 21–23)
 
-1. **Resident view.** The resident picks their purok and household type once, and the phone remembers it. They see their alert in their language, with a "last updated" time.
-2. **Resident access.** Anonymous sign-in for residents, and read access for them in `firestore.rules`. Today only officers can read alerts.
-3. **Offline pack.** An installable offline web app. The whole alert pack is saved on the phone, so it opens with no signal.
+1. **Resident view** (this PR). At `/resident`, the resident picks their purok and household type once, and the phone remembers it. They see their alert with a "last updated" time, or a notice that it was withdrawn. A language choice appears once an alert has a checked translation.
+2. **Resident access** (this PR). Anonymous sign-in in the background, and read access to `residentAlerts` only. Each approval and withdrawal writes the copy in the same batch. The rules need publishing after the merge, and alerts saved before it reach residents at their next approval.
+3. **Offline pack** (this PR). The whole pack is saved on the phone each time the server sends it, and a service worker and manifest make the app installable and open it with no signal. Tested offline in Chrome with a production build.
 4. **Translations.** Approved alerts are translated in the cloud ("only in cloud" mode) into Filipino and the chosen local languages. A translation is published only after it passes rule 7 against the approved English alert. `checkTranslation` is already built and tested.
 5. **Ask.** A resident's question, such as "Where do we go?", is answered on the device if a model is available, in the cloud if online, and otherwise by a plain text search that quotes the saved alert word for word.
 6. **Cloud reading of bulletins.** Free-form bulletins are turned into a fact sheet in the cloud when online, with every fact confirmed by the officer. A long bulletin is summarised in the cloud.

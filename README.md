@@ -50,6 +50,14 @@ is in the Firestore `officers` collection. To become one:
 
 The console opens as soon as the document exists.
 
+### Resident view
+
+Residents open `/resident` (for example http://localhost:5173/resident) on any phone browser. There
+is no sign-in screen: the page signs in anonymously and reads only the resident copies of approved
+alerts. It saves them on the phone, so the page opens with no signal. Offline opening of the page
+itself works only in a production build (`npm run build` then `npm run preview`), which adds the
+service worker.
+
 ### Tests for the Firestore rules
 
 `npm run test:rules` starts the Firestore emulator and runs `tests/rules/` against
