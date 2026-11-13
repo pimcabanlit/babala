@@ -265,7 +265,7 @@ Since Ask, anonymous residents can use the cloud too: one cloud call per questio
 - [x] Hosting (Nov 13): turned on, reCAPTCHA key limited to the two hosted domains (`localhost` removed), Auth's authorized domains checked, deployed and checked on the laptop and an iPhone (section 8).
 - [ ] Look at the 5 high `npm audit` findings: all in `@grpc/grpc-js` (Node gRPC, through `firebase` and `@firebase/rules-unit-testing`). The browser build talks to Firestore over WebChannel, not gRPC, so the hosted app isn't expected to be affected. Don't run `npm audit fix --force`: it would downgrade `firebase` to 9.x.
 - [ ] App Check enforced on Firestore (Phase 4).
-- [ ] Ask (Ask PR): after it merges and is deployed, check on the laptop that a question is answered on the device with Nano, offline too, and in the cloud online; and on the iPhone that it is answered in the cloud online and by text search in airplane mode.
+- [ ] Ask (PR #28): after it merges and is deployed, check on the laptop that a question is answered on the device with Nano, offline too, and in the cloud online; and on the iPhone that it is answered in the cloud online and by text search in airplane mode.
 - [ ] Optional: lower AI Logic's per-user quota before judging (*Cost and usage*).
 - [ ] Have a fluent Filipino and Cebuano speaker review the "do less" phrases in `ANSWER_CLAIM_WORDS` with `TRANSLATION_CLAIMS`.
 - [x] Test officer for judges set up (Nov 13): Email/Password on, user actions set, `test-officer@example.com` added with its `officers` document, and signed in on the laptop. Its password is in Pim's password manager.
