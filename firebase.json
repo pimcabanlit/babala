@@ -4,7 +4,9 @@
     "predeploy": ["node scripts/check-deploy-source.mjs", "npm run check"],
     "rewrites": [
       { "source": "/resident", "destination": "/index.html" },
-      { "source": "/resident/**", "destination": "/index.html" }
+      { "source": "/resident/**", "destination": "/index.html" },
+      { "source": "/officer", "destination": "/index.html" },
+      { "source": "/officer/**", "destination": "/index.html" }
     ],
     "headers": [
       {
@@ -29,7 +31,7 @@
         ]
       },
       {
-        "regex": "^/(index\\.html|resident(/.*)?)?$",
+        "regex": "^/(index\\.html|resident(/.*)?|officer(/.*)?)?$",
         "headers": [
           { "key": "Cache-Control", "value": "no-cache" },
           { "key": "X-Content-Type-Options", "value": "nosniff" },

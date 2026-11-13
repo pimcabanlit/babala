@@ -47,7 +47,7 @@ These match what is in place now. Console menu names drift: when the console dis
    VITE_FIREBASE_EMULATORS=
    ```
 
-3. `npm run dev` and open http://localhost:5173. If a value is missing, *Setup status* lists it.
+3. `npm run dev` and open http://localhost:5173/officer. If a value is missing, *Setup status* lists it.
 
 ### 3. AI Logic
 
@@ -104,7 +104,7 @@ Enforcing makes Firestore refuse any request without a valid App Check token: so
 
 1. **Hosted site, laptop, normal Chrome window.** *Setup status* ✓ App Check; the officer console opens; saved alerts, translations and the ledger show. Approve one alert (a write) and check the ledger shows it.
 2. **Refusal test.** Repeat step 4 of *Before enforcing*. Expected now: "Couldn’t get new alerts: Missing or insufficient permissions", never *Live*. That is enforcement working. Close the window and the PowerShell window.
-3. **Local dev with the real debug token.** A new PowerShell window, `npm run dev`, http://localhost:5173: *Setup status* ✓ App Check, and the officer console opens.
+3. **Local dev with the real debug token.** A new PowerShell window, `npm run dev`, http://localhost:5173/officer: *Setup status* ✓ App Check, and the officer console opens.
 4. **iPhone.** `/resident` in Safari, and the Home Screen app: each says *Live*.
 5. **Offline and back** (the PR #30 fix), on the laptop at `https://babala-hybrid.web.app/resident`: DevTools → Application → Storage → IndexedDB → `firebase-app-check-database` → **Delete database**. Turn Wi-Fi off and reload: the page opens from the laptop. Wait 10 seconds, turn Wi-Fi on, and don't reload: within 30 seconds the line says *Live*.
 6. **Metrics** an hour later: Cloud Firestore requests verified, and the refused ones from the refusal test.
@@ -202,8 +202,8 @@ Firebase Hosting serves the production build from `dist/` at `https://babala-hyb
 
 | Setting | Why |
 | --- | --- |
-| `/resident` and `/resident/...` rewrite to `/index.html` | The resident view and the installed app's start page open on a direct visit. Other unknown paths get Hosting's 404 page |
-| `no-cache` on `index.html`, the resident page, `sw.js`, the manifest and icons | The phone checks for a new copy on every load, so a deploy reaches phones on their next visit with a signal. The service worker installs each new version from fresh files |
+| `/resident`, `/officer` and the paths under them rewrite to `/index.html` | The resident view (the installed app's start page) and the officer workspace open on a direct visit. Other unknown paths get Hosting's 404 page |
+| `no-cache` on `index.html`, the resident and officer pages, `sw.js`, the manifest and icons | The phone checks for a new copy on every load, so a deploy reaches phones on their next visit with a signal. The service worker installs each new version from fresh files |
 | `max-age` of a year, `immutable` on `/assets/...` | Vite puts a content hash in each file name, so a changed file has a new name |
 | `X-Frame-Options: DENY` and `frame-ancestors 'none'` on the pages | Another site can't frame the officer console and trick a click on "Approve" |
 | `nosniff` and a referrer policy | Standard hardening. Hosting's reserved `/__/` paths (Google sign-in) get none of these headers |
@@ -240,11 +240,11 @@ During judging (Dec 10–16), deploy only fixes, and check the hosted site after
 
 On the laptop, in Chrome, at `https://babala-hybrid.web.app`:
 
-1. *Setup status* shows ✓ Firebase, ✓ App Check (a real reCAPTCHA token this time, not the debug token) and ✓ Remote Config.
+1. The home page shows the two ways in. **Open workspace** opens `/officer`, where *Setup status* shows ✓ Firebase, ✓ App Check (a real reCAPTCHA token this time, not the debug token) and ✓ Remote Config.
 2. **Sign in with Google** opens the popup and the console opens. Sign out, then sign in as the test officer in a private window.
 3. *Prepare on-device model*, then draft one alert: the card says the laptop wrote it. The Prompt API is on for web pages from Chrome 148, so the hosted origin needs no trial token; `chrome://version` shows the version.
 4. Translate one alert (a cloud call through App Check).
-5. Open `/resident` directly: it shows the alert.
+5. Open `/resident` directly: it shows the alert. Open `/officer` directly too: the workspace opens.
 
 On a phone (Chrome on Android, or Safari on iPhone):
 

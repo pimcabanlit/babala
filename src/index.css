@@ -42,6 +42,8 @@
   --color-brand: #001c37;
   --color-on-brand: #ffffff;
   --color-on-brand-variant: #a2c9fd;
+  /* Amber, tone 80: the home headline's last word on navy. */
+  --color-highlight-on-brand: #ffb86e;
   --color-primary: #37618e;
   --color-on-primary: #ffffff;
   --color-primary-container: #d2e4ff;

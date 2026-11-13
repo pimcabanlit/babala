@@ -3,7 +3,8 @@ import Ask from './Ask'
 import { formatTime } from '../console/format'
 import { HOUSEHOLDS, type HouseholdId } from '../drafting/households'
 import { getFirebase } from '../firebase'
-import { startOfflineApp, type OfflineApp } from '../offline/register'
+import type { OfflineApp } from '../offline/register'
+import { useOfflineApp } from '../offline/useOfflineApp'
 import { LANGUAGES, alertFor, languagesOf, packAreas, textIn, type Language, type PackAlert } from './pack'
 import { useAskSetup, type AskSetup } from './useAsk'
 import { useChoice, useResidentPack } from './useResidentPack'
@@ -37,7 +38,7 @@ export default function ResidentView() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-headline-sm">Your typhoon alert</h2>
+        <h1 className="text-headline-sm">Your typhoon alert</h1>
         <Notice tone={TONES[line.tone]} role="status" className="mt-3">
           {line.text}
         </Notice>
@@ -205,17 +206,7 @@ function offlineAppText(app: OfflineApp): string {
 function InstallHint() {
   const [prompt, setPrompt] = useState<InstallPrompt>()
   const [installError, setInstallError] = useState<string>()
-  const [offlineApp, setOfflineApp] = useState<OfflineApp>({ state: 'starting' })
-
-  useEffect(() => {
-    let current = true
-    void startOfflineApp().then((app) => {
-      if (current) setOfflineApp(app)
-    })
-    return () => {
-      current = false
-    }
-  }, [])
+  const offlineApp = useOfflineApp()
 
   useEffect(() => {
     const keep = (e: Event) => {
