@@ -13,7 +13,7 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | AI Logic | Gemini Developer API backend | The app calls it with limited-use App Check tokens (`src/ai/index.ts`) |
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, registered for "Babala web" | **Enforced on AI Logic.** Not yet enforced on Firestore (turn on near the end). A debug token is registered for local work and kept in `.env.local` |
 | Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12). The `officers` documents are added by hand |
-| Authentication | Google and Anonymous sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background |
+| Authentication | Google and Anonymous sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background. Email/Password for the judges' test officer: to turn on (*Test officer for judges* below) |
 | Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name` and `checker_claim_words` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
 | Hosting | Not set up | Planned for Phase 4, deployed by GitHub Actions |
 | GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets used yet |
@@ -72,10 +72,33 @@ These match what is in place now. Console menu names drift: when the console dis
 1. Authentication → Sign-in method: **Google** and **Anonymous** are enabled.
 2. Authentication → Settings → Authorized domains: the hosted domain must be added when hosting is set up. Without it, sign-in fails with `auth/unauthorized-domain`, and the app says where to fix it.
 
+#### Test officer for judges
+
+Judges share one email and password account, on the officer list like any officer. Its password goes only in the private testing instructions: never in the repo, a PR, an issue, a screenshot or a chat. The email isn't secret, but it goes in the testing instructions too.
+
+1. **Publish the rules** (section 6) once the PR that added the test officer has merged. Older rules refuse every email and password sign-in, so the console would open but saving and reading alerts would fail with "permissions". These rules include the withdrawal rules too, and change nothing for Google officers.
+2. Authentication → Sign-in method → **Add new provider** → **Email/Password**. Turn on **Email/Password**, leave **Email link (passwordless sign-in)** off, and **Save**.
+3. Authentication → Settings → **User actions**:
+   - Leave **Email enumeration protection** on (the default for new projects), so a wrong email and a wrong password get the same answer.
+   - Untick **Enable deletion**, so nobody can delete the account from a browser. The app never deletes accounts.
+   - Leave **Enable create (sign-up)** on: turning it off also blocks new Google officers and the residents' anonymous sign-in.
+4. Authentication → Users → **Add user**:
+   - Email: an address that is nobody's inbox, such as `test-officer@example.com`. Firebase never sends it mail.
+   - Password: a new random password of at least 16 characters, used nowhere else. Keep it in a password manager.
+5. In the Users table, copy the new user's **User UID**.
+6. Firestore → Data → `officers` → **Add document**: the document ID is that UID, with one string field `name` = `Test officer for judges`.
+7. **Check it:** open the app in a private window, unfold **Judges: sign in with the test officer account**, and sign in. The panel shows **Officer** and a note that the account is shared. Approve one alert and check the ledger shows it.
+
+**What the test officer can do.** Exactly what any officer can, as the rules allow: draft (which uses the AI quota), approve, withdraw any alert, and read alerts and the ledger. It can't delete an alert, change or delete a ledger entry, edit the officer list or name anyone else as the approver. The ledger records each action under its user ID, and other judges see the alerts it leaves. Before judging starts (Dec 10), re-approve the demo alerts if a test run changed them.
+
+**Known limits.** Firebase lets a signed-in user change their own password or email from a browser, and that can't be turned off on Spark. A judge who did that would lock the others out. Someone with the password and the SDK could also save an alert the console's checker never saw, as any officer could, because only the app runs the checker. App Check enforced on Firestore (Phase 4) narrows that to the hosted app.
+
+**If judges can't sign in** (password or email changed, or the account deleted): Authentication → Users → delete the test user if it is still there, and add it again with the same email and password. Then in `officers`, delete the old UID's document and add one for the new UID. Past ledger entries keep the old UID.
+
 ### 6. Firestore
 
 1. Database `(default)`, **Standard** edition, location **asia-southeast1**, started in production mode.
-2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15 and PR #19. Withdrawals need the rules from the withdrawal PR. The resident view needs the rules from its PR: until they are published the server refuses every approval and withdrawal (each now writes a resident copy, which the old rules don't allow), and residents can't read anything.
+2. **Publish the rules** (Pim, whenever `firestore.rules` changes): Firestore → Rules → replace the text with the contents of `firestore.rules` → **Publish**. Published for PR #15 and PR #19. Withdrawals need the rules from the withdrawal PR, and the test officer the rules from its PR, which include the withdrawal rules. The resident view needs the rules from its PR: until they are published the server refuses every approval and withdrawal (each now writes a resident copy, which the old rules don't allow), and residents can't read anything.
 
    Publish right after the PR that changes them merges, not before. The app and the rules change together: for PR #19, the app on `main` before the merge saves alerts without a ledger entry, which the new rules refuse, and the new app saves a ledger entry, which the old rules refuse. To try a rules change before merging, use the emulators (`npm run emulators`), which load `firestore.rules` from the branch.
 3. **Add an officer:**
@@ -161,4 +184,4 @@ On Spark there is no bill. Heavy use ends in quota errors, which the app must sh
 - [ ] Publish the rules from the resident view PR right after it merges. Then approve one alert on the laptop, open `/resident` on a phone, pick its purok and household, and check it shows. Turn on airplane mode and reopen it. Alerts saved before then reach residents at their next approval.
 - [ ] Hosting, GitHub secrets, and the hosted domain in Authentication's authorized domains (Phase 4).
 - [ ] App Check enforced on Firestore (Phase 4).
-- [ ] A test officer login for judges (Phase 4).
+- [ ] Test officer for judges: after its PR merges, publish its rules, turn on Email/Password, add the account and its `officers` document, and check it (*Test officer for judges*). Put the email and password in the private testing instructions (Phase 5).

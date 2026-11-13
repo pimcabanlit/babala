@@ -26,7 +26,7 @@ These are the failures that matter here. Any instance is **Important**, never a 
    of read from Remote Config with its default in the one config file.
 5. **Access control.** `firestore.rules` letting anonymous residents write alerts, fact sheets
    or the ledger, or anyone read another user's data; an officer-only action reachable without
-   Google sign-in; App Check turned off or bypassed for AI Logic.
+   Google sign-in or the judges' email test officer account, or by an account not on the officer list; App Check turned off or bypassed for AI Logic.
 6. **Cost or quota.** Anything that needs the Blaze plan or a billing account; an AI call in a
    loop, on every keystroke or without a limit; a retry without a cap (the plan allows one
    on-device retry, then the cloud or a manual edit).

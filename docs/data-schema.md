@@ -170,10 +170,10 @@ Database `(default)`, Standard edition, asia-southeast1. The rules are in `fires
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| (document ID) | string | The officer's Firebase Auth user ID |
+| (document ID) | string | The officer's Firebase Auth user ID: a Google account, or the judges' test officer (email and password) |
 | name | string | Set by hand in the Firebase console. Only the document's existence matters |
 
-Each signed-in user may read only their own entry. Nobody writes the list from the app.
+Each signed-in user may read only their own entry. Nobody writes the list from the app. The rules count a listed user as an officer only when signed in with Google or with an email and password, never anonymously.
 
 **`alerts/{household}__{areaKey}`.** One current approved alert per household type and area, replaced by the next approval. Written by `src/alerts/record.ts` and `src/alerts/store.ts`. The limits are the same in `LIMITS` in `record.ts` and in the rules.
 

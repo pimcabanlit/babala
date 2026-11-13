@@ -40,7 +40,9 @@ them.
 ### Officer sign-in
 
 The officer console opens only for an officer: someone signed in with Google whose Firebase user ID
-is in the Firestore `officers` collection. To become one:
+is in the Firestore `officers` collection. Judges share one test officer account, signed in with an
+email and password from the testing instructions (set up in
+[docs/firebase-setup.md](docs/firebase-setup.md), *Test officer for judges*). To become an officer:
 
 1. Publish the rules: in the Firebase console, open Firestore > Rules, replace the text with the
    contents of `firestore.rules`, and click **Publish**.
