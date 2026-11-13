@@ -14,14 +14,15 @@ npm ci
 npm run dev
 ```
 
-Then open http://localhost:5173 in Chrome. `npm run check` runs the typecheck, lint, tests and production build.
+Then open http://localhost:5173 in Chrome. The home page links to the two views: the officer workspace at
+`/officer` and the resident view at `/resident`. `npm run check` runs the typecheck, lint, tests and production build.
 
 ### Firebase settings
 
 1. Copy `.env.example` to `.env.local` (gitignored: never commit it) and fill in the Firebase web
    app config and the reCAPTCHA Enterprise site key from the Firebase console.
-2. Run `npm run dev` and open the page. The **Setup status** panel shows whether Firebase, App
-   Check and Remote Config are working.
+2. Run `npm run dev` and open http://localhost:5173/officer. The **Setup status** panel shows
+   whether Firebase, App Check and Remote Config are working.
 
 ### App Check debug token (running locally)
 
@@ -47,7 +48,7 @@ email and password from the testing instructions (set up in
 
 1. Publish the rules: in the Firebase console, open Firestore > Rules, replace the text with the
    contents of `firestore.rules`, and click **Publish**.
-2. Run the app, click **Sign in with Google**, and copy the user ID it shows.
+2. Run the app, open `/officer`, click **Sign in with Google**, and copy the user ID it shows.
 3. In the Firebase console, open Firestore > Data, start a collection called `officers` (or open
    it), and add a document whose ID is that user ID, with one field `name` (string).
 
@@ -63,7 +64,9 @@ service worker.
 
 ### Hosted app
 
-The demo runs at https://babala-hybrid.web.app (resident view: `/resident`). `npm run preview:hosting`
+The demo runs at https://babala-hybrid.web.app, with the officer workspace at
+[`/officer`](https://babala-hybrid.web.app/officer) and the resident view at
+[`/resident`](https://babala-hybrid.web.app/resident). `npm run preview:hosting`
 serves a production build locally with the same rewrites and headers as the hosted site. Deploying
 is for the project owner only: `npm run deploy:hosting` from an up-to-date `main`, as set out in
 [docs/firebase-setup.md](docs/firebase-setup.md), *Hosting*. A production build never contains the

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from 'react'
 
 /**
  * M3 common buttons. Filled is the one main action of a view; tonal is a
@@ -47,6 +47,16 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant
 
 export default function Button({ variant, size, className = '', type = 'button', ...rest }: Props) {
   return <button type={type} className={`${buttonClass(variant, size)} ${className}`} {...rest} />
+}
+
+/** A link to another page that looks like a button, such as "Open workspace" on the home page. */
+export function ButtonLink({
+  variant,
+  size,
+  className = '',
+  ...rest
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: ButtonVariant; size?: ButtonSize }) {
+  return <a className={`${buttonClass(variant, size)} ${className}`} {...rest} />
 }
 
 /** A button that reads as a link inside a sentence, such as "See its ledger entry". */

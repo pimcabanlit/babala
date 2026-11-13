@@ -93,7 +93,9 @@ The dashed line is App Check guarding the cloud calls. `src/ai/` is the only mod
 
 Two users share one web app: a barangay disaster officer on a laptop running Chrome, and residents on any phone browser. Every page shows the banner "Demo, not official guidance. The storm and barangay are fictional."
 
-**Officer console (laptop), built.** One page, in this order:
+**Home, at `/`, built.** What Babala is in one line, an illustration of a resident's alert on bigger screens (no signal number, labelled "Demo"), the two ways in ("View alerts" for residents, "Open workspace" for officers), a three-step *How it works*, and an "Offline ready" pill once the service worker has saved the app. It loads no Firebase. Each view is its own chunk, loaded with `React.lazy` when it opens (`src/App.tsx`), so the home page stays small and phones never parse the officer console. Any other path shows *Page not found*.
+
+**Officer console (laptop), at `/officer`, built.** One page, in this order:
 
 - **Setup status.** Whether Firebase, App Check and Remote Config work, and which values are in use.
 - **Officer sign-in.** "Sign in with Google", and a folded "Judges: sign in with the test officer account" form for the email and password in the testing instructions. A signed-in user who isn't on the list sees their user ID, to send to Pim. The test officer sees a note that the account is shared and that the ledger records what it does.
@@ -104,7 +106,7 @@ Two users share one web app: a barangay disaster officer on a laptop running Chr
 - **4. Saved alerts and translations.** Every saved alert in every area, by area and household, marked "Active" or "Withdrawn", and "Not uploaded yet" while offline. Each has a "See its ledger entry" link and, while active, "Withdraw", which asks for a reason (up to 300 characters, kept in the ledger only). An active alert also has a *Translations* box with Filipino and Cebuano side by side: "Published" or "Not published", what residents get now with its ledger entry, "Translate" (or "Translate again"), "Write it yourself" or "Edit", and "Translate into both". A translation shows whether the cloud wrote it or the officer typed or edited it, its problems highlighted, and "Approve and publish", which stays off until it passes. Translating needs a connection; publishing offline waits on the laptop. The section needs no bulletin, so an officer can act on an alert straight after opening the console.
 - **5. Ledger.** The latest 50 approvals, withdrawals and translations, newest first. An approval is marked "Current alert", "Withdrawn" or "Replaced", a withdrawal "Still withdrawn" or "Replaced", a translation "Current translation", "Withdrawn" or "Replaced" (by a later translation or a new approval), and either "Not uploaded yet" while offline. Each opens into its trace. An approval shows the bulletin and confirmed facts, each draft with its model, time, verdict, problems and prompt, any hand edit, and the approval with who and when. A withdrawal shows the withdrawn text, a link to the approval it withdrew, and who withdrew it, when and why. A translation shows the English it translates with a link to that approval, each cloud call with its time, verdict, problems and prompt, any hand edit, and the published text with who and when.
 
-**Resident view (phone), at `/resident`.** No sign-in screen: the phone signs in anonymously in the background. The officer page links to it.
+**Resident view (phone), at `/resident`.** No sign-in screen: the phone signs in anonymously in the background. The home page and the officer page link to it.
 
 1. **My alert** (built). The resident picks their purok and household type once, and the phone remembers both. They see their alert with the storm, signal and a "last updated" time. A withdrawn alert shows "The barangay withdrew the alert…" and no text. An area or household with no alert says so.
 2. **Language** (built). A language choice appears on an alert that has a checked Filipino or Cebuano translation, and the phone remembers it. An alert without a translation into the chosen language shows English.
@@ -253,7 +255,7 @@ On a resident's phone, rule 8 runs on every AI answer to a question, before it i
 
 Firebase Hosting gives judges a public URL, `https://babala-hybrid.web.app`, that stays up until judging ends (Dec 16). Pim deploys from the laptop with `npm run deploy:hosting`, which deploys Hosting only and first checks that the laptop has `main` exactly as on GitHub and that `npm run check` passes. Nothing deploys from a pull request or from CI. The build takes its Firebase settings from the laptop's `.env.local`, and stops if the App Check debug token would end up in it (`vite.secrets.ts`).
 
-`firebase.json` rewrites `/resident` to `/index.html`, serves `sw.js` from the root, and has phones check for a new page, service worker and manifest on every load, so a deploy reaches them at their next visit with a signal. Steps, headers and rollback: [firebase-setup.md](firebase-setup.md), *Hosting*.
+`firebase.json` rewrites `/resident` and `/officer` to `/index.html`, serves `sw.js` from the root, and has phones check for a new page, service worker and manifest on every load, so a deploy reaches them at their next visit with a signal. Steps, headers and rollback: [firebase-setup.md](firebase-setup.md), *Hosting*.
 
 ## Cost plan (Spark plan, no billing account)
 
