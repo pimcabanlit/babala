@@ -77,7 +77,7 @@ The dashed line is App Check guarding the cloud calls. `src/ai/` is the only mod
 | Saved alerts | `src/alerts/`, Firestore `alerts` | One current approved alert per household and area | Built |
 | Officer list | Firestore `officers` | Who may use the console. Edited only in the Firebase console | Built |
 | Firestore rules | `firestore.rules`, `tests/rules/` | Officers only; exact fields and limits; server time and signed-in approver | Built and published |
-| App Check | `src/firebase/index.ts`, `src/firebase/recaptchaRetry.ts`, reCAPTCHA Enterprise | Required by AI Logic; started before Firestore, so every Firestore request carries a token; reCAPTCHA reloaded when a page opened offline gets a signal | Built (enforced on AI Logic; Firestore next, docs/firebase-setup.md section 4) |
+| App Check | `src/firebase/index.ts`, `src/firebase/recaptchaRetry.ts`, reCAPTCHA Enterprise | Required by AI Logic; started before Firestore, so every Firestore request carries a token; reCAPTCHA reloaded when a page opened offline gets a signal | Built (enforced on AI Logic and Firestore, docs/firebase-setup.md section 4) |
 | Remote Config | `src/firebase/remoteConfig.ts`, defaults in `src/config/defaults.ts` | Cloud model, on-device budget, claim words | Built |
 | Setup status | `src/SetupStatus.tsx` | Shows whether Firebase, App Check and Remote Config work | Built |
 | Resident copy | `src/alerts/residentCopy.ts`, Firestore `residentAlerts` | What residents read: each alert without officers' user IDs or the bulletin, written with every approval and withdrawal | Built |
@@ -204,7 +204,7 @@ On a resident's phone, rule 8 runs on every AI answer to a question, before it i
   - Nobody can delete an alert, and everything else is denied.
   - Tested on the Firestore emulator (`npm run test:rules`, 176 cases, in CI). Each withdrawal check, the sign-in method check, and each resident-copy and translation check were broken on purpose to confirm a test catches them.
 - **Residents** sign in anonymously, without a sign-in screen, and may read only `residentAlerts`: one copy at a time, or a list of at most 200. They can't read `alerts` (officers' user IDs, the bulletin) or the ledger, and can't write anything.
-- **AI quota.** Drafting and translating are inside the officer console. Residents can use the cloud only for questions: one cloud call per question, at most `ask_cloud_per_hour` (6) per phone per hour, counted on the phone. That limit is a courtesy a determined visitor can clear with the site's storage; App Check (enforced on AI Logic, with limited-use tokens) stops other clients, and AI Logic's own per-user quota (100 requests a minute by default) is the hard limit. On-device answers and the text search use no quota.
+- **AI quota.** Drafting and translating are inside the officer console. Residents can use the cloud only for questions: one cloud call per question, at most `ask_cloud_per_hour` (6) per phone per hour, counted on the phone. That limit is a courtesy a determined visitor can clear with the site's storage; App Check (enforced on AI Logic, with limited-use tokens, and on Firestore) stops other clients, and AI Logic's own per-user quota (100 requests a minute by default) is the hard limit. On-device answers and the text search use no quota.
 
 ## Offline
 
