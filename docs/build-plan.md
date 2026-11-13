@@ -81,7 +81,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
    The model answers in JSON: whether the alert answers the question, which numbered sentences do, and a short answer in the resident's language. Rule 8 checks that answer against the approved alert, and only a passing answer is shown, with the sentences it cites quoted under it. A failed check, an error or a slow device moves on to the next route, and the resident sees why. The question is fenced off in the prompt and never saved. Tested with Vitest and in Chrome offline and with simulated cloud answers; Nano and the real cloud need Pim's test on the laptop and phone.
 6. **Cloud reading of bulletins.** Free-form bulletins are turned into a fact sheet in the cloud when online, with every fact confirmed by the officer. A long bulletin is summarised in the cloud.
 
-**Done when:** a phone with no signal opens its saved alert in the resident's language, and a question gets an answer by one of the three routes (video, 1:25–2:00). Done: deployed and checked on the laptop and an iPhone, Nov 13 (docs/firebase-setup.md, *Follow-ups*).
+**Done when:** a phone with no signal opens its saved alert in the resident's language, and a question gets an answer by one of the three routes (video, 1:15–1:50). Done: deployed and checked on the laptop and an iPhone, Nov 13 (docs/firebase-setup.md, *Follow-ups*).
 
 ### Phase 4 — Hosting and feature freeze (Nov 24)
 
@@ -95,18 +95,22 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 
 ### Phase 5 — Video and submission (Nov 25–29)
 
-1. **Video** (Nov 25–26), 2:45, English:
+1. **Video** (Nov 25–26), 2:45, English, with Pim's voice-over (about 2.5 words a second, so about 400 words in all):
 
    | Time | Shot | What it proves |
    | --- | --- | --- |
-   | 0:00–0:15 | Storm signal raised, phone shows no signal. "In a typhoon, the signal goes first." | The problem and the audience |
-   | 0:15–0:35 | Officer pastes the bulletin, and the fact sheet appears | Facts come from the source, not the model |
-   | 0:35–1:05 | Nano drafts on the laptop (on-device badge). The checker catches a placeholder and an invented "severe", the retry passes | On-device AI, and why checking matters |
-   | 1:05–1:25 | Officer approves, the cloud translates to Filipino and Cebuano, the checker confirms the figures | Cloud for what Nano can't do |
-   | 1:25–2:00 | Wi-Fi off: the laptop still drafts and checks. iPhone shows the saved alert, and a question falls back to text search. Back online, the cloud answers | Three routes: on-device, cloud and no AI |
-   | 2:00–2:20 | Ledger: one alert traced from bulletin to household | Trust and accountability |
-   | 2:20–2:40 | How it's built: hybrid modes, App Check, Firestore offline cache, Remote Config | Technical depth |
-   | 2:40–2:45 | Name, URL, repo | Where to try it |
+   | 0:00–0:20 | Opens in the dark. Over a map of the Philippines in the western Pacific typhoon belt, one sourced stat on typhoon frequency and "When a typhoon hits, the signal goes first." A phone lights up in a dark room in airplane mode, like a candle, showing a saved Babala alert. Title | The problem and the audience, and the app working with no signal |
+   | 0:20–1:00 | Officer pastes the bulletin and the fact sheet appears. Nano drafts on the laptop (on-device badge). The checker catches a placeholder and an invented "severe", the retry passes. Voice-over: "Firebase AI Logic falls back to the cloud when the local model is missing. Babala also falls back when the local answer is wrong" | On-device AI, facts from the source, and why checking matters |
+   | 1:00–1:15 | Officer approves, the cloud translates to Filipino and Cebuano, the checker confirms the figures | Cloud for what Nano can't do |
+   | 1:15–1:50 | Wi-Fi off: the laptop still drafts and checks. iPhone shows the saved alert, and a question falls back to text search. Back online, the cloud answers | Three routes: on-device, cloud and no AI |
+   | 1:50–2:05 | Ledger: one alert traced from bulletin to household | Trust and accountability |
+   | 2:05–2:30 | How it's built: hybrid modes, App Check, Firestore offline cache, Remote Config. The hybrid benefit as a real count from the ledger: how many drafts ran on the laptop with nothing sent to the cloud | Technical depth, and what hybrid saves |
+   | 2:30–2:45 | "Babala!" turns its "!" upside down into "¡", which becomes a candle flame: "a guide light in times of uncertainty". Name, URL, repo | Where to try it |
+
+   Rules for the video:
+   - **Stats need a cited source**, checked before recording, with the source in the YouTube description. No casualty figures, and no dollar comparison of cloud-only against hybrid: on the Spark plan both cost $0, so the ledger count is the honest version.
+   - **Sound:** no copyrighted music. Use recorded rain or wind, or a royalty-free track whose licence allows it, after checking the contest rules.
+   - **The dark opening is a real shot**, not a mock-up: the iPhone in airplane mode opening the hosted app.
 
 2. **README and Devpost text** (Nov 27). Cover the value proposition, setup, testing instructions, how Firebase AI Logic is used (with links to the calls), the AI coding tools used, and what was built during the contest (all of it).
 3. **Requirements map.** Bring every row of [requirements-map.md](requirements-map.md) to its final status.
