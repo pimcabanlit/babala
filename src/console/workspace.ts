@@ -29,6 +29,15 @@ export function stepStates(progress: { bulletinRead: boolean; factsConfirmed: bo
   ]
 }
 
+/** The furthest step the officer can open, for when the one shown locks. */
+export function lastOpenStep(steps: StepState[]): number {
+  let last = 0
+  steps.forEach((s, i) => {
+    if (s.state !== 'locked') last = i
+  })
+  return last
+}
+
 export type Tone = 'ok' | 'busy' | 'warn' | 'off' | 'problem'
 
 export type ModelPill = { tone: Tone; icon: 'computer' | 'cloud' | 'download' | 'wifi_off'; text: string }

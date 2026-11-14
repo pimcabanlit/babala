@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cloudSummary, deviceSummary, modelPill, setupSummary, stepStates, viewFromHash } from './workspace'
+import { cloudSummary, deviceSummary, lastOpenStep, modelPill, setupSummary, stepStates, viewFromHash } from './workspace'
 
 describe('viewFromHash', () => {
   it('opens creating an alert with no hash', () => {
@@ -46,6 +46,20 @@ describe('stepStates', () => {
 
   it('marks drafting done when all four households are approved', () => {
     expect(stepStates({ bulletinRead: true, factsConfirmed: true, allApproved: true })[2]).toEqual({ state: 'done' })
+  })
+})
+
+describe('lastOpenStep', () => {
+  it('is the first step before a bulletin is read', () => {
+    expect(lastOpenStep(stepStates({ bulletinRead: false, factsConfirmed: false, allApproved: false }))).toBe(0)
+  })
+
+  it('is the fact sheet once a bulletin is read but its facts are not confirmed', () => {
+    expect(lastOpenStep(stepStates({ bulletinRead: true, factsConfirmed: false, allApproved: false }))).toBe(1)
+  })
+
+  it('is drafting once the facts are confirmed', () => {
+    expect(lastOpenStep(stepStates({ bulletinRead: true, factsConfirmed: true, allApproved: false }))).toBe(2)
   })
 })
 

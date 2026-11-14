@@ -23,13 +23,12 @@ import { useHybrid } from './useHybrid'
 import { useLedger } from './useLedger'
 import { useSavedAlerts } from './useSavedAlerts'
 import { usePublishedTranslations, useTranslations } from './useTranslations'
-import { cloudSummary, deviceSummary, modelPill, setupSummary, stepStates, viewFromHash, type Tone, type View } from './workspace'
+import { cloudSummary, deviceSummary, lastOpenStep, modelPill, setupSummary, stepStates, viewFromHash, type Tone, type View } from './workspace'
 import AppBar from '../ui/AppBar'
 import Button from '../ui/Button'
-import Card from '../ui/Card'
 import Dialog from '../ui/Dialog'
 import Icon from '../ui/Icon'
-import { TITLE, WIDTH } from '../ui/layout'
+import { TITLE } from '../ui/layout'
 import Notice from '../ui/Notice'
 import Progress from '../ui/Progress'
 
@@ -48,6 +47,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
   const [view, go] = useHashView()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
+  const [step, setStep] = useState(0)
   const savedAlerts = useSavedAlerts(session.db)
   const ledger = useLedger(session.db)
   const [openEntry, setOpenEntry] = useState<string>()
@@ -168,6 +168,8 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
     factsConfirmed: sheet !== undefined,
     allApproved: sheet !== undefined && HOUSEHOLDS.every((h) => drafts.drafts[h.id].approved),
   })
+  // A step that locks while open (none can today) falls back to the last one open, so the view is never empty.
+  const openIndex = steps[step].state === 'locked' ? lastOpenStep(steps) : step
   const warmingSeconds = hybrid.warmUp.state === 'warming' ? Math.max(0, (now - hybrid.warmUp.startedAt) / 1000) : undefined
   const pill = modelPill({ online: hybrid.online, device: hybrid.device, download: hybrid.download, warmingSeconds })
   const status = [
@@ -199,14 +201,15 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
     requestAnimationFrame(() => window.scrollTo({ top: 0 }))
   }
 
+  /** Shows one step of creating an alert, from the drawer or a step's Back and Next buttons. */
   function openStep(index: number) {
     setDrawerOpen(false)
+    setStep(index)
     go('create')
-    // After the view shows and the drawer sheet has closed and handed focus back.
+    // After the step shows and the drawer sheet has closed and handed focus back: start at its top, as a new page would.
     requestAnimationFrame(() => {
-      const step = document.getElementById(STEP_IDS[index])
-      step?.scrollIntoView({ block: 'start' })
-      step?.focus({ preventScroll: true })
+      window.scrollTo({ top: 0 })
+      document.getElementById(STEP_IDS[index])?.focus({ preventScroll: true })
     })
   }
 
@@ -219,6 +222,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
     <Drawer
       view={view}
       steps={steps}
+      openStep={openIndex}
       activeAlerts={activeAlerts}
       waitingToUpload={waitingToUpload}
       status={status}
@@ -235,7 +239,6 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
     <>
       <AppBar
         title={TITLE.officer}
-        width={WIDTH.officer}
         leading={
           <button
             type="button"
@@ -281,109 +284,137 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                 Read the storm bulletin, confirm its facts, then draft an alert for each household and approve the ones that pass
                 the checks.
               </ViewHeading>
-              <div className="space-y-6">
-                <Card title="1. Bulletin" id={STEP_IDS[0]}>
-                  <label className="block text-body-md font-medium" htmlFor="bulletin">
-                    Paste the storm bulletin
-                  </label>
-                  <textarea
-                    id="bulletin"
-                    value={bulletin}
-                    onChange={(e) => setBulletin(e.target.value)}
-                    rows={6}
-                    className="field mt-1 font-mono text-body-sm"
-                  />
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button variant="filled" onClick={() => readBulletin(bulletin)} disabled={bulletin.trim() === '' || busy}>
-                      Read bulletin
-                    </Button>
-                    <Button variant="text" onClick={() => readBulletin(SAMPLE_BULLETIN)} disabled={busy}>
-                      Use the demo bulletin
-                    </Button>
-                  </div>
-                </Card>
-
+              <StepCard
+                index={0}
+                open={openIndex}
+                title="Bulletin"
+                next={{ label: 'Next: Fact sheet', enabled: form !== undefined, hint: 'Read a bulletin to continue.' }}
+                onGo={openStep}
+              >
+                <label className="block text-body-md font-medium" htmlFor="bulletin">
+                  Paste the storm bulletin
+                </label>
+                <textarea
+                  id="bulletin"
+                  value={bulletin}
+                  onChange={(e) => setBulletin(e.target.value)}
+                  rows={8}
+                  className="field mt-1 font-mono text-body-sm"
+                />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="tonal" onClick={() => readBulletin(bulletin)} disabled={bulletin.trim() === '' || busy}>
+                    Read bulletin
+                  </Button>
+                  <Button variant="text" onClick={() => readBulletin(SAMPLE_BULLETIN)} disabled={busy}>
+                    Use the demo bulletin
+                  </Button>
+                </div>
                 {form && (
-                  <Card title="2. Fact sheet" id={STEP_IDS[1]}>
-                    {notFound.length > 0 && (
-                      <Notice tone="warning" className="mb-4">
-                        Not found in the bulletin: {notFound.join(', ')}. Fill these in if the bulletin has them.
-                      </Notice>
-                    )}
-                    <FactSheetEditor form={form} onChange={editForm} disabled={busy} />
-                    {parsed && !parsed.ok && (
-                      <ul className="mt-3 list-disc pl-5 text-body-md text-error">
-                        {parsed.problems.map((p) => (
-                          <li key={p}>{p}</li>
-                        ))}
-                      </ul>
-                    )}
-                    <label className="mt-4 flex min-h-12 items-center gap-3 text-body-md font-medium">
-                      <input
-                        type="checkbox"
-                        className="size-[18px] accent-primary"
-                        checked={confirmed}
-                        disabled={!parsed?.ok || busy}
+                  <Notice tone="success" role="status" className="mt-4">
+                    {notFound.length === 0
+                      ? 'Bulletin read, and every fact was found. Check them on the next step.'
+                      : `Bulletin read. ${notFound.length} fact${notFound.length === 1 ? ' wasn’t' : 's weren’t'} found: fill ${notFound.length === 1 ? 'it' : 'them'} in on the next step.`}
+                  </Notice>
+                )}
+              </StepCard>
+
+              {form && (
+                <StepCard
+                  index={1}
+                  open={openIndex}
+                  title="Fact sheet"
+                  next={{ label: 'Next: Draft alerts', enabled: sheet !== undefined, hint: 'Tick “I checked every fact” to continue.' }}
+                  onGo={openStep}
+                >
+                  {notFound.length > 0 && (
+                    <Notice tone="warning" className="mb-4">
+                      Not found in the bulletin: {notFound.join(', ')}. Fill these in if the bulletin has them.
+                    </Notice>
+                  )}
+                  <FactSheetEditor form={form} onChange={editForm} disabled={busy} />
+                  {parsed && !parsed.ok && (
+                    <ul className="mt-3 list-disc pl-5 text-body-md text-error">
+                      {parsed.problems.map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <label className="mt-4 flex min-h-12 items-center gap-3 text-body-md font-medium">
+                    <input
+                      type="checkbox"
+                      className="size-[18px] accent-primary"
+                      checked={confirmed}
+                      disabled={!parsed?.ok || busy}
+                      onChange={(e) => {
+                        setConfirmed(e.target.checked)
+                        drafts.unapproveAll()
+                      }}
+                    />
+                    I checked every fact against the bulletin
+                  </label>
+                </StepCard>
+              )}
+
+              {sheet && (
+                <StepCard
+                  index={2}
+                  open={openIndex}
+                  title="Draft, check and approve"
+                  next={{
+                    label: 'Next: Saved alerts',
+                    enabled: HOUSEHOLDS.some((h) => drafts.drafts[h.id].approved),
+                    hint: 'Approve at least one alert to continue. Translations are made from saved alerts.',
+                  }}
+                  onGo={openStep}
+                  onFinish={() => openView('saved')}
+                >
+                  <div className="flex flex-wrap items-end gap-3">
+                    <label className="text-body-md font-medium">
+                      Area
+                      <select
+                        className="field ml-2 w-auto"
+                        value={area}
                         onChange={(e) => {
-                          setConfirmed(e.target.checked)
+                          setArea(e.target.value)
                           drafts.unapproveAll()
                         }}
-                      />
-                      I checked every fact against the bulletin
+                        disabled={busy}
+                      >
+                        {areas.map((a) => (
+                          <option key={a}>{a}</option>
+                        ))}
+                      </select>
                     </label>
-                  </Card>
-                )}
-
-                {sheet && (
-                  <Card title="3. Draft, check and approve" id={STEP_IDS[2]}>
-                    <div className="flex flex-wrap items-end gap-3">
-                      <label className="text-body-md font-medium">
-                        Area
-                        <select
-                          className="field ml-2 w-auto"
-                          value={area}
-                          onChange={(e) => {
-                            setArea(e.target.value)
-                            drafts.unapproveAll()
-                          }}
-                          disabled={busy}
-                        >
-                          {areas.map((a) => (
-                            <option key={a}>{a}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <Button variant="tonal" onClick={() => void drafts.draftAll()} disabled={!canDraft}>
-                        Draft all four
-                      </Button>
-                    </div>
-                    <div className="mt-4 space-y-4">
-                      {HOUSEHOLDS.map((h) => (
-                        <DraftCard
-                          key={h.id}
-                          household={h}
-                          draft={drafts.drafts[h.id]}
-                          sheet={sheet}
-                          area={area}
-                          claimWords={claimWords}
-                          now={now}
-                          budgetSeconds={hybrid.tunables?.ondeviceBudgetSeconds ?? 30}
-                          cloudModel={hybrid.tunables?.cloudModelName ?? ''}
-                          online={hybrid.online}
-                          canDraft={canDraft}
-                          onDraft={() => void drafts.draft(h)}
-                          onAbandon={() => drafts.abandon(h.id)}
-                          onEdit={(text) => drafts.edit(h.id, text)}
-                          saved={areaSaveKey ? savedAlerts.saved?.byId.get(alertDocId(h.id, areaSaveKey)) : undefined}
-                          saveError={saveErrors[h.id]}
-                          onApprove={() => approve(h)}
-                          onShowLedger={showLedgerEntry}
-                        />
-                      ))}
-                    </div>
-                  </Card>
-                )}
-              </div>
+                    <Button variant="tonal" onClick={() => void drafts.draftAll()} disabled={!canDraft}>
+                      Draft all four
+                    </Button>
+                  </div>
+                  <div className="mt-4 space-y-4">
+                    {HOUSEHOLDS.map((h) => (
+                      <DraftCard
+                        key={h.id}
+                        household={h}
+                        draft={drafts.drafts[h.id]}
+                        sheet={sheet}
+                        area={area}
+                        claimWords={claimWords}
+                        now={now}
+                        budgetSeconds={hybrid.tunables?.ondeviceBudgetSeconds ?? 30}
+                        cloudModel={hybrid.tunables?.cloudModelName ?? ''}
+                        online={hybrid.online}
+                        canDraft={canDraft}
+                        onDraft={() => void drafts.draft(h)}
+                        onAbandon={() => drafts.abandon(h.id)}
+                        onEdit={(text) => drafts.edit(h.id, text)}
+                        saved={areaSaveKey ? savedAlerts.saved?.byId.get(alertDocId(h.id, areaSaveKey)) : undefined}
+                        saveError={saveErrors[h.id]}
+                        onApprove={() => approve(h)}
+                        onShowLedger={showLedgerEntry}
+                      />
+                    ))}
+                  </div>
+                </StepCard>
+              )}
             </div>
 
             <div hidden={view !== 'saved'}>
@@ -480,6 +511,73 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
         </StatusSection>
       </SystemStatus>
     </>
+  )
+}
+
+/**
+ * One step of creating an alert, shown on its own: its place in the three,
+ * its fields, and Back and Next. Next stays off, with the reason under it,
+ * until the step is done. Hidden steps stay mounted, so a draft keeps
+ * streaming and the fields keep their text.
+ */
+function StepCard({
+  index,
+  open,
+  title,
+  next,
+  onGo,
+  onFinish,
+  children,
+}: {
+  index: number
+  open: number
+  title: string
+  next: { label: string; enabled: boolean; hint: string }
+  onGo: (index: number) => void
+  /** Next on the last step, which leaves the steps. */
+  onFinish?: () => void
+  children: ReactNode
+}) {
+  const hintId = `${STEP_IDS[index]}-hint`
+  return (
+    <section
+      id={STEP_IDS[index]}
+      hidden={open !== index}
+      tabIndex={-1}
+      aria-labelledby={`${STEP_IDS[index]}-title`}
+      className="rounded-md border border-outline-variant bg-surface-container-lowest outline-none"
+    >
+      <div className="p-4 sm:p-6">
+        <p className="text-label-lg text-primary">Step {index + 1} of 3</p>
+        <h2 id={`${STEP_IDS[index]}-title`} className="mt-1 mb-4 text-title-lg">
+          {title}
+        </h2>
+        {children}
+      </div>
+      <div className="flex flex-wrap items-center gap-3 border-t border-outline-variant px-4 py-3 sm:px-6">
+        {index > 0 && (
+          <Button variant="outlined" onClick={() => onGo(index - 1)}>
+            <Icon name="arrow_back" className="size-[18px]" />
+            Back
+          </Button>
+        )}
+        {!next.enabled && (
+          <p id={hintId} className="ml-auto text-body-md text-on-surface-variant">
+            {next.hint}
+          </p>
+        )}
+        <Button
+          variant="filled"
+          className={next.enabled ? 'ml-auto' : ''}
+          disabled={!next.enabled}
+          aria-describedby={next.enabled ? undefined : hintId}
+          onClick={() => (onFinish ? onFinish() : onGo(index + 1))}
+        >
+          {next.label}
+          <Icon name="arrow_forward" className="size-[18px]" />
+        </Button>
+      </div>
+    </section>
   )
 }
 

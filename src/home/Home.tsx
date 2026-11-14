@@ -33,12 +33,12 @@ const STEPS: { icon: IconName; title: string; text: string }[] = [
 export default function Home() {
   return (
     <>
-      <AppBar home title={TITLE.home} width={WIDTH.home}>
+      <AppBar home title={TITLE.home}>
         <OfflinePill />
       </AppBar>
       <main className="flex-1">
         <section className="bg-brand text-on-brand">
-          <div className={`mx-auto grid ${WIDTH.home} items-center gap-10 px-4 py-10 sm:py-16 lg:grid-cols-[1fr_22rem]`}>
+          <div className={`mx-auto grid ${WIDTH.home} items-center gap-10 px-4 py-10 sm:py-12 lg:grid-cols-[1fr_22rem] lg:gap-16`}>
             <div>
               <h1 className="text-headline-lg font-bold sm:text-display-sm">
                 When the signal drops, warnings <span className="text-highlight-on-brand">shouldn’t.</span>
@@ -62,6 +62,7 @@ export default function Home() {
                 icon="smartphone"
                 title="I’m a resident"
                 text="See your purok’s typhoon alert in plain words. It’s saved on your phone, so it opens with no signal."
+                note="No sign-in. Works in any phone browser."
               >
                 <ButtonLink variant="tonal" href={PATHS.resident}>
                   View alerts
@@ -131,11 +132,13 @@ function ViewCard({
 }) {
   return (
     <div className="flex flex-col rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
-      <span className="flex size-12 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
-        <Icon name={icon} className="size-6" />
-      </span>
-      <h3 className="mt-4 text-title-lg">{title}</h3>
-      <p className="mt-2 text-body-lg text-on-surface-variant">{text}</p>
+      <div className="flex items-center gap-4">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+          <Icon name={icon} className="size-6" />
+        </span>
+        <h3 className="text-title-lg">{title}</h3>
+      </div>
+      <p className="mt-4 text-body-lg text-on-surface-variant">{text}</p>
       {note && <p className="mt-3 text-body-md text-on-surface-variant">{note}</p>}
       {/* mt-auto keeps both cards' buttons on one line when their texts differ in length. */}
       <div className="mt-auto pt-6">{children}</div>
@@ -143,36 +146,39 @@ function ViewCard({
   )
 }
 
+const JOURNEY: { icon: IconName; text: string; chip: string }[] = [
+  { icon: 'computer', text: 'Drafted on the officer’s laptop', chip: 'Gemini Nano' },
+  { icon: 'fact_check', text: 'Every figure checked against the bulletin', chip: 'Code, not AI' },
+  { icon: 'check_circle', text: 'Approved by a barangay officer', chip: 'Signed in' },
+  { icon: 'smartphone', text: 'Saved on residents’ phones', chip: 'Opens offline' },
+]
+
 /**
- * A picture of what a resident's phone shows, with no signal number or
- * instruction in it: a made-up warning on the front page could pass for a real
- * one (docs/build-plan.md, Phase 4, change 4). Hidden on phones, where it
- * would push the two ways in below the fold.
+ * One alert's way from the bulletin to a phone, as a card. It holds no signal
+ * number or instruction: a made-up warning on the front page could pass for a
+ * real one (docs/build-plan.md, Phase 4, change 4). Hidden on phones, where it
+ * would push the two ways in below the fold, and *How it works* says the same.
  */
 function AlertIllustration() {
   return (
-    <figure className="mx-auto hidden w-full max-w-xs sm:block lg:max-w-none">
+    <figure className="mx-auto hidden w-full max-w-sm sm:block lg:max-w-none">
       <div aria-hidden="true" className="overflow-hidden rounded-xl bg-surface-container-lowest text-on-surface shadow-lg">
         <div className="flex items-center gap-2 bg-error px-5 py-3 text-on-error">
           <Icon name="warning" />
-          <span className="text-title-sm">Typhoon Sample</span>
+          <span className="text-title-sm">Typhoon Sample · Purok Ilaya</span>
         </div>
-        <div className="space-y-2.5 px-5 py-5">
-          <div className="h-3 w-full rounded-full bg-surface-container-highest" />
-          <div className="h-3 w-11/12 rounded-full bg-surface-container-highest" />
-          <div className="h-3 w-4/5 rounded-full bg-surface-container-highest" />
-          <div className="h-3 w-2/3 rounded-full bg-surface-container-highest" />
-        </div>
-        <div className="flex flex-wrap gap-2 border-t border-outline-variant px-5 py-3 text-label-md text-on-surface-variant">
-          <span className="inline-flex items-center gap-1">
-            <Icon name="fact_check" className="size-4" />
-            Checked by code
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Icon name="wifi_off" className="size-4" />
-            Opens with no signal
-          </span>
-        </div>
+        <ol className="px-5 py-4">
+          {JOURNEY.map((step, i) => (
+            <li key={step.text} className="relative flex items-center gap-3 py-2">
+              {i < JOURNEY.length - 1 && <span className="absolute top-1/2 left-4 h-full w-px bg-outline-variant" />}
+              <span className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+                <Icon name={step.icon} className="size-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1 text-body-md">{step.text}</span>
+              <span className="shrink-0 rounded-sm bg-surface-container-high px-2 py-0.5 text-label-md text-on-surface-variant">{step.chip}</span>
+            </li>
+          ))}
+        </ol>
       </div>
       <figcaption className="mt-3 text-center text-body-sm text-on-brand-variant">
         Demo: Typhoon Sample over Barangay Halimbawa

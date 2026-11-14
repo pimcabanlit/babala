@@ -20,6 +20,7 @@ const DOT: Record<Tone, string> = {
 export default function Drawer({
   view,
   steps,
+  openStep,
   activeAlerts,
   waitingToUpload,
   status,
@@ -29,6 +30,8 @@ export default function Drawer({
 }: {
   view: View
   steps: StepState[]
+  /** The step shown while the officer is creating an alert. */
+  openStep: number
   /** How many saved alerts are active, once they have loaded. */
   activeAlerts: number | undefined
   /** Some saved alert or withdrawal is still only on this laptop. */
@@ -45,11 +48,10 @@ export default function Drawer({
         <ol>
           {STEPS.map((label, i) => {
             const step = steps[i]
-            const current = view === 'create' && step.state === 'current'
             return (
               <li key={label}>
                 <Item
-                  active={current}
+                  active={view === 'create' && i === openStep}
                   disabled={step.state === 'locked'}
                   onClick={() => onStep(i)}
                   icon={

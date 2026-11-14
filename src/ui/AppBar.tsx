@@ -4,19 +4,18 @@ import { PATHS } from '../route'
 /**
  * The navy bar under the demo banner, on every page: the logo (a link home
  * from the other pages), the page's name, and its own controls on the right.
+ * It spans the window on every page, as Google's own apps do, so the logo
+ * stays in one place whichever page is open.
  */
 export default function AppBar({
   title,
   home = false,
-  width,
   leading,
   children,
 }: {
   title?: string
   /** The home page: the logo isn't a link to itself. */
   home?: boolean
-  /** The width class of the page under the bar, so the logo lines up with its content. */
-  width: string
   /** A control before the logo, such as the officer workspace's menu button. */
   leading?: ReactNode
   /** Controls on the right, such as a status pill or the account menu. */
@@ -30,7 +29,7 @@ export default function AppBar({
   )
   return (
     <header className="bg-brand text-on-brand">
-      <div className={`mx-auto flex h-16 items-center gap-3 px-4 ${width}`}>
+      <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
         {leading}
         {home ? (
           <div className="flex shrink-0 items-center gap-3">{brand}</div>
