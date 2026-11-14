@@ -136,6 +136,8 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* Keeps room for a laptop's scrollbar, so the page doesn't shift sideways when a longer step or view adds one. */
+    scrollbar-gutter: stable;
   }
 
   body {

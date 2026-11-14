@@ -16,9 +16,6 @@ export default function App() {
   const page = pageFor(window.location.pathname)
   return (
     <div className="flex min-h-screen flex-col">
-      <div role="alert" className="bg-warning-container px-4 py-2 text-center text-label-lg text-on-warning-container">
-        Demo, not official guidance. The storm and barangay are fictional.
-      </div>
       {page === 'home' ? (
         <Home />
       ) : page === 'not-found' ? (

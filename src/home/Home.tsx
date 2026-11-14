@@ -37,26 +37,24 @@ export default function Home() {
         <OfflinePill />
       </AppBar>
       <main className="flex-1">
-        <section className="bg-brand text-on-brand">
+        <section className="overflow-hidden bg-brand text-on-brand">
           {/* On a laptop the padding and headline follow the window's height, so the two ways in below fit on the first screen. */}
-          <div
-            className={`mx-auto grid ${WIDTH.home} items-center gap-10 px-4 py-10 sm:py-12 lg:grid-cols-[minmax(0,1fr)_25rem] lg:gap-16 lg:py-[clamp(1rem,4vh,5rem)]`}
-          >
-            <div>
-              <h1 className="text-headline-lg font-bold sm:text-display-sm lg:text-[length:min(3.5rem,max(2.5rem,1.25rem_+_2vw),7.5vh)] lg:leading-[1.15]">
-                When the signal drops, warnings <span className="text-highlight-on-brand">shouldn’t.</span>
-              </h1>
-              <p className="mt-4 max-w-xl text-body-lg text-on-brand-variant lg:max-w-2xl lg:text-title-lg">
-                Babala turns a storm bulletin into a checked, plain-language typhoon alert for each household, and keeps it
-                on residents’ phones for when the network goes down.
-              </p>
-            </div>
-            <AlertIllustration />
+          <div className={`relative mx-auto ${WIDTH.home} px-4 py-10 sm:py-12 lg:py-[clamp(1.25rem,4.5vh,4rem)]`}>
+            <SignalLines />
+            <h1 className="relative text-headline-lg font-bold sm:text-display-sm lg:text-[length:min(3.5rem,max(2.5rem,1.25rem_+_2vw),7.5vh)] lg:leading-[1.15]">
+              When the signal drops,
+              {/* Breaks after the comma from a tablet up, so each line is one thought. */}
+              <br className="max-sm:hidden" /> warnings <span className="text-highlight-on-brand">shouldn’t.</span>
+            </h1>
+            <p className="relative mt-4 max-w-xl text-body-lg text-on-brand-variant lg:max-w-2xl lg:text-title-lg">
+              Babala turns a storm bulletin into a checked, plain-language typhoon alert for each household, and keeps it on
+              residents’ phones for when the network goes down.
+            </p>
           </div>
         </section>
 
         <div className={`mx-auto px-4 ${WIDTH.home}`}>
-          <section aria-labelledby="views-title" className="py-10 lg:pt-[clamp(1rem,3vh,2.5rem)]">
+          <section aria-labelledby="views-title" className="py-10 lg:pt-[clamp(1rem,3vh,2.5rem)] lg:pb-8">
             <h2 id="views-title" className="text-headline-sm">
               Choose your view
             </h2>
@@ -84,11 +82,11 @@ export default function Home() {
             </div>
           </section>
 
-          <section aria-labelledby="how-title" className="border-t border-outline-variant py-10">
+          <section aria-labelledby="how-title" className="border-t border-outline-variant py-10 lg:pt-6">
             <h2 id="how-title" className="text-headline-sm">
               How it works
             </h2>
-            <ol className="mt-6 grid gap-6 md:grid-cols-3">
+            <ol className="mt-6 grid gap-6 md:grid-cols-3 lg:mt-4">
               {STEPS.map((step, i) => (
                 <li key={step.title} className="flex gap-4">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
@@ -154,40 +152,38 @@ function ViewCard({
   )
 }
 
-const JOURNEY: { icon: IconName; text: string; chip: string }[] = [
-  { icon: 'computer', text: 'Drafted on the laptop', chip: 'Gemini Nano' },
-  { icon: 'fact_check', text: 'Every figure checked', chip: 'Code, not AI' },
-  { icon: 'check_circle', text: 'Approved by an officer', chip: 'Signed in' },
-  { icon: 'smartphone', text: 'Saved on residents’ phones', chip: 'Opens offline' },
-]
-
 /**
- * One alert's way from the bulletin to a phone, as a card. It holds no signal
- * number or instruction: a made-up warning on the front page could pass for a
- * real one (docs/build-plan.md, Phase 4, change 4), so it is marked "Demo".
- * One line per row keeps it short enough for the two ways in to fit under
- * it. Hidden on phones, where *How it works* says the same.
+ * Faint rings, as from a signal source, solid near it and broken further out,
+ * to balance the headline on a laptop. Decoration only: *How it works* says
+ * what Babala does, so the hero needs no second picture of it.
  */
-function AlertIllustration() {
+function SignalLines() {
+  const rings = [56, 104, 152, 200, 248, 296, 344]
   return (
-    <div aria-hidden="true" className="mx-auto hidden w-full max-w-md overflow-hidden rounded-xl bg-surface-container-lowest text-on-surface shadow-lg sm:block lg:max-w-none">
-      <div className="flex items-center gap-2 bg-error px-5 py-2 text-on-error">
-        <Icon name="warning" />
-        <span className="flex-1 text-title-sm">Typhoon Sample · Purok Ilaya</span>
-        <span className="rounded-sm border border-on-error/70 px-2 text-label-md">Demo</span>
-      </div>
-      <ol className="px-5 py-2.5">
-        {JOURNEY.map((step, i) => (
-          <li key={step.text} className="relative flex items-center gap-3 py-1">
-            {i < JOURNEY.length - 1 && <span className="absolute top-1/2 left-4 h-full w-px bg-outline-variant" />}
-            <span className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
-              <Icon name={step.icon} className="size-[18px]" />
-            </span>
-            <span className="min-w-0 flex-1 text-body-md">{step.text}</span>
-            <span className="shrink-0 rounded-sm bg-surface-container-high px-2 py-0.5 text-label-md text-on-surface-variant">{step.chip}</span>
-          </li>
+    // The fade keeps the rings from ending in a hard line at the app bar and the page.
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 hidden [mask-image:linear-gradient(to_bottom,transparent,black_30%,black_70%,transparent)] lg:block"
+    >
+      <svg
+        viewBox="0 0 400 400"
+        className="absolute top-1/2 right-0 h-[150%] max-h-[32rem] -translate-y-1/2 overflow-visible text-on-brand-variant"
+        fill="none"
+        stroke="currentColor"
+      >
+        <circle cx="300" cy="200" r="6" fill="currentColor" stroke="none" opacity="0.25" />
+        {rings.map((r, i) => (
+          <circle
+            key={r}
+            cx="300"
+            cy="200"
+            r={r}
+            strokeWidth="1.5"
+            opacity={0.22 - i * 0.025}
+            strokeDasharray={i < 3 ? undefined : `${14 - i * 1.5} ${6 + i * 3}`}
+          />
         ))}
-      </ol>
+      </svg>
     </div>
   )
 }

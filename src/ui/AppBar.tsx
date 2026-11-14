@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { PATHS } from '../route'
 
 /**
- * The navy bar under the demo banner, on every page: the logo (a link home
+ * The navy bar at the top of every page: the logo (a link home
  * from the other pages), the page's name, and its own controls on the right.
  * It spans the window on every page, as Google's own apps do, so the logo
  * stays in one place whichever page is open.

@@ -31,8 +31,8 @@ These are the failures that matter here. Any instance is **Important**, never a 
    loop, on every keystroke or without a limit; a retry without a cap (the plan allows one
    on-device retry, then the cloud or a manual edit).
 7. **Fake alert passes for real.** A real agency name, logo or branding; a storm name from
-   PAGASA's naming lists; a real barangay; the "demo, not official guidance" banner removed or
-   hidden.
+   PAGASA's naming lists; a real barangay; the home page footer's "Demo, not official guidance" or the
+   hotline's "Demo number" removed or hidden.
 8. **Offline and English break.** A change that stops the saved alert pack opening with no
    signal, removes the no-AI text search fallback, or makes a screen work only in a language
    other than English.

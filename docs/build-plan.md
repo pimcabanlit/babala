@@ -91,6 +91,8 @@ Every feature works, but the app still looks like a test bench: one long page of
 
 **Pim's second look (Nov 14, on a 14-inch laptop at 150% scaling, about 1280 × 650 in the browser):** better, with three fixes. The home headline is larger, shares its left edge with the cards, and the page fits the hero and both ways in on the first screen from about 600 px tall, with the spacing and headline size following the window's height. On the resident page each laptop row lines up: status beside the purok bar, the red header beside *Need help?*, and the alert beside Ask, ending on one line until an answer makes Ask taller. In the officer workspace, Next sits in a footer that sticks to the bottom of the screen, with the step's status beside it instead of a notice above, so nothing the officer clicks moves it; step 1 fits on that laptop's screen. Phones are unchanged.
 
+**Pim's third look (Nov 14):** the home page's alert card said the same as *How it works*, so faint signal rings take its place; the banner "Demo, not official guidance" goes from every page (Pim's call; the home page footer keeps the line, and CLAUDE.md's non-negotiable 5 changed with it); *How it works* moves up and fits whole on a 1280 × 800 full screen (F11); and the page keeps room for a scrollbar, so *Create an alert* no longer shifts sideways when a longer step adds one.
+
 Pim's three mockups (Nov 13: a home page with a resident entry and an officer entry, an officer workspace with numbered steps in a sidebar, and a resident alert card) set the **structure**. They are a guide, not a pixel spec. The look follows Google's own: the Google Sans typeface, Material Design 3 (M3) colour roles, components and shapes, and Google's accessibility guidance.
 
 #### Ground rules
@@ -98,7 +100,7 @@ Pim's three mockups (Nov 13: a home page with a resident entry and an officer en
 - **UI only.** No change to the checker, `src/ai/`, routing, the Firestore rules, data shapes, the ledger or Remote Config. The hooks keep their contracts (`useDrafts`, `useHybrid`, `useSavedAlerts`, `useLedger`, `useTranslations`, `useResidentPack`, `useAsk`, `useOfficer`), and the screens are laid out again around them.
 - **Nothing is lost.** Every feature and state has a place in the map below, including the ones the mockups don't show. Those use the same few patterns as everything else (banner, chip, empty state, dialog), so nothing looks bolted on.
 - **No new runtime dependencies.** No component library, router or icon font. Tailwind v4 theme tokens, a small set of our own components, and inline SVG icons.
-- **The demo banner stays on every page,** above the app bar, and can't be dismissed (non-negotiable 5). The mockups leave it out.
+- **The demo banner stays on every page,** above the app bar, and can't be dismissed (non-negotiable 5). The mockups leave it out. (Pim dropped it on Nov 14; the home page footer keeps the line.)
 - **No new words in safety text.** Anything a resident reads as an instruction is the approved, checked alert, word for word.
 - **One slice, one PR.** The app works after each slice, so the phase can stop at any slice.
 
@@ -107,8 +109,8 @@ Pim's three mockups (Nov 13: a home page with a resident entry and an officer en
 1. **No "Evacuate now." headline or "Act now" chip** on the resident alert. Neither is in any approved alert, so the page would be making a safety claim that no checker or officer saw (non-negotiable 2), and "Evacuate now" is wrong for Fishers, whose alert is about staying off the sea. The highlighted box shows the approved alert itself, large, in the resident's language. The red header shows only what the approved copy holds: storm, signal number, area and household. "Do not wait for the connection to return" goes for the same reason.
 2. **Red means danger.** The mockups use red for "Open workspace" and "Approve & save alert". Failed checks and "Withdraw" are red too, and a red approve button beside red problems reads as a warning. As in M3, where red is the error colour, main actions use the navy primary, and red is kept for the signal header, failed checks and withdrawing.
 3. **The hotline isn't a call link in the demo.** The number comes word for word from the approved text, not a new field. The demo number, 0917 555 0100, is fictional, but 0917 is a real mobile prefix, so a tap could ring a real person. The card shows the number with "Demo number". A real deployment would make it a `tel:` button.
-4. **The home page's alert card shows no signal number.** A made-up "Signal No. 3" on the front page is the kind of thing that could pass for a real alert. It becomes an illustration with a "Demo" label: "Typhoon Sample · Purok Ilaya" and one alert's four steps from laptop to phone.
-5. **No "official".** "Official storm information" becomes "storm bulletin", next to the demo banner.
+4. **The home page's alert card shows no signal number.** A made-up "Signal No. 3" on the front page is the kind of thing that could pass for a real alert. It became an illustration with a "Demo" label, then (Pim's third look) faint signal rings with no words at all.
+5. **No "official".** "Official storm information" becomes "storm bulletin".
 6. **Sentence case, not ALL CAPS,** as in Google's products and M3. Step labels read "Step 1 of 3", not "01 / OFFICIAL BULLETIN".
 7. **The check result says what was checked.** "Code check passed: all numeric facts match" undersells the checker. It becomes "Passed all 6 checks", with the six listed (figures, places, nothing missing, no placeholders, no added claims, plain and short).
 8. **The logo stays the red warning triangle** already on residents' home screens (`public/icon.svg`), not the mockups' "B".
@@ -123,7 +125,7 @@ Pim's three mockups (Nov 13: a home page with a resident entry and an officer en
 
 Until slice 2, `/` was the console. `firebase.json` gets `/officer` rewrites like the ones for `/resident` (High tier), and `officer(/.*)?` joins the regex for the page headers (`^/(index\.html|resident(/.*)?)?$`). Without it `/officer` would get Hosting's default one-hour cache, so it would go stale after a deploy, and no protection against being framed by another site (`X-Frame-Options`, `frame-ancestors`). The headers stay off `/__/`, which Google sign-in uses. The README and testing instructions change with it. The service worker already serves the saved page for any path, so `/officer` opens offline once the officer has signed in there once. The officer workspace and the resident view are each loaded with `React.lazy`, so phones opening `/` or `/resident` don't parse the console and ledger code, and the home page loads no Firebase at all (built in slice 2: the home page's JavaScript is 75 KB gzipped, against 333 KB for the whole app before). The service worker's list is built from the bundle, so it still saves every chunk for offline use.
 
-**Home.** App bar with the logo, "Community warning system" and an "Offline ready" pill (from the service worker's state). The headline "When the signal drops, warnings shouldn't.", a one-line subtitle, and the illustration card. "Choose your view" with the two cards: "View alerts" (tonal) and "Open workspace" (filled). A short "How it works" row (Gemini Nano drafts on the laptop, code checks every figure, phones keep the alert offline), which doubles as the judges' 20-second explanation. A footer with the demo line and the GitHub link.
+**Home.** App bar with the logo, "Community warning system" and an "Offline ready" pill (from the service worker's state). The headline "When the signal drops, warnings shouldn't.", a one-line subtitle, and faint signal rings. "Choose your view" with the two cards: "View alerts" (tonal) and "Open workspace" (filled). A short "How it works" row (Gemini Nano drafts on the laptop, code checks every figure, phones keep the alert offline), which doubles as the judges' 20-second explanation. A footer with the demo line and the GitHub link.
 
 **Officer workspace.**
 
@@ -157,7 +159,7 @@ Until slice 2, `/` was the console. `firebase.json` gets `/officer` rewrites lik
 
 | Area | Feature or state today | In the redesign |
 | --- | --- | --- |
-| All pages | "Demo, not official guidance" banner | Slim amber bar above the app bar, every page, not dismissible |
+| All pages | "Demo, not official guidance" banner | Dropped (Pim, Nov 14); the home page footer keeps the line |
 | Setup | Firebase, App Check, Remote Config and emulator checks; "not configured" steps; debug-token help (dev) | System status panel, with a summary card in the drawer; the full-page setup state when not configured |
 | Sign-in | Starting; signed out; Google sign-in; judges' test officer form; sign-in error; checking the list; offline before the list was seen; not on the list (user ID, copy); can't read the list; officer; test officer note | Sign-in card (all states in one place); account menu with the officer or test officer chip; the shared-account banner in the workspace |
 | Models | Six on-device statuses; "Prepare on-device model" with download %; warm-up (warming, warm and where it answered, failed); cloud not configured, online or offline | Model pill in the app bar, detail and the prepare button in the System status panel, disabled-button reasons in the builder |
@@ -214,7 +216,7 @@ Until slice 2, `/` was the console. `firebase.json` gets `/officer` rewrites lik
 | Outline variant | #C3C6CF | Dividers only, never a control's edge | decorative |
 | Alert red | #B91D20 with #FFFFFF; container #FFEDEA with #93000E | Resident header, failed checks and highlights, Withdraw | 6.4:1 and 8.3:1 |
 | Success | #006D38 on white; container #CCF2D1 with #173721 | "Passed all 6 checks", "Saved", "Live" | 6.5:1 and 10.7:1 |
-| Warning amber | #FFDCBD with #2C1600; text #8A5100 | Demo banner, budget banner, facts not found, "Not uploaded yet" | 13.3:1, and 6.4:1 for the text on white |
+| Warning amber | #FFDCBD with #2C1600; text #8A5100 | Budget banner, facts not found, "Not uploaded yet" | 13.3:1, and 6.4:1 for the text on white |
 | Highlight amber (tone 80) | #FFB86E on brand navy | The home headline's last word | 10.1:1 |
 
 Every state shows an icon and a word, never colour alone. The mockups' grey secondary text (#6B7785 on #F2F5F7) measures 4.2:1 and fails AA, so secondary text uses #43474E. One red for every active signal: no colour per signal number, which would copy a real agency's warning scheme. A dark theme isn't planned before the freeze; the tokens make it a later addition. With the navy palette, `theme-color` in `index.html` and `theme_color` and `background_color` in `public/manifest.webmanifest` change too (today red #b91c1c and #f8fafc); both files are served `no-cache`, so phones pick them up on their next visit.
@@ -324,7 +326,7 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
    - [ ] Text description: features, how Firebase AI Logic is used, value proposition, and what was built during the contest (all of it)
    - [ ] Platform selected: Web (Chrome)
    - [ ] No keys, secrets or personal data in the repo, form or testing instructions
-   - [ ] No real agency logos or trademarks. Fictional storm and barangay, with a "demo, not official guidance" banner
+   - [ ] No real agency logos or trademarks. Fictional storm and barangay, with "Demo, not official guidance" in the home page footer
    - [ ] Eligibility self-check: not employed by a government agency, and employer consent if your employer's policies apply
    - [ ] Submitted by Sat Nov 29 (cutoff Tue Dec 1, 6:00 AM Manila). Commits pushed after the cutoff aren't judged
 
@@ -338,7 +340,7 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
 | Nano adds placeholders and invented claims | The checker plus one retry. The failure becomes a demo moment |
 | Most judges' machines lack Nano | The cloud route is complete on its own, and the app explains which route ran |
 | Free-tier limits on the Gemini API | App Check, a per-phone limit on residents' cloud answers, and a clear "try again shortly" message |
-| A fake alert mistaken for a real one | Fictional storm and barangay, a demo banner, no agency branding |
+| A fake alert mistaken for a real one | Fictional storm and barangay, "Demo, not official guidance" in the home page footer, "Demo number" on the hotline, no agency branding |
 | The redesign (Phase 4) runs late and squeezes the freeze | One PR per slice, each leaving the app working. Slices 1 to 5 (what the video shows) first; anything not merged by the evening of Nov 23 keeps today's layout |
 | Firebase's web hybrid API details differ from what we expect | Checked on day 1 with the hello-hybrid test on the laptop (PR #10) |
 
