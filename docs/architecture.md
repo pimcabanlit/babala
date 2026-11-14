@@ -91,9 +91,9 @@ The dashed line is App Check guarding the cloud calls. `src/ai/` is the only mod
 
 ## Screens
 
-Two users share one web app: a barangay disaster officer on a laptop running Chrome, and residents on any phone browser. Every page shows the banner "Demo, not official guidance. The storm and barangay are fictional." Under it, every page has the same full-width app bar, so the logo stays in one place.
+Two users share one web app: a barangay disaster officer on a laptop running Chrome, and residents on any phone browser. Every page has the same full-width app bar at the top, so the logo stays in one place. The home page footer says "Demo, not official guidance. The storm and barangay are fictional."
 
-**Home, at `/`, built.** What Babala is in one line, an illustration of one alert's way from the officer's laptop to residents' phones on bigger screens (no signal number or instruction, labelled "Demo"), the two ways in ("View alerts" for residents, "Open workspace" for officers), which fit on the first screen of a laptop from about 600 px tall, a three-step *How it works*, and an "Offline ready" pill once the service worker has saved the app. It loads no Firebase. Each view is its own chunk, loaded with `React.lazy` when it opens (`src/App.tsx`), so the home page stays small and phones never parse the officer console. Any other path shows *Page not found*.
+**Home, at `/`, built.** What Babala is in one line, with faint signal rings beside it on a laptop (decoration only), the two ways in ("View alerts" for residents, "Open workspace" for officers), which fit on the first screen of a laptop from about 600 px tall, a three-step *How it works*, which fits too on a 1280 × 800 full screen, and an "Offline ready" pill once the service worker has saved the app. It loads no Firebase. Each view is its own chunk, loaded with `React.lazy` when it opens (`src/App.tsx`), so the home page stays small and phones never parse the officer console. Any other path shows *Page not found*.
 
 **Officer workspace (laptop), at `/officer`, built.** Before sign-in, one centred card holds every state:
 
@@ -253,7 +253,7 @@ On a resident's phone, rule 8 runs on every AI answer to a question, before it i
 - **AI answers to residents are checked, not trusted.** Rule 8 holds every answer to the approved alert's figures, places, claims and words before it is shown, the alert sentences it rests on are quoted under it, and it says the barangay didn't write it. Questions are never saved.
 - **Translations are checked and approved like alerts.** Each language is checked on its own against the approved English (rule 7) before an officer can publish it, and again on the exact text when it is published. Residents get a translation only on the copy of the current, active alert.
 - **No secrets in the repo.** The Firebase config, reCAPTCHA key and App Check debug token live in `.env.local` and GitHub secrets. The App Check debug token is used only in development builds.
-- **Fictional data** and the demo banner on every page.
+- **Fictional data**, with "Demo, not official guidance" in the home page footer and "Demo number" on the hotline.
 
 ## Testing and CI
 
