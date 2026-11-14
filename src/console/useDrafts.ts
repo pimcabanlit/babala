@@ -156,6 +156,8 @@ export function useDrafts(ctx: Context) {
       const base = buildDraftPrompt(sheet, area, h)
       const outcomes: AttemptOutcome[] = []
       let last: { text: string; issues: Issue[] } | undefined
+      // The last draft a model wrote, kept for hand editing even when a later attempt errs or is abandoned.
+      let lastDrafted = ''
       for (;;) {
         const step = nextStep(outcomes, { online: navigator.onLine, onDeviceReady: deviceRef.current === 'available' })
         if (step.kind === 'done') break
@@ -171,12 +173,13 @@ export function useDrafts(ctx: Context) {
         const ok = !attempt.error && !attempt.abandoned
         const result = ok ? checkFor(attempt.text, sheet, area, h, claimWords) : undefined
         last = ok ? { text: attempt.text, issues: result!.issues } : undefined
+        if (ok && attempt.text.trim() !== '') lastDrafted = attempt.text
         const passed = result?.pass ?? false
         patchAttempt(h.id, attempt.attemptId, () => ({ passed, ...(result ? { issues: result.issues } : {}) }))
         outcomes.push({ route: step.route, passed, ...(attempt.abandoned ? { abandoned: true } : {}) })
       }
-      // Show the last real draft for hand editing, not an empty abandoned one.
-      update(h.id, (d) => ({ ...d, running: false, text: d.text || last?.text || '' }))
+      // Show the last real draft for hand editing, not the empty text of an abandoned or failed call.
+      update(h.id, (d) => ({ ...d, running: false, text: d.text || lastDrafted }))
     },
     [update, runAttempt, patchAttempt],
   )

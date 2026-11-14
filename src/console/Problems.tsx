@@ -1,5 +1,6 @@
 import type { Issue, Rule } from '../checker'
 import { inReadingOrder, segments } from './segments'
+import { StatusChip } from '../ui/Chip'
 
 const RULE_LABEL: Record<Rule, string> = {
   figures: 'Figure',
@@ -12,7 +13,7 @@ const RULE_LABEL: Record<Rule, string> = {
   answer: 'Answer',
 }
 
-/** The checked text with each problem highlighted, then every problem in reading order. */
+/** The checked text with each problem highlighted, then every problem in reading order, each with a chip for its check. */
 export default function Problems({ text, issues }: { text: string; issues: Issue[] }) {
   return (
     <div className="mt-2">
@@ -28,10 +29,14 @@ export default function Problems({ text, issues }: { text: string; issues: Issue
         )}
       </p>
       {issues.length > 0 && (
-        <ul className="mt-2 space-y-1 text-body-md text-on-error-container">
+        <ul className="mt-3 space-y-2 text-body-md">
           {inReadingOrder(issues).map((issue, i) => (
-            <li key={i}>
-              <span className="font-semibold">{RULE_LABEL[issue.rule]}:</span> {issue.message}
+            <li key={i} className="flex items-start gap-2">
+              <StatusChip tone="error">
+                <span className="sr-only">Check: </span>
+                {RULE_LABEL[issue.rule]}
+              </StatusChip>
+              <span className="min-w-0 flex-1 pt-0.5">{issue.message}</span>
             </li>
           ))}
         </ul>

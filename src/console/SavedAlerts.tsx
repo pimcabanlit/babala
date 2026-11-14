@@ -105,7 +105,12 @@ function Row({
   }
 
   return (
-    <article aria-label={`${household} · ${alert.area}`} className="rounded-md border border-outline-variant p-4">
+    <article
+      id={`saved-${alert.id}`}
+      tabIndex={-1}
+      aria-label={`${household} · ${alert.area}`}
+      className="scroll-mt-4 rounded-md border border-outline-variant p-4"
+    >
       <header className="flex flex-wrap items-center gap-2">
         <h3 className="text-title-md">
           {household} · {alert.area}
