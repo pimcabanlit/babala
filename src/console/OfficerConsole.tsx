@@ -270,10 +270,10 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
           <div className="sticky top-0 max-h-dvh overflow-y-auto">{drawer}</div>
         </aside>
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:pt-4">
           <div className="mx-auto max-w-4xl">
             {session.user.method === 'password' && (
-              <Notice tone="primary" className="mb-6">
+              <Notice tone="primary" className="mb-6 lg:mb-3 lg:py-2">
                 This is the shared test officer account for judges. Other judges see what you approve or withdraw, and the ledger
                 records it under this account.
               </Notice>
@@ -288,7 +288,15 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                 index={0}
                 open={openIndex}
                 title="Bulletin"
-                next={{ label: 'Next: Fact sheet', enabled: form !== undefined, hint: 'Read a bulletin to continue.' }}
+                next={{
+                  label: 'Next: Fact sheet',
+                  enabled: form !== undefined,
+                  hint: 'Read a bulletin to continue.',
+                  done:
+                    notFound.length === 0
+                      ? 'Bulletin read. Every fact was found.'
+                      : `Bulletin read. ${notFound.length} fact${notFound.length === 1 ? ' wasn’t' : 's weren’t'} found.`,
+                }}
                 onGo={openStep}
               >
                 <label className="block text-body-md font-medium" htmlFor="bulletin">
@@ -299,7 +307,8 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                   value={bulletin}
                   onChange={(e) => setBulletin(e.target.value)}
                   rows={8}
-                  className="field mt-1 font-mono text-body-sm"
+                  // Seven lines, the demo bulletin's length, so the step fits above the sticky footer on a short laptop screen.
+                  className="field mt-1 font-mono text-body-sm lg:h-32"
                 />
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button variant="tonal" onClick={() => readBulletin(bulletin)} disabled={bulletin.trim() === '' || busy}>
@@ -309,13 +318,6 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                     Use the demo bulletin
                   </Button>
                 </div>
-                {form && (
-                  <Notice tone="success" role="status" className="mt-4">
-                    {notFound.length === 0
-                      ? 'Bulletin read, and every fact was found. Check them on the next step.'
-                      : `Bulletin read. ${notFound.length} fact${notFound.length === 1 ? ' wasn’t' : 's weren’t'} found: fill ${notFound.length === 1 ? 'it' : 'them'} in on the next step.`}
-                  </Notice>
-                )}
               </StepCard>
 
               {form && (
@@ -323,7 +325,12 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                   index={1}
                   open={openIndex}
                   title="Fact sheet"
-                  next={{ label: 'Next: Draft alerts', enabled: sheet !== undefined, hint: 'Tick “I checked every fact” to continue.' }}
+                  next={{
+                    label: 'Next: Draft alerts',
+                    enabled: sheet !== undefined,
+                    hint: 'Tick “I checked every fact” to continue.',
+                    done: 'Facts confirmed.',
+                  }}
                   onGo={openStep}
                 >
                   {notFound.length > 0 && (
@@ -364,6 +371,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                     label: 'Next: Saved alerts',
                     enabled: HOUSEHOLDS.some((h) => drafts.drafts[h.id].approved),
                     hint: 'Approve at least one alert to continue. Translations are made from saved alerts.',
+                    done: `${HOUSEHOLDS.filter((h) => drafts.drafts[h.id].approved).length} of ${HOUSEHOLDS.length} approved.`,
                   }}
                   onGo={openStep}
                   onFinish={() => openView('saved')}
@@ -516,9 +524,12 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
 
 /**
  * One step of creating an alert, shown on its own: its place in the three,
- * its fields, and Back and Next. Next stays off, with the reason under it,
- * until the step is done. Hidden steps stay mounted, so a draft keeps
- * streaming and the fields keep their text.
+ * its fields, and a footer with Back, a line on where the step stands, and
+ * Next. Next stays off until the step is done, and the line says why. The
+ * footer never moves when the step changes: what a button did shows in its
+ * line, not above it, and from a tablet up the footer stays on screen while
+ * a long step scrolls. Hidden steps stay mounted, so a draft keeps streaming
+ * and the fields keep their text.
  */
 function StepCard({
   index,
@@ -532,45 +543,49 @@ function StepCard({
   index: number
   open: number
   title: string
-  next: { label: string; enabled: boolean; hint: string }
+  next: { label: string; enabled: boolean; hint: string; done: string }
   onGo: (index: number) => void
   /** Next on the last step, which leaves the steps. */
   onFinish?: () => void
   children: ReactNode
 }) {
-  const hintId = `${STEP_IDS[index]}-hint`
+  const id = STEP_IDS[index]
   return (
     <section
-      id={STEP_IDS[index]}
+      id={id}
       hidden={open !== index}
       tabIndex={-1}
-      aria-labelledby={`${STEP_IDS[index]}-title`}
+      aria-labelledby={`${id}-title`}
       className="rounded-md border border-outline-variant bg-surface-container-lowest outline-none"
     >
-      <div className="p-4 sm:p-6">
+      <div className="p-4 sm:p-6 lg:pt-5">
         <p className="text-label-lg text-primary">Step {index + 1} of 3</p>
-        <h2 id={`${STEP_IDS[index]}-title`} className="mt-1 mb-4 text-title-lg">
+        <h2 id={`${id}-title`} className="mt-1 mb-4 text-title-lg lg:mb-3">
           {title}
         </h2>
         {children}
       </div>
-      <div className="flex flex-wrap items-center gap-3 border-t border-outline-variant px-4 py-3 sm:px-6">
+      <div className="flex flex-wrap items-center gap-3 rounded-b-md border-t border-outline-variant bg-surface-container-lowest px-4 py-3 sm:px-6 md:sticky md:bottom-0 md:z-10 md:flex-nowrap">
         {index > 0 && (
           <Button variant="outlined" onClick={() => onGo(index - 1)}>
             <Icon name="arrow_back" className="size-[18px]" />
             Back
           </Button>
         )}
-        {!next.enabled && (
-          <p id={hintId} className="ml-auto text-body-md text-on-surface-variant">
-            {next.hint}
-          </p>
-        )}
+        <p id={`${id}-status`} role="status" className="min-w-0 flex-1 text-body-md text-on-surface-variant md:text-right">
+          {next.enabled ? (
+            <span className="inline-flex items-center gap-1.5 text-success">
+              <Icon name="check_circle" className="size-[18px]" />
+              {next.done}
+            </span>
+          ) : (
+            next.hint
+          )}
+        </p>
         <Button
           variant="filled"
-          className={next.enabled ? 'ml-auto' : ''}
           disabled={!next.enabled}
-          aria-describedby={next.enabled ? undefined : hintId}
+          aria-describedby={`${id}-status`}
           onClick={() => (onFinish ? onFinish() : onGo(index + 1))}
         >
           {next.label}
@@ -584,7 +599,7 @@ function StepCard({
 /** The current view's name, and what it is for when the view doesn't say so itself. */
 function ViewHeading({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="mb-6">
+    <div className="mb-6 lg:mb-4">
       <h1 className="text-headline-md">{title}</h1>
       {children && <p className="mt-1 text-body-lg text-on-surface-variant">{children}</p>}
     </div>

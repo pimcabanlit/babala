@@ -38,6 +38,8 @@ type Props = {
   shown: string
   language: Language
   names: string[]
+  /** Where the card sits in the resident page's grid on a laptop. */
+  className?: string
 }
 
 /**
@@ -46,7 +48,7 @@ type Props = {
  * text search with no AI), says which, and quotes the alert sentences it
  * rests on. An AI answer is shown only after the code check passes it.
  */
-export default function Ask({ setup, online, english, shown, language, names }: Props) {
+export default function Ask({ setup, online, english, shown, language, names, className = '' }: Props) {
   const { state, ask, planFor, cloudLeft, cloudBackAtMs } = useAsk(setup, online)
   const [question, setQuestion] = useState('')
   const running = state.kind === 'running'
@@ -65,7 +67,11 @@ export default function Ask({ setup, online, english, shown, language, names }: 
   }
 
   return (
-    <section aria-labelledby="ask-title" className="rounded-lg border border-outline-variant bg-surface-container-lowest p-4">
+    <section
+      aria-labelledby="ask-title"
+      data-ask={state.kind}
+      className={`rounded-lg border border-outline-variant bg-surface-container-lowest p-4 ${className}`}
+    >
       <h2 id="ask-title" className="text-title-md">
         Ask about your alert
       </h2>
@@ -88,7 +94,8 @@ export default function Ask({ setup, online, english, shown, language, names }: 
           Ask
         </Button>
       </form>
-      <div className="mt-3 flex flex-wrap gap-x-2 gap-y-4 py-2">
+      {/* gap-y-4 keeps the chips' 48px touch areas apart on a phone; a laptop's pointer needs less. */}
+      <div className="mt-3 flex flex-wrap gap-x-2 gap-y-4 py-2 lg:gap-y-2 lg:py-1">
         {EXAMPLES[language].map((example) => (
           <AssistChip key={example} lang={language} disabled={running} onClick={() => submit(example)}>
             {example}
