@@ -38,12 +38,15 @@ export default function Home() {
       </AppBar>
       <main className="flex-1">
         <section className="bg-brand text-on-brand">
-          <div className={`mx-auto grid ${WIDTH.home} items-center gap-10 px-4 py-10 sm:py-12 lg:grid-cols-[1fr_22rem] lg:gap-16`}>
+          {/* On a laptop the padding and headline follow the window's height, so the two ways in below fit on the first screen. */}
+          <div
+            className={`mx-auto grid ${WIDTH.home} items-center gap-10 px-4 py-10 sm:py-12 lg:grid-cols-[minmax(0,1fr)_25rem] lg:gap-16 lg:py-[clamp(1rem,4vh,5rem)]`}
+          >
             <div>
-              <h1 className="text-headline-lg font-bold sm:text-display-sm">
+              <h1 className="text-headline-lg font-bold sm:text-display-sm lg:text-[length:min(3.5rem,max(2.5rem,1.25rem_+_2vw),7.5vh)] lg:leading-[1.15]">
                 When the signal drops, warnings <span className="text-highlight-on-brand">shouldn’t.</span>
               </h1>
-              <p className="mt-4 max-w-xl text-body-lg text-on-brand-variant">
+              <p className="mt-4 max-w-xl text-body-lg text-on-brand-variant lg:max-w-2xl lg:text-title-lg">
                 Babala turns a storm bulletin into a checked, plain-language typhoon alert for each household, and keeps it
                 on residents’ phones for when the network goes down.
               </p>
@@ -53,11 +56,11 @@ export default function Home() {
         </section>
 
         <div className={`mx-auto px-4 ${WIDTH.home}`}>
-          <section aria-labelledby="views-title" className="py-10">
+          <section aria-labelledby="views-title" className="py-10 lg:pt-[clamp(1rem,3vh,2.5rem)]">
             <h2 id="views-title" className="text-headline-sm">
               Choose your view
             </h2>
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:mt-3">
               <ViewCard
                 icon="smartphone"
                 title="I’m a resident"
@@ -117,6 +120,11 @@ export default function Home() {
   )
 }
 
+/**
+ * One way in. On a phone and a tablet the button sits under the text; on a
+ * laptop it moves up beside the title, which keeps both cards short enough
+ * to show under the hero without scrolling.
+ */
 function ViewCard({
   icon,
   title,
@@ -131,59 +139,56 @@ function ViewCard({
   children: ReactNode
 }) {
   return (
-    <div className="flex flex-col rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col rounded-lg border border-outline-variant bg-surface-container-lowest p-6 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-x-4 lg:p-5">
+      <div className="flex items-center gap-4 lg:contents">
         <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
           <Icon name={icon} className="size-6" />
         </span>
         <h3 className="text-title-lg">{title}</h3>
       </div>
-      <p className="mt-4 text-body-lg text-on-surface-variant">{text}</p>
-      {note && <p className="mt-3 text-body-md text-on-surface-variant">{note}</p>}
+      <p className="mt-4 text-body-lg text-on-surface-variant lg:col-span-3 lg:mt-3">{text}</p>
+      {note && <p className="mt-3 text-body-md text-on-surface-variant lg:col-span-3 lg:mt-1">{note}</p>}
       {/* mt-auto keeps both cards' buttons on one line when their texts differ in length. */}
-      <div className="mt-auto pt-6">{children}</div>
+      <div className="mt-auto pt-6 lg:col-start-3 lg:row-start-1 lg:mt-0 lg:pt-0">{children}</div>
     </div>
   )
 }
 
 const JOURNEY: { icon: IconName; text: string; chip: string }[] = [
-  { icon: 'computer', text: 'Drafted on the officer’s laptop', chip: 'Gemini Nano' },
-  { icon: 'fact_check', text: 'Every figure checked against the bulletin', chip: 'Code, not AI' },
-  { icon: 'check_circle', text: 'Approved by a barangay officer', chip: 'Signed in' },
+  { icon: 'computer', text: 'Drafted on the laptop', chip: 'Gemini Nano' },
+  { icon: 'fact_check', text: 'Every figure checked', chip: 'Code, not AI' },
+  { icon: 'check_circle', text: 'Approved by an officer', chip: 'Signed in' },
   { icon: 'smartphone', text: 'Saved on residents’ phones', chip: 'Opens offline' },
 ]
 
 /**
  * One alert's way from the bulletin to a phone, as a card. It holds no signal
  * number or instruction: a made-up warning on the front page could pass for a
- * real one (docs/build-plan.md, Phase 4, change 4). Hidden on phones, where it
- * would push the two ways in below the fold, and *How it works* says the same.
+ * real one (docs/build-plan.md, Phase 4, change 4), so it is marked "Demo".
+ * One line per row keeps it short enough for the two ways in to fit under
+ * it. Hidden on phones, where *How it works* says the same.
  */
 function AlertIllustration() {
   return (
-    <figure className="mx-auto hidden w-full max-w-sm sm:block lg:max-w-none">
-      <div aria-hidden="true" className="overflow-hidden rounded-xl bg-surface-container-lowest text-on-surface shadow-lg">
-        <div className="flex items-center gap-2 bg-error px-5 py-3 text-on-error">
-          <Icon name="warning" />
-          <span className="text-title-sm">Typhoon Sample · Purok Ilaya</span>
-        </div>
-        <ol className="px-5 py-4">
-          {JOURNEY.map((step, i) => (
-            <li key={step.text} className="relative flex items-center gap-3 py-2">
-              {i < JOURNEY.length - 1 && <span className="absolute top-1/2 left-4 h-full w-px bg-outline-variant" />}
-              <span className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
-                <Icon name={step.icon} className="size-[18px]" />
-              </span>
-              <span className="min-w-0 flex-1 text-body-md">{step.text}</span>
-              <span className="shrink-0 rounded-sm bg-surface-container-high px-2 py-0.5 text-label-md text-on-surface-variant">{step.chip}</span>
-            </li>
-          ))}
-        </ol>
+    <div aria-hidden="true" className="mx-auto hidden w-full max-w-md overflow-hidden rounded-xl bg-surface-container-lowest text-on-surface shadow-lg sm:block lg:max-w-none">
+      <div className="flex items-center gap-2 bg-error px-5 py-2 text-on-error">
+        <Icon name="warning" />
+        <span className="flex-1 text-title-sm">Typhoon Sample · Purok Ilaya</span>
+        <span className="rounded-sm border border-on-error/70 px-2 text-label-md">Demo</span>
       </div>
-      <figcaption className="mt-3 text-center text-body-sm text-on-brand-variant">
-        Demo: Typhoon Sample over Barangay Halimbawa
-      </figcaption>
-    </figure>
+      <ol className="px-5 py-2.5">
+        {JOURNEY.map((step, i) => (
+          <li key={step.text} className="relative flex items-center gap-3 py-1">
+            {i < JOURNEY.length - 1 && <span className="absolute top-1/2 left-4 h-full w-px bg-outline-variant" />}
+            <span className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+              <Icon name={step.icon} className="size-[18px]" />
+            </span>
+            <span className="min-w-0 flex-1 text-body-md">{step.text}</span>
+            <span className="shrink-0 rounded-sm bg-surface-container-high px-2 py-0.5 text-label-md text-on-surface-variant">{step.chip}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
   )
 }
 

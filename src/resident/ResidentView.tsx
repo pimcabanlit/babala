@@ -33,6 +33,9 @@ const TONES = {
   problem: 'error',
 } as const
 
+/** The page's width while there is no active alert to spread across two columns: one column, even on a laptop. */
+const PHONE_WIDTH = 'max-w-[40rem]'
+
 const at = (ms: number) => formatTime(new Date(ms))
 
 type Area = { areaKey: string; area: string }
@@ -70,83 +73,87 @@ export default function ResidentView() {
       <AppBar title={TITLE.resident}>
         <StatusPill pill={syncPill(sync, (ms) => formatShortTime(new Date(ms), openedAt))} />
       </AppBar>
-      <main className={`mx-auto w-full flex-1 px-4 py-5 lg:py-8 ${WIDTH.resident}`}>
+      <main className={`mx-auto w-full flex-1 px-4 py-5 lg:py-8 ${active ? WIDTH.resident : PHONE_WIDTH}`}>
         <h1 className="sr-only">Your typhoon alert</h1>
 
-        {/* One column on a phone, in reading order; on a laptop the alert stays on the left and help and Ask sit beside it. */}
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-8">
-          <div className="space-y-5">
-            {loading ? (
-              <Skeleton />
-            ) : areaKey ? (
-              <HeaderCard alert={alert} area={area} household={household} />
-            ) : areas.length > 0 ? (
-              <section aria-labelledby="choose-title" className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
-                <h2 id="choose-title" className="text-title-lg">
-                  Choose your purok and household
-                </h2>
-                <p className="mt-1 text-body-lg text-on-surface-variant">This phone remembers them.</p>
-                <ChoiceForm
-                  areas={areas}
-                  areaKey={undefined}
-                  household={household}
-                  submitLabel="Show my alert"
-                  onSubmit={(c) => choose(c)}
-                />
-              </section>
-            ) : (
-              <section className="rounded-xl bg-surface-container-high p-5">
-                <p className="text-title-lg">No alerts from your barangay yet.</p>
-                <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your barangay officials.</p>
-              </section>
-            )}
-
-            <div className="space-y-3">
-              <Notice tone={TONES[line.tone]} role="status">
-                {line.text}
-              </Notice>
-              {sync.unreadable > 0 && (
-                <Notice tone="warning">
-                  {sync.unreadable} alert{sync.unreadable === 1 ? '' : 's'} from the barangay couldn’t be read by this version of
-                  the app. Reload the page to get the latest version.
-                </Notice>
-              )}
-            </div>
-
-            {areaKey && (
-              <div className="flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container-lowest py-2 pr-2 pl-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-body-md text-on-surface-variant">Your purok and household</p>
-                  <p className="text-title-md">
-                    {area} · {householdLabel(household)}
-                  </p>
-                </div>
-                <Button variant="outlined" onClick={() => setChanging(true)}>
-                  Change
-                </Button>
-              </div>
-            )}
-
-            {active && (
-              <AlertText alert={active.alert} languages={active.languages} shown={active.shown} onLanguage={(language) => choose({ language })} />
-            )}
-          </div>
-
-          <div className="mt-5 space-y-5 lg:mt-0">
-            {active && <Hotline numbers={hotlineNumbers(active.shown.text)} />}
-            {active && (
-              <Ask
-                key={`${active.alert.id}__${active.shown.language}`}
-                setup={askSetup}
-                online={sync.online}
-                english={active.alert.texts.en}
-                shown={active.shown.text}
-                language={active.shown.language}
-                names={[active.alert.stormName, active.alert.area]}
+        {/*
+          One column on a phone, in reading order. On a laptop an active alert opens into rows that line up across two
+          columns: status and choice, the header card and help, the alert and Ask, then the install note across both.
+          Without an active alert there is only one column's worth, so the page stays one column.
+        */}
+        <div className={`flex flex-col gap-5 ${active ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-x-8 lg:gap-y-6' : ''}`}>
+          {loading ? (
+            <Skeleton />
+          ) : areaKey ? (
+            <HeaderCard alert={alert} area={area} household={household} className={active ? 'lg:col-start-1 lg:row-start-2' : ''} />
+          ) : areas.length > 0 ? (
+            <section aria-labelledby="choose-title" className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
+              <h2 id="choose-title" className="text-title-lg">
+                Choose your purok and household
+              </h2>
+              <p className="mt-1 text-body-lg text-on-surface-variant">This phone remembers them.</p>
+              <ChoiceForm
+                areas={areas}
+                areaKey={undefined}
+                household={household}
+                submitLabel="Show my alert"
+                onSubmit={(c) => choose(c)}
               />
+            </section>
+          ) : (
+            <section className="rounded-xl bg-surface-container-high p-5">
+              <p className="text-title-lg">No alerts from your barangay yet.</p>
+              <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your barangay officials.</p>
+            </section>
+          )}
+
+          <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-1">
+            <Notice tone={TONES[line.tone]} role="status" className="lg:flex-1 lg:items-center">
+              {line.text}
+            </Notice>
+            {sync.unreadable > 0 && (
+              <Notice tone="warning">
+                {sync.unreadable} alert{sync.unreadable === 1 ? '' : 's'} from the barangay couldn’t be read by this version of the
+                app. Reload the page to get the latest version.
+              </Notice>
             )}
-            <InstallCard />
           </div>
+
+          {areaKey && (
+            <div className="flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container-lowest py-2 pr-2 pl-4 lg:col-start-2 lg:row-start-1">
+              <div className="min-w-0 flex-1">
+                <p className="text-body-md text-on-surface-variant">Your purok and household</p>
+                <p className="text-title-md">
+                  {area} · {householdLabel(household)}
+                </p>
+              </div>
+              <Button variant="outlined" onClick={() => setChanging(true)}>
+                Change
+              </Button>
+            </div>
+          )}
+
+          {active && (
+            // On a laptop the alert stretches to end level with the Ask card beside it, but not once an answer makes that card tall.
+            <div className="space-y-5 lg:col-start-1 lg:row-start-3 lg:flex lg:flex-col lg:[main:has([data-ask=done],[data-ask=running])_&]:self-start">
+              <AlertText alert={active.alert} languages={active.languages} shown={active.shown} onLanguage={(language) => choose({ language })} />
+            </div>
+          )}
+
+          {active && <Hotline numbers={hotlineNumbers(active.shown.text)} className="lg:col-start-2 lg:row-start-2" />}
+          {active && (
+            <Ask
+              key={`${active.alert.id}__${active.shown.language}`}
+              setup={askSetup}
+              online={sync.online}
+              english={active.alert.texts.en}
+              shown={active.shown.text}
+              language={active.shown.language}
+              names={[active.alert.stormName, active.alert.area]}
+              className="lg:col-start-2 lg:row-start-3"
+            />
+          )}
+          <InstallCard className={active ? 'lg:col-span-2 lg:row-start-4' : ''} />
         </div>
       </main>
 
@@ -202,11 +209,21 @@ function Skeleton() {
  * Storm, signal, area and household, and nothing else: every word here is in
  * the approved copy, so the page makes no safety claim the checker didn't see.
  */
-function HeaderCard({ alert, area, household }: { alert: PackAlert | undefined; area: string; household: HouseholdId }) {
+function HeaderCard({
+  alert,
+  area,
+  household,
+  className = '',
+}: {
+  alert: PackAlert | undefined
+  area: string
+  household: HouseholdId
+  className?: string
+}) {
   const who = `${householdLabel(household)} households in ${area}`
   if (!alert) {
     return (
-      <section className="rounded-xl bg-surface-container-high p-5">
+      <section className={`rounded-xl bg-surface-container-high p-5 ${className}`}>
         <p className="text-title-lg">No alert for {who} right now.</p>
         <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your barangay officials.</p>
       </section>
@@ -214,7 +231,7 @@ function HeaderCard({ alert, area, household }: { alert: PackAlert | undefined; 
   }
   if (alert.status === 'withdrawn') {
     return (
-      <section className="rounded-xl border border-outline bg-surface-container-highest p-5" role="alert">
+      <section className={`rounded-xl border border-outline bg-surface-container-highest p-5 ${className}`} role="alert">
         <p className="flex items-center gap-2 text-title-lg">
           <Icon name="block" className="size-6" />
           Alert withdrawn
@@ -226,7 +243,7 @@ function HeaderCard({ alert, area, household }: { alert: PackAlert | undefined; 
     )
   }
   return (
-    <section aria-label="Alert summary" className="rounded-xl bg-error p-5 text-on-error">
+    <section aria-label="Alert summary" className={`rounded-xl bg-error p-5 text-on-error ${className}`}>
       <p className="flex items-center gap-2 text-label-lg">
         <Icon name="warning" />
         {alert.stormName}
@@ -263,11 +280,11 @@ function AlertText({
         />
       )}
 
-      <section aria-labelledby="alert-title">
+      <section aria-labelledby="alert-title" className="lg:flex lg:flex-1 lg:flex-col">
         <h2 id="alert-title" className="text-title-md">
           Your alert
         </h2>
-        <p className="mt-2 rounded-lg border-l-4 border-error bg-error-container p-4 text-title-lg leading-8 text-on-surface" lang={shown.language}>
+        <p className="mt-2 rounded-lg border-l-4 border-error bg-error-container p-4 text-title-lg leading-8 text-on-surface lg:flex-1" lang={shown.language}>
           {shown.text}
         </p>
         <p className="mt-3 text-body-md text-on-surface-variant">
@@ -280,10 +297,10 @@ function AlertText({
 }
 
 /** The phone numbers in the alert shown, word for word, for a resident who needs help now. */
-function Hotline({ numbers }: { numbers: string[] }) {
+function Hotline({ numbers, className = '' }: { numbers: string[]; className?: string }) {
   if (numbers.length === 0) return null
   return (
-    <section aria-labelledby="help-title" className="rounded-lg bg-brand p-5 text-on-brand">
+    <section aria-labelledby="help-title" className={`rounded-lg bg-brand p-5 text-on-brand ${className}`}>
       <h2 id="help-title" className="flex items-center gap-2 text-title-md">
         <Icon name="call" />
         Need help?
@@ -418,7 +435,7 @@ const MODE = installMode({
  * Says whether the page opens with no signal, and how to put it on the home
  * screen: Chrome's install prompt where it offers one, Safari's steps on iOS.
  */
-function InstallCard() {
+function InstallCard({ className = '' }: { className?: string }) {
   const [prompt, setPrompt] = useState<InstallPrompt>()
   const [installError, setInstallError] = useState<string>()
   const offlineApp = useOfflineApp()
@@ -440,7 +457,7 @@ function InstallCard() {
   }
 
   return (
-    <section className="rounded-lg bg-surface-container p-4 text-body-md text-on-surface-variant">
+    <section className={`rounded-lg bg-surface-container p-4 text-body-md text-on-surface-variant ${className}`}>
       <p>
         {offlineAppText(offlineApp)}
         {MODE === 'other' && ' Add it to your home screen to find it fast.'}
