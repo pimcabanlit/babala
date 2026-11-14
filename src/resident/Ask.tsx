@@ -9,6 +9,7 @@ import { useAsk, type AskSetup } from './useAsk'
 import Button from '../ui/Button'
 import { AssistChip, StatusChip, type Tone } from '../ui/Chip'
 import type { IconName } from '../ui/Icon'
+import Progress from '../ui/Progress'
 
 /** Example questions in the language the resident reads the alert in. */
 const EXAMPLES: Record<Language, string[]> = {
@@ -64,10 +65,10 @@ export default function Ask({ setup, online, english, shown, language, names }: 
   }
 
   return (
-    <section aria-labelledby="ask-title" className="mt-6 border-t border-outline-variant pt-6">
-      <h3 id="ask-title" className="text-title-md">
+    <section aria-labelledby="ask-title" className="rounded-lg border border-outline-variant bg-surface-container-lowest p-4">
+      <h2 id="ask-title" className="text-title-md">
         Ask about your alert
-      </h3>
+      </h2>
       <form className="mt-3 flex gap-2" onSubmit={onSubmit}>
         <label className="sr-only" htmlFor="ask-question">
           Your question
@@ -94,7 +95,7 @@ export default function Ask({ setup, online, english, shown, language, names }: 
           </AssistChip>
         ))}
       </div>
-      <p className="mt-2 text-body-sm text-on-surface-variant">
+      <p className="mt-2 text-body-md text-on-surface-variant">
         {!running && <>Answers now: {ROUTE_LABEL[nextRoute]}. </>}
         {online && setup.configured && (
           <>
@@ -120,10 +121,13 @@ function Running({ route, startedAt }: { route: AiRoute | 'search'; startedAt: n
   }, [])
   const seconds = Math.max(0, Math.round((now - startedAt) / 1000))
   return (
-    <p className="mt-4 rounded-md bg-surface-container p-3 text-body-md" role="status">
-      Answering with {ROUTE_LABEL[route].toLowerCase()}… {seconds} s
-      {route === 'on_device' && ' (the first answer on this device can take about 30 s)'}
-    </p>
+    <div className="mt-4 rounded-md bg-surface-container p-3">
+      <Progress label="Answering" />
+      <p className="mt-3 text-body-md" role="status">
+        Answering with {ROUTE_LABEL[route].toLowerCase()}… {seconds} s
+        {route === 'on_device' && ' (the first answer on this device can take about 30 s)'}
+      </p>
+    </div>
   )
 }
 
@@ -170,7 +174,7 @@ function Outcome({ question, outcome, shown, language }: { question: string; out
             {outcome.answer}
           </p>
           <Quotes label="From your alert, word for word:" quotes={outcome.quotes} language={language} />
-          <p className="mt-3 text-body-sm text-on-surface-variant">
+          <p className="mt-3 text-body-md text-on-surface-variant">
             Written by AI and checked by code against your alert: same figures and places, nothing added. The barangay didn’t
             write this answer; follow the alert itself.
           </p>
@@ -192,7 +196,7 @@ function Outcome({ question, outcome, shown, language }: { question: string; out
           </>
         ))}
       {notes.length > 0 && (
-        <ul className="mt-3 space-y-1 text-body-sm text-on-surface-variant">
+        <ul className="mt-3 space-y-1 text-body-md text-on-surface-variant">
           {notes.map((n, i) => (
             <li key={i}>{n}</li>
           ))}

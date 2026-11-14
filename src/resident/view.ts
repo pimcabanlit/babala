@@ -32,3 +32,29 @@ export function syncLine(sync: Sync, formatTime: (ms: number) => string): SyncLi
   }
   return { tone: 'offline', text: `Getting the latest alerts… ${showing}` }
 }
+
+export type SyncPill = { tone: SyncLine['tone']; text: string }
+
+/** The short form of the status line, for the pill in the app bar. The line under the header card says the rest. */
+export function syncPill(sync: Sync, formatTime: (ms: number) => string): SyncPill {
+  if (sync.error || (sync.live && sync.saveError)) return { tone: 'problem', text: 'Problem' }
+  if (sync.live) return { tone: 'ok', text: 'Live' }
+  if (!sync.online) {
+    return { tone: 'offline', text: sync.savedAtMs === undefined ? 'Offline' : `Offline · saved ${formatTime(sync.savedAtMs)}` }
+  }
+  return { tone: 'offline', text: 'Connecting…' }
+}
+
+/**
+ * How this phone adds the page to its home screen. Chrome offers its own
+ * install prompt; Safari on iPhone and iPad never does, so the page explains
+ * Share, then Add to Home Screen. An installed copy needs neither.
+ */
+export type InstallMode = 'installed' | 'ios' | 'other'
+
+export function installMode(env: { standalone: boolean; userAgent: string; platform: string; maxTouchPoints: number }): InstallMode {
+  if (env.standalone) return 'installed'
+  // iPadOS asks for desktop sites, so it says "MacIntel"; only the touch screen gives it away.
+  const ios = /iPhone|iPad|iPod/.test(env.userAgent) || (env.platform === 'MacIntel' && env.maxTouchPoints > 1)
+  return ios ? 'ios' : 'other'
+}
