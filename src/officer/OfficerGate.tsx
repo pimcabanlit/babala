@@ -8,7 +8,7 @@ import type { SetupChecks } from './useSetupChecks'
 import { useOfficer } from './useOfficer'
 import AppBar from '../ui/AppBar'
 import Button, { LinkButton } from '../ui/Button'
-import { TITLE, WIDTH } from '../ui/layout'
+import { TITLE } from '../ui/layout'
 import Notice from '../ui/Notice'
 import Progress from '../ui/Progress'
 
@@ -51,7 +51,7 @@ function SignInScreen({ officer, checks }: { officer: ReturnType<typeof useOffic
 
   return (
     <>
-      <AppBar title={TITLE.officer} width={WIDTH.officer} />
+      <AppBar title={TITLE.officer} />
       <main className="flex-1 px-4 py-10">
         <div className="mx-auto max-w-md rounded-xl border border-outline-variant bg-surface-container-lowest p-6 sm:p-8">
           <img src="/icon.svg" alt="" className="size-12" />

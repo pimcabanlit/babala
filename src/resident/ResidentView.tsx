@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import Ask from './Ask'
 import { hotlineNumbers } from './hotline'
 import { formatShortTime, formatTime } from '../console/format'
@@ -60,86 +60,94 @@ export default function ResidentView() {
   const alert = areaKey ? alertFor(pack, household, areaKey) : undefined
   const line = syncLine(sync, at)
   const loading = pack === undefined && sync.online && !sync.error
+  const active =
+    alert?.status === 'active'
+      ? { alert, languages: languagesOf(alert), shown: textIn(alert, choice.language ?? 'en') }
+      : undefined
 
   return (
     <>
-      <AppBar title={TITLE.resident} width={WIDTH.resident}>
+      <AppBar title={TITLE.resident}>
         <StatusPill pill={syncPill(sync, (ms) => formatShortTime(new Date(ms), openedAt))} />
       </AppBar>
-      <main className={`mx-auto w-full flex-1 space-y-5 px-4 py-5 ${WIDTH.resident}`}>
+      <main className={`mx-auto w-full flex-1 px-4 py-5 lg:py-8 ${WIDTH.resident}`}>
         <h1 className="sr-only">Your typhoon alert</h1>
 
-        {loading ? (
-          <Skeleton />
-        ) : areaKey ? (
-          <HeaderCard alert={alert} area={area} household={household} />
-        ) : areas.length > 0 ? (
-          <section aria-labelledby="choose-title" className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
-            <h2 id="choose-title" className="text-title-lg">
-              Choose your purok and household
-            </h2>
-            <p className="mt-1 text-body-lg text-on-surface-variant">This phone remembers them.</p>
-            <ChoiceForm
-              areas={areas}
-              areaKey={undefined}
-              household={household}
-              submitLabel="Show my alert"
-              onSubmit={(c) => choose(c)}
-            />
-          </section>
-        ) : (
-          <section className="rounded-xl bg-surface-container-high p-5">
-            <p className="text-title-lg">No alerts from your barangay yet.</p>
-            <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your barangay officials.</p>
-          </section>
-        )}
+        {/* One column on a phone, in reading order; on a laptop the alert stays on the left and help and Ask sit beside it. */}
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-8">
+          <div className="space-y-5">
+            {loading ? (
+              <Skeleton />
+            ) : areaKey ? (
+              <HeaderCard alert={alert} area={area} household={household} />
+            ) : areas.length > 0 ? (
+              <section aria-labelledby="choose-title" className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
+                <h2 id="choose-title" className="text-title-lg">
+                  Choose your purok and household
+                </h2>
+                <p className="mt-1 text-body-lg text-on-surface-variant">This phone remembers them.</p>
+                <ChoiceForm
+                  areas={areas}
+                  areaKey={undefined}
+                  household={household}
+                  submitLabel="Show my alert"
+                  onSubmit={(c) => choose(c)}
+                />
+              </section>
+            ) : (
+              <section className="rounded-xl bg-surface-container-high p-5">
+                <p className="text-title-lg">No alerts from your barangay yet.</p>
+                <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your barangay officials.</p>
+              </section>
+            )}
 
-        <div className="space-y-3">
-          <Notice tone={TONES[line.tone]} role="status">
-            {line.text}
-          </Notice>
-          {sync.unreadable > 0 && (
-            <Notice tone="warning">
-              {sync.unreadable} alert{sync.unreadable === 1 ? '' : 's'} from the barangay couldn’t be read by this version of
-              the app. Reload the page to get the latest version.
-            </Notice>
-          )}
-        </div>
-
-        {areaKey && (
-          <div className="flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container-lowest py-2 pr-2 pl-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-body-md text-on-surface-variant">Your purok and household</p>
-              <p className="text-title-md">
-                {area} · {householdLabel(household)}
-              </p>
+            <div className="space-y-3">
+              <Notice tone={TONES[line.tone]} role="status">
+                {line.text}
+              </Notice>
+              {sync.unreadable > 0 && (
+                <Notice tone="warning">
+                  {sync.unreadable} alert{sync.unreadable === 1 ? '' : 's'} from the barangay couldn’t be read by this version of
+                  the app. Reload the page to get the latest version.
+                </Notice>
+              )}
             </div>
-            <Button variant="outlined" onClick={() => setChanging(true)}>
-              Change
-            </Button>
-          </div>
-        )}
 
-        {alert?.status === 'active' && (
-          <ActiveAlert
-            alert={alert}
-            language={choice.language ?? 'en'}
-            onLanguage={(language) => choose({ language })}
-            ask={(shown, language) => (
+            {areaKey && (
+              <div className="flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container-lowest py-2 pr-2 pl-4">
+                <div className="min-w-0 flex-1">
+                  <p className="text-body-md text-on-surface-variant">Your purok and household</p>
+                  <p className="text-title-md">
+                    {area} · {householdLabel(household)}
+                  </p>
+                </div>
+                <Button variant="outlined" onClick={() => setChanging(true)}>
+                  Change
+                </Button>
+              </div>
+            )}
+
+            {active && (
+              <AlertText alert={active.alert} languages={active.languages} shown={active.shown} onLanguage={(language) => choose({ language })} />
+            )}
+          </div>
+
+          <div className="mt-5 space-y-5 lg:mt-0">
+            {active && <Hotline numbers={hotlineNumbers(active.shown.text)} />}
+            {active && (
               <Ask
-                key={`${alert.id}__${language}`}
+                key={`${active.alert.id}__${active.shown.language}`}
                 setup={askSetup}
                 online={sync.online}
-                english={alert.texts.en}
-                shown={shown}
-                language={language}
-                names={[alert.stormName, alert.area]}
+                english={active.alert.texts.en}
+                shown={active.shown.text}
+                language={active.shown.language}
+                names={[active.alert.stormName, active.alert.area]}
               />
             )}
-          />
-        )}
-
-        <InstallCard />
+            <InstallCard />
+          </div>
+        </div>
       </main>
 
       <Dialog open={changing} onClose={() => setChanging(false)} title="Your purok and household" side="bottom">
@@ -231,20 +239,18 @@ function HeaderCard({ alert, area, household }: { alert: PackAlert | undefined; 
   )
 }
 
-function ActiveAlert({
+/** The approved text in the language chosen, with the language buttons once a translation exists. */
+function AlertText({
   alert,
-  language,
+  languages,
+  shown,
   onLanguage,
-  ask,
 }: {
   alert: ActivePackAlert
-  language: Language
+  languages: Language[]
+  shown: { text: string; language: Language }
   onLanguage: (language: Language) => void
-  ask: (shown: string, language: Language) => ReactNode
 }) {
-  const languages = languagesOf(alert)
-  const shown = textIn(alert, language)
-  const numbers = hotlineNumbers(shown.text)
   return (
     <>
       {languages.length > 1 && (
@@ -269,27 +275,29 @@ function ActiveAlert({
           Approved by a barangay officer after a code check against the storm bulletin.
         </p>
       </section>
-
-      {numbers.length > 0 && (
-        <section aria-labelledby="help-title" className="rounded-lg bg-brand p-5 text-on-brand">
-          <h2 id="help-title" className="flex items-center gap-2 text-title-md">
-            <Icon name="call" />
-            Need help?
-          </h2>
-          {numbers.map((n) => (
-            <p key={n} className="mt-2 text-headline-sm font-medium tabular-nums">
-              {n}
-            </p>
-          ))}
-          <p className="mt-3 flex flex-wrap items-center gap-2 text-body-md text-on-brand-variant">
-            <span className="rounded-sm border border-on-brand-variant px-2 text-label-md">Demo number</span>
-            From your alert. In a real deployment this would be a call button.
-          </p>
-        </section>
-      )}
-
-      {ask(shown.text, shown.language)}
     </>
+  )
+}
+
+/** The phone numbers in the alert shown, word for word, for a resident who needs help now. */
+function Hotline({ numbers }: { numbers: string[] }) {
+  if (numbers.length === 0) return null
+  return (
+    <section aria-labelledby="help-title" className="rounded-lg bg-brand p-5 text-on-brand">
+      <h2 id="help-title" className="flex items-center gap-2 text-title-md">
+        <Icon name="call" />
+        Need help?
+      </h2>
+      {numbers.map((n) => (
+        <p key={n} className="mt-2 text-headline-sm font-medium tabular-nums">
+          {n}
+        </p>
+      ))}
+      <p className="mt-3 flex flex-wrap items-center gap-2 text-body-md text-on-brand-variant">
+        <span className="rounded-sm border border-on-brand-variant px-2 text-label-md">Demo number</span>
+        From your alert. In a real deployment this would be a call button.
+      </p>
+    </section>
   )
 }
 

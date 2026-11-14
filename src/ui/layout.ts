@@ -1,11 +1,12 @@
 /**
- * Each page's content width, shared by its app bar so the logo lines up with
- * the content: the resident page is read on phones and stays narrow on a
- * laptop; the officer workspace uses the whole screen for its drawer.
+ * Each page's content width. The home page and the resident page share one
+ * width on a laptop, where the resident page opens into two columns; on a
+ * tablet the resident page stays one readable column. The officer workspace
+ * uses the whole window for its drawer.
  */
 export const WIDTH = {
-  home: 'max-w-5xl',
-  resident: 'max-w-[40rem]',
+  home: 'max-w-6xl',
+  resident: 'max-w-[40rem] lg:max-w-6xl',
   officer: 'max-w-none',
   'not-found': 'max-w-3xl',
 } as const

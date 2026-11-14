@@ -26,7 +26,7 @@ export default function App() {
       ) : (
         // Each view draws its own app bar, with its own controls; until it loads, the bar shows without them.
         <PageBoundary page={page}>
-          <Suspense fallback={<AppBar title={TITLE[page]} width={WIDTH[page]} />}>
+          <Suspense fallback={<AppBar title={TITLE[page]} />}>
             {page === 'resident' ? <ResidentView /> : <OfficerPage />}
           </Suspense>
         </PageBoundary>
@@ -38,7 +38,7 @@ export default function App() {
 function NotFound() {
   return (
     <>
-      <AppBar width={WIDTH['not-found']} />
+      <AppBar />
       <main className={`mx-auto w-full flex-1 px-4 py-8 ${WIDTH['not-found']}`}>
         <h1 className="text-headline-sm">Page not found</h1>
         <p className="mt-2 text-body-lg text-on-surface-variant">There’s no page at this address.</p>
@@ -66,7 +66,7 @@ class PageBoundary extends Component<{ page: Exclude<Page, 'home' | 'not-found'>
     const { page } = this.props
     return (
       <>
-        <AppBar title={TITLE[page]} width={WIDTH[page]} />
+        <AppBar title={TITLE[page]} />
         <main className={`mx-auto w-full flex-1 px-4 py-8 ${WIDTH[page]}`}>
           <Notice tone="error" role="alert">
             <p>Something went wrong opening this page. Check the signal, then reload.</p>

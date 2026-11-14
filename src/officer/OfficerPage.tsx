@@ -4,7 +4,7 @@ import OfficerGate from './OfficerGate'
 import { SetupRows } from './SystemStatus'
 import { useSetupChecks } from './useSetupChecks'
 import AppBar from '../ui/AppBar'
-import { TITLE, WIDTH } from '../ui/layout'
+import { TITLE } from '../ui/layout'
 
 const firebase = getFirebase()
 
@@ -18,7 +18,7 @@ export default function OfficerPage() {
   if (!firebase.ok)
     return (
       <>
-        <AppBar title={TITLE.officer} width={WIDTH.officer} />
+        <AppBar title={TITLE.officer} />
         <main className="flex-1 px-4 py-10">
           <div className="mx-auto max-w-xl rounded-xl border border-outline-variant bg-surface-container-lowest p-6 sm:p-8">
             <h1 className="text-headline-sm">Set up Firebase first</h1>
