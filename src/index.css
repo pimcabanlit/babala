@@ -119,6 +119,18 @@
   --radius-xl: 1.75rem;
 
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* The indeterminate progress bar (src/ui/Progress.tsx). */
+  --animate-progress: progress-slide 1.6s var(--ease-standard) infinite;
+
+  @keyframes progress-slide {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(300%);
+    }
+  }
 }
 
 @layer base {

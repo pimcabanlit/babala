@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
 import { PATHS } from '../route'
+import { useOfflineApp } from '../offline/useOfflineApp'
+import AppBar from '../ui/AppBar'
 import { ButtonLink } from '../ui/Button'
 import Icon, { type IconName } from '../ui/Icon'
+import { TITLE, WIDTH } from '../ui/layout'
 
 const REPO = 'https://github.com/pimcabanlit/babala'
 
@@ -30,9 +33,12 @@ const STEPS: { icon: IconName; title: string; text: string }[] = [
 export default function Home() {
   return (
     <>
+      <AppBar home title={TITLE.home} width={WIDTH.home}>
+        <OfflinePill />
+      </AppBar>
       <main className="flex-1">
         <section className="bg-brand text-on-brand">
-          <div className="mx-auto grid max-w-5xl items-center gap-10 px-4 py-10 sm:py-16 lg:grid-cols-[1fr_22rem]">
+          <div className={`mx-auto grid ${WIDTH.home} items-center gap-10 px-4 py-10 sm:py-16 lg:grid-cols-[1fr_22rem]`}>
             <div>
               <h1 className="text-headline-lg font-bold sm:text-display-sm">
                 When the signal drops, warnings <span className="text-highlight-on-brand">shouldn’t.</span>
@@ -46,7 +52,7 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="mx-auto max-w-5xl px-4">
+        <div className={`mx-auto px-4 ${WIDTH.home}`}>
           <section aria-labelledby="views-title" className="py-10">
             <h2 id="views-title" className="text-headline-sm">
               Choose your view
@@ -99,7 +105,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-outline-variant">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-6 text-body-md text-on-surface-variant">
+        <div className={`mx-auto flex ${WIDTH.home} flex-wrap items-center gap-x-6 gap-y-2 px-4 py-6 text-body-md text-on-surface-variant`}>
           <p>Demo, not official guidance. The storm and barangay are fictional.</p>
           <a className="font-medium text-primary underline underline-offset-2" href={REPO}>
             Source code on GitHub
@@ -172,5 +178,19 @@ function AlertIllustration() {
         Demo: Typhoon Sample over Barangay Halimbawa
       </figcaption>
     </figure>
+  )
+}
+
+/** Tells a first-time visitor the app now opens with no signal, once the service worker has saved it. */
+function OfflinePill() {
+  const app = useOfflineApp()
+  // The dev server and browsers without service workers can't save the app; the resident page explains why.
+  if (app.state === 'unavailable') return null
+  const ready = app.state === 'ready'
+  return (
+    <p role="status" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-on-brand-variant/50 px-3 text-label-lg">
+      <Icon name={ready ? 'check_circle' : 'cloud'} className="size-[18px]" />
+      {ready ? 'Offline ready' : 'Saving for offline…'}
+    </p>
   )
 }

@@ -1,16 +1,31 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
 import Ask from './Ask'
-import { formatTime } from '../console/format'
+import { hotlineNumbers } from './hotline'
+import { formatShortTime, formatTime } from '../console/format'
 import { HOUSEHOLDS, type HouseholdId } from '../drafting/households'
 import { getFirebase } from '../firebase'
 import type { OfflineApp } from '../offline/register'
 import { useOfflineApp } from '../offline/useOfflineApp'
-import { LANGUAGES, alertFor, languagesOf, packAreas, textIn, type Language, type PackAlert } from './pack'
-import { useAskSetup, type AskSetup } from './useAsk'
+import {
+  LANGUAGES,
+  alertFor,
+  languagesOf,
+  packAreas,
+  textIn,
+  type ActivePackAlert,
+  type Language,
+  type PackAlert,
+} from './pack'
+import { useAskSetup } from './useAsk'
 import { useChoice, useResidentPack } from './useResidentPack'
-import { syncLine } from './view'
+import { installMode, syncLine, syncPill, type SyncPill } from './view'
+import AppBar from '../ui/AppBar'
 import Button from '../ui/Button'
+import Dialog from '../ui/Dialog'
+import Icon from '../ui/Icon'
+import { TITLE, WIDTH } from '../ui/layout'
 import Notice from '../ui/Notice'
+import Segmented from '../ui/Segmented'
 
 const TONES = {
   ok: 'success',
@@ -19,6 +34,12 @@ const TONES = {
 } as const
 
 const at = (ms: number) => formatTime(new Date(ms))
+
+type Area = { areaKey: string; area: string }
+
+function householdLabel(id: HouseholdId): string {
+  return HOUSEHOLDS.find((h) => h.id === id)?.label ?? id
+}
 
 /**
  * The resident's page, for any phone browser: pick your purok and household
@@ -29,159 +50,338 @@ export default function ResidentView() {
   const { pack, sync } = useResidentPack(getFirebase())
   const askSetup = useAskSetup(getFirebase())
   const [choice, choose] = useChoice()
+  const [changing, setChanging] = useState(false)
+  // "Today" for the pill's short time; a page left open past midnight still shows the full date under the header card.
+  const [openedAt] = useState(() => new Date())
   const areas = packAreas(pack)
   const areaKey = areas.some((a) => a.areaKey === choice.areaKey) ? choice.areaKey : undefined
+  const area = areas.find((a) => a.areaKey === areaKey)?.area ?? ''
   const household = choice.household ?? 'general'
   const alert = areaKey ? alertFor(pack, household, areaKey) : undefined
   const line = syncLine(sync, at)
+  const loading = pack === undefined && sync.online && !sync.error
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-headline-sm">Your typhoon alert</h1>
-        <Notice tone={TONES[line.tone]} role="status" className="mt-3">
-          {line.text}
-        </Notice>
-        {sync.unreadable > 0 && (
-          <Notice tone="warning" className="mt-3">
-            {sync.unreadable} alert{sync.unreadable === 1 ? '' : 's'} from the barangay couldn’t be read by this version of the
-            app. Reload the page to get the latest version.
-          </Notice>
+    <>
+      <AppBar title={TITLE.resident} width={WIDTH.resident}>
+        <StatusPill pill={syncPill(sync, (ms) => formatShortTime(new Date(ms), openedAt))} />
+      </AppBar>
+      <main className={`mx-auto w-full flex-1 space-y-5 px-4 py-5 ${WIDTH.resident}`}>
+        <h1 className="sr-only">Your typhoon alert</h1>
+
+        {loading ? (
+          <Skeleton />
+        ) : areaKey ? (
+          <HeaderCard alert={alert} area={area} household={household} />
+        ) : areas.length > 0 ? (
+          <section aria-labelledby="choose-title" className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
+            <h2 id="choose-title" className="text-title-lg">
+              Choose your purok and household
+            </h2>
+            <p className="mt-1 text-body-lg text-on-surface-variant">This phone remembers them.</p>
+            <ChoiceForm
+              areas={areas}
+              areaKey={undefined}
+              household={household}
+              submitLabel="Show my alert"
+              onSubmit={(c) => choose(c)}
+            />
+          </section>
+        ) : (
+          <section className="rounded-xl bg-surface-container-high p-5">
+            <p className="text-title-lg">No alerts from your barangay yet.</p>
+            <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your barangay officials.</p>
+          </section>
         )}
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-body-md font-medium">
-          Your purok
-          <select
-            className="field mt-1 block font-normal"
-            value={areaKey ?? ''}
-            onChange={(e) => choose({ areaKey: e.target.value })}
-            disabled={areas.length === 0}
-          >
-            <option value="" disabled>
-              {areas.length === 0 ? 'No alerts yet' : 'Choose your purok'}
-            </option>
-            {areas.map((a) => (
-              <option key={a.areaKey} value={a.areaKey}>
-                {a.area}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-body-md font-medium">
-          Your household
-          <select
-            className="field mt-1 block font-normal"
-            value={household}
-            onChange={(e) => choose({ household: e.target.value as HouseholdId })}
-          >
-            {HOUSEHOLDS.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+        <div className="space-y-3">
+          <Notice tone={TONES[line.tone]} role="status">
+            {line.text}
+          </Notice>
+          {sync.unreadable > 0 && (
+            <Notice tone="warning">
+              {sync.unreadable} alert{sync.unreadable === 1 ? '' : 's'} from the barangay couldn’t be read by this version of
+              the app. Reload the page to get the latest version.
+            </Notice>
+          )}
+        </div>
 
-      {areaKey ? (
-        <AlertCard
-          alert={alert}
-          household={household}
-          area={areas.find((a) => a.areaKey === areaKey)?.area ?? ''}
-          language={choice.language ?? 'en'}
-          onLanguage={(language) => choose({ language })}
-          askSetup={askSetup}
-          online={sync.online}
-        />
-      ) : (
-        areas.length > 0 && <p className="text-body-lg text-on-surface-variant">Choose your purok to see your alert. This phone remembers it.</p>
-      )}
+        {areaKey && (
+          <div className="flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container-lowest py-2 pr-2 pl-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-body-md text-on-surface-variant">Your purok and household</p>
+              <p className="text-title-md">
+                {area} · {householdLabel(household)}
+              </p>
+            </div>
+            <Button variant="outlined" onClick={() => setChanging(true)}>
+              Change
+            </Button>
+          </div>
+        )}
 
-      <InstallHint />
+        {alert?.status === 'active' && (
+          <ActiveAlert
+            alert={alert}
+            language={choice.language ?? 'en'}
+            onLanguage={(language) => choose({ language })}
+            ask={(shown, language) => (
+              <Ask
+                key={`${alert.id}__${language}`}
+                setup={askSetup}
+                online={sync.online}
+                english={alert.texts.en}
+                shown={shown}
+                language={language}
+                names={[alert.stormName, alert.area]}
+              />
+            )}
+          />
+        )}
+
+        <InstallCard />
+      </main>
+
+      <Dialog open={changing} onClose={() => setChanging(false)} title="Your purok and household" side="bottom">
+        {/* Mounted fresh each time it opens, so it starts from what the phone remembers. */}
+        {changing && (
+          <ChoiceForm
+            areas={areas}
+            areaKey={areaKey}
+            household={household}
+            submitLabel="Show this alert"
+            onSubmit={(c) => {
+              choose(c)
+              setChanging(false)
+            }}
+            onCancel={() => setChanging(false)}
+          />
+        )}
+      </Dialog>
+    </>
+  )
+}
+
+const PILL: Record<SyncPill['tone'], { box: string; dot: string }> = {
+  ok: { box: 'bg-success-container text-on-success-container', dot: 'bg-success' },
+  offline: { box: 'bg-surface-container-highest text-on-surface', dot: 'bg-outline' },
+  problem: { box: 'bg-error-container text-on-error-container', dot: 'bg-error' },
+}
+
+/** The status in a word or two; the full line is under the header card. */
+function StatusPill({ pill }: { pill: SyncPill }) {
+  const { box, dot } = PILL[pill.tone]
+  return (
+    <p className={`inline-flex h-8 items-center gap-2 rounded-full px-3 text-label-lg whitespace-nowrap ${box}`}>
+      <span aria-hidden="true" className={`size-2 rounded-full ${dot}`} />
+      {pill.text}
+    </p>
+  )
+}
+
+/** Holds the space of the header card and the alert while the first alerts load, so nothing jumps. */
+function Skeleton() {
+  return (
+    <div aria-hidden="true" className="space-y-5">
+      <div className="h-36 animate-pulse rounded-xl bg-surface-container-high" />
+      <div className="h-16 animate-pulse rounded-lg bg-surface-container-high" />
+      <div className="h-40 animate-pulse rounded-lg bg-surface-container-high" />
     </div>
   )
 }
 
-function householdLabel(id: HouseholdId): string {
-  return HOUSEHOLDS.find((h) => h.id === id)?.label ?? id
-}
-
-function AlertCard({
-  alert,
-  household,
-  area,
-  language,
-  onLanguage,
-  askSetup,
-  online,
-}: {
-  alert: PackAlert | undefined
-  household: HouseholdId
-  area: string
-  language: Language
-  onLanguage: (language: Language) => void
-  askSetup: AskSetup
-  online: boolean
-}) {
+/**
+ * Storm, signal, area and household, and nothing else: every word here is in
+ * the approved copy, so the page makes no safety claim the checker didn't see.
+ */
+function HeaderCard({ alert, area, household }: { alert: PackAlert | undefined; area: string; household: HouseholdId }) {
   const who = `${householdLabel(household)} households in ${area}`
   if (!alert) {
     return (
-      <p className="rounded-lg border border-outline-variant bg-surface-container-lowest p-4 text-body-lg">
-        No alert for {who} right now. Check again later, and listen to your barangay officials.
-      </p>
+      <section className="rounded-xl bg-surface-container-high p-5">
+        <p className="text-title-lg">No alert for {who} right now.</p>
+        <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your barangay officials.</p>
+      </section>
     )
   }
   if (alert.status === 'withdrawn') {
     return (
-      <div className="rounded-lg border border-outline bg-surface-container-high p-4 text-body-lg" role="alert">
-        <p className="text-title-md">The barangay withdrew the alert for {who}.</p>
-        <p className="mt-1">Don’t follow it. Wait for a new alert, and listen to your barangay officials.</p>
+      <section className="rounded-xl border border-outline bg-surface-container-highest p-5" role="alert">
+        <p className="flex items-center gap-2 text-title-lg">
+          <Icon name="block" className="size-6" />
+          Alert withdrawn
+        </p>
+        <p className="mt-2 text-body-lg">The barangay withdrew the alert for {who}.</p>
+        <p className="mt-1 text-body-lg">Don’t follow it. Wait for a new alert, and listen to your barangay officials.</p>
         {alert.updatedAtMs !== null && <p className="mt-2 text-body-md text-on-surface-variant">Withdrawn {at(alert.updatedAtMs)}</p>}
-      </div>
+      </section>
     )
   }
+  return (
+    <section aria-label="Alert summary" className="rounded-xl bg-error p-5 text-on-error">
+      <p className="flex items-center gap-2 text-label-lg">
+        <Icon name="warning" />
+        {alert.stormName}
+      </p>
+      <p className="mt-2 text-display-sm font-bold">Signal No. {alert.signal}</p>
+      <p className="mt-1 text-body-lg">
+        {area} · {householdLabel(household)} households
+      </p>
+    </section>
+  )
+}
+
+function ActiveAlert({
+  alert,
+  language,
+  onLanguage,
+  ask,
+}: {
+  alert: ActivePackAlert
+  language: Language
+  onLanguage: (language: Language) => void
+  ask: (shown: string, language: Language) => ReactNode
+}) {
   const languages = languagesOf(alert)
   const shown = textIn(alert, language)
+  const numbers = hotlineNumbers(shown.text)
   return (
-    <article className="rounded-lg border-2 border-error bg-surface-container-lowest p-4">
-      <p className="text-title-sm text-error">
-        {alert.stormName} · Signal No. {alert.signal} · {who}
-      </p>
+    <>
       {languages.length > 1 && (
-        <label className="mt-4 block text-body-md font-medium">
-          Language
-          <select
-            className="field mt-1 block font-normal"
-            value={shown.language}
-            onChange={(e) => onLanguage(e.target.value as Language)}
-          >
-            {LANGUAGES.filter((l) => languages.includes(l.id)).map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Segmented
+          legend="Language"
+          name="language"
+          options={LANGUAGES.filter((l) => languages.includes(l.id)).map((l) => ({ value: l.id, label: l.label, lang: l.id }))}
+          value={shown.language}
+          onChange={onLanguage}
+        />
       )}
-      <p className="mt-4 text-title-lg leading-8" lang={shown.language}>
-        {shown.text}
-      </p>
-      <p className="mt-4 text-body-md text-on-surface-variant">
-        {alert.updatedAtMs !== null && <>Last updated {at(alert.updatedAtMs)}. </>}
-        Approved by a barangay officer after a code check against the storm bulletin.
-      </p>
-      <Ask
-        key={`${alert.id}__${shown.language}`}
-        setup={askSetup}
-        online={online}
-        english={alert.texts.en}
-        shown={shown.text}
-        language={shown.language}
-        names={[alert.stormName, alert.area]}
+
+      <section aria-labelledby="alert-title">
+        <h2 id="alert-title" className="text-title-md">
+          Your alert
+        </h2>
+        <p className="mt-2 rounded-lg border-l-4 border-error bg-error-container p-4 text-title-lg leading-8 text-on-surface" lang={shown.language}>
+          {shown.text}
+        </p>
+        <p className="mt-3 text-body-md text-on-surface-variant">
+          {alert.updatedAtMs !== null && <>Last updated {at(alert.updatedAtMs)} · </>}
+          Approved by a barangay officer after a code check against the storm bulletin.
+        </p>
+      </section>
+
+      {numbers.length > 0 && (
+        <section aria-labelledby="help-title" className="rounded-lg bg-brand p-5 text-on-brand">
+          <h2 id="help-title" className="flex items-center gap-2 text-title-md">
+            <Icon name="call" />
+            Need help?
+          </h2>
+          {numbers.map((n) => (
+            <p key={n} className="mt-2 text-headline-sm font-medium tabular-nums">
+              {n}
+            </p>
+          ))}
+          <p className="mt-3 flex flex-wrap items-center gap-2 text-body-md text-on-brand-variant">
+            <span className="rounded-sm border border-on-brand-variant px-2 text-label-md">Demo number</span>
+            From your alert. In a real deployment this would be a call button.
+          </p>
+        </section>
+      )}
+
+      {ask(shown.text, shown.language)}
+    </>
+  )
+}
+
+/**
+ * Purok and household as two lists, first as a card on the first visit and
+ * then in the "Change" sheet. Nothing changes until the resident confirms.
+ */
+function ChoiceForm({
+  areas,
+  areaKey,
+  household,
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: {
+  areas: Area[]
+  areaKey: string | undefined
+  household: HouseholdId
+  submitLabel: string
+  onSubmit: (choice: { areaKey: string; household: HouseholdId }) => void
+  onCancel?: () => void
+}) {
+  // With one purok in the pack there is nothing to choose.
+  const [purok, setPurok] = useState(areaKey ?? (areas.length === 1 ? areas[0].areaKey : undefined))
+  const [who, setWho] = useState(household)
+  const id = useId()
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    if (purok) onSubmit({ areaKey: purok, household: who })
+  }
+  return (
+    <form onSubmit={submit} className="mt-4 space-y-5">
+      <ChoiceList
+        legend="Your purok"
+        name={`${id}-purok`}
+        options={areas.map((a) => ({ value: a.areaKey, label: a.area }))}
+        value={purok}
+        onChange={setPurok}
       />
-    </article>
+      <ChoiceList
+        legend="Your household"
+        name={`${id}-household`}
+        options={HOUSEHOLDS.map((h) => ({ value: h.id, label: h.label }))}
+        value={who}
+        onChange={setWho}
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" variant="filled" size="lg" disabled={!purok}>
+          {submitLabel}
+        </Button>
+        {onCancel && (
+          <Button variant="text" size="lg" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+      </div>
+    </form>
+  )
+}
+
+function ChoiceList<T extends string>({
+  legend,
+  name,
+  options,
+  value,
+  onChange,
+}: {
+  legend: string
+  name: string
+  options: { value: T; label: string }[]
+  value: T | undefined
+  onChange: (value: T) => void
+}) {
+  return (
+    <fieldset>
+      <legend className="text-title-sm">{legend}</legend>
+      <div className="mt-1">
+        {options.map((o) => (
+          <label key={o.value} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md px-2 text-body-lg hover:bg-on-surface/8">
+            <input
+              type="radio"
+              name={name}
+              value={o.value}
+              checked={o.value === value}
+              onChange={() => onChange(o.value)}
+              className="size-5 accent-primary"
+            />
+            {o.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   )
 }
 
@@ -199,11 +399,18 @@ function offlineAppText(app: OfflineApp): string {
   }
 }
 
+const MODE = installMode({
+  standalone: window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true,
+  userAgent: navigator.userAgent,
+  platform: navigator.platform,
+  maxTouchPoints: navigator.maxTouchPoints,
+})
+
 /**
- * Says whether the page opens with no signal, and offers to install it where
- * Chrome allows, so it opens from the home screen.
+ * Says whether the page opens with no signal, and how to put it on the home
+ * screen: Chrome's install prompt where it offers one, Safari's steps on iOS.
  */
-function InstallHint() {
+function InstallCard() {
   const [prompt, setPrompt] = useState<InstallPrompt>()
   const [installError, setInstallError] = useState<string>()
   const offlineApp = useOfflineApp()
@@ -225,14 +432,24 @@ function InstallHint() {
   }
 
   return (
-    <div className="rounded-md bg-surface-container p-4 text-body-md text-on-surface-variant">
-      <p>{offlineAppText(offlineApp)} Add it to your home screen to find it fast.</p>
-      {prompt && (
+    <section className="rounded-lg bg-surface-container p-4 text-body-md text-on-surface-variant">
+      <p>
+        {offlineAppText(offlineApp)}
+        {MODE === 'other' && ' Add it to your home screen to find it fast.'}
+      </p>
+      {MODE === 'ios' && (
+        <p className="mt-2">
+          To add it to your home screen, tap Share <Icon name="ios_share" className="inline size-4 align-text-bottom" />, then
+          Add to Home Screen. The Home Screen app keeps its own storage: open it once with a signal and choose your purok and
+          household again before it works offline.
+        </p>
+      )}
+      {MODE === 'other' && prompt && (
         <Button size="lg" variant="tonal" className="mt-3" onClick={install}>
           Install on this phone
         </Button>
       )}
       {installError && <p className="mt-2 text-error">Couldn’t install: {installError}</p>}
-    </div>
+    </section>
   )
 }
