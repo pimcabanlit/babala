@@ -14,7 +14,7 @@ No secrets go in this file: no web app config values, reCAPTCHA keys, App Check 
 | App Check | reCAPTCHA Enterprise (Fraud Defense) provider, registered for "Babala web" | **Enforced on AI Logic and on Cloud Firestore** (Firestore since Nov 13, 4:57 PM; section 4, *Enforcing on Firestore*). A debug token is registered for local work and kept in `.env.local` |
 | Firestore | `(default)`, Standard edition, asia-southeast1, production mode | Rules from `firestore.rules` published by Pim (PR #15, then PR #19 with the ledger, Nov 12, then PRs #21 to #24 together, Nov 13). The `officers` documents are added by hand |
 | Authentication | Google, Anonymous and Email/Password sign-in enabled | Google for officers. Anonymous for residents: the resident view signs in anonymously in the background. Email/Password for the judges' test officer only (*Test officer for judges* below), set up Nov 13 |
-| Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name`, `checker_claim_words`, `checker_translation_claims`, `checker_answer_claims` and `ask_cloud_per_hour` are not published, so the app uses their defaults in `src/config/defaults.ts`. *Setup status* shows each value's source (`remote` or `default`) |
+| Remote Config | `ondevice_budget_seconds` = 30, published | `cloud_model_name`, `checker_claim_words`, `checker_translation_claims`, `checker_answer_claims` and `ask_cloud_per_hour` are not published, so the app uses their defaults in `src/config/defaults.ts`. *System status* shows each value's source (`remote` or `default`) |
 | Hosting | Live at `https://babala-hybrid.web.app` since Nov 13 | Pim deploys from the laptop with `npm run deploy:hosting` (section 8). First deploy Nov 13, 12:59 PM, checked on the laptop and an iPhone |
 | GitHub | `pimcabanlit/babala`, public, Apache-2.0 | CI on pull requests and `main` (`.github/workflows/ci.yml`). No deploy workflow and no secrets |
 | Agent skills | Firebase's official skills in `.claude/skills/`, commit `99954a3` (Nov 9) | See `.claude/skills/README.md`. `CLAUDE.md` wins where they differ |
@@ -47,7 +47,7 @@ These match what is in place now. Console menu names drift: when the console dis
    VITE_FIREBASE_EMULATORS=
    ```
 
-3. `npm run dev` and open http://localhost:5173/officer. If a value is missing, *Setup status* lists it.
+3. `npm run dev` and open http://localhost:5173/officer. If a value is missing, a *Set up Firebase first* page lists it.
 
 ### 3. AI Logic
 
@@ -82,7 +82,7 @@ Enforcing makes Firestore refuse any request without a valid App Check token: so
 | Emulators and `npm run test:rules` | None needed | The emulators don't check App Check, so local emulator runs and CI are unchanged |
 | A page opened with no signal | reCAPTCHA, once the signal returns | Fixed in PR #30: before, the page never reached Firestore again until a reload (*Lessons learned*, 11). Checked on the hosted site: *Live* within 5 s of Wi-Fi returning |
 
-**What a browser without a token sees.** reCAPTCHA can fail: blocked by a browser extension, or a very low score (App Check then waits a day before trying again in that tab; a reload starts over). *Setup status* then shows ✗ App Check with the reason. Firestore refuses its reads with "Missing or insufficient permissions", the same error as a rules refusal: the resident's status line says "Couldn’t get new alerts: Missing or insufficient permissions" over whatever the phone has saved, and the officer gate says to look at App Check in *Setup status* first. AI calls fail the same way, as they do now.
+**What a browser without a token sees.** reCAPTCHA can fail: blocked by a browser extension, or a very low score (App Check then waits a day before trying again in that tab; a reload starts over). *System status* then shows ✗ App Check with the reason. Firestore refuses its reads with "Missing or insufficient permissions", the same error as a rules refusal: the resident's status line says "Couldn’t get new alerts: Missing or insufficient permissions" over whatever the phone has saved, and the officer sign-in page says to look at App Check in *System status* first. AI calls fail the same way, as they do now.
 
 **Before enforcing:**
 
@@ -102,9 +102,9 @@ Enforcing makes Firestore refuse any request without a valid App Check token: so
 
 **After enforcing** (wait 15 minutes first):
 
-1. **Hosted site, laptop, normal Chrome window.** *Setup status* ✓ App Check; the officer console opens; saved alerts, translations and the ledger show. Approve one alert (a write) and check the ledger shows it.
+1. **Hosted site, laptop, normal Chrome window.** *System status* ✓ App Check; the officer console opens; saved alerts, translations and the ledger show. Approve one alert (a write) and check the ledger shows it.
 2. **Refusal test.** Repeat step 4 of *Before enforcing*. Expected now: "Couldn’t get new alerts: Missing or insufficient permissions", never *Live*. That is enforcement working. Close the window and the PowerShell window.
-3. **Local dev with the real debug token.** A new PowerShell window, `npm run dev`, http://localhost:5173/officer: *Setup status* ✓ App Check, and the officer console opens.
+3. **Local dev with the real debug token.** A new PowerShell window, `npm run dev`, http://localhost:5173/officer: *System status* ✓ App Check, and the officer console opens.
 4. **iPhone.** `/resident` in Safari, and the Home Screen app: each says *Live*.
 5. **Offline and back** (the PR #30 fix), on the laptop at `https://babala-hybrid.web.app/resident`: DevTools → Application → Storage → IndexedDB → `firebase-app-check-database` → **Delete database**. Turn Wi-Fi off and reload: the page opens from the laptop. Wait 10 seconds, turn Wi-Fi on, and don't reload: within 30 seconds the line says *Live*.
 6. **Metrics** an hour later: Cloud Firestore requests verified, and the refused ones from the refusal test.
@@ -240,7 +240,7 @@ During judging (Dec 10–16), deploy only fixes, and check the hosted site after
 
 On the laptop, in Chrome, at `https://babala-hybrid.web.app`:
 
-1. The home page shows the two ways in. **Open workspace** opens `/officer`, where *Setup status* shows ✓ Firebase, ✓ App Check (a real reCAPTCHA token this time, not the debug token) and ✓ Remote Config.
+1. The home page shows the two ways in. **Open workspace** opens `/officer`, where *System status* shows ✓ Firebase, ✓ App Check (a real reCAPTCHA token this time, not the debug token) and ✓ Remote Config.
 2. **Sign in with Google** opens the popup and the console opens. Sign out, then sign in as the test officer in a private window.
 3. *Prepare on-device model*, then draft one alert: the card says the laptop wrote it. The Prompt API is on for web pages from Chrome 148, so the hosted origin needs no trial token; `chrome://version` shows the version.
 4. Translate one alert (a cloud call through App Check).
@@ -267,14 +267,14 @@ On a phone (Chrome on Android, or Safari on iPhone):
 
 ### 9. Verify
 
-1. `npm run dev`, open the page. *Setup status* should show:
+1. `npm run dev`, open http://localhost:5173/officer and *System status*. It should show:
    - ✓ Firebase (the project ID);
    - ✓ App Check (a token and its expiry time; the token itself is never shown);
    - ✓ Remote Config (the cloud model and the budget, each marked `remote` or `default`).
 2. Sign in as an officer, then use **Use the demo bulletin** → tick the facts → **Draft all four**. Each card shows whether the laptop or the cloud wrote it.
 3. `npm run check` and `npm run test:rules` pass.
 
-To work without the real project, `npm run emulators` starts local Auth and Firestore emulators. With `VITE_FIREBASE_EMULATORS=true` in `.env.local`, sign-in and saved alerts use them, and *Setup status* says so. AI calls still use the real project.
+To work without the real project, `npm run emulators` starts local Auth and Firestore emulators. With `VITE_FIREBASE_EMULATORS=true` in `.env.local`, sign-in and saved alerts use them, and *System status* says so. AI calls still use the real project.
 
 ## Measured on the laptop
 
@@ -305,7 +305,7 @@ Every draft in the first runs, on-device and cloud, added claims or placeholders
 | 8 | (Caught before it happened.) Emulator test users and data could mix with the real project's in the browser | The emulators use the real project's ID, and the persistent cache is keyed by it | With the emulators, Auth and Firestore keep everything in memory |
 | 9 | Firestore refuses a document with an `undefined` field | A fact sheet with no landfall date | `approvedAlert()` leaves the field out |
 | 10 | An alert with the Hindi word "कृपया" passed and was saved (Purok 1, General) | No rule checked the script | Rule 6 now flags letters and digits from other scripts (PR #16). The alert was redrafted, passed and re-approved on Nov 12, 8:31 PM |
-| 11 | (Found Nov 13, before enforcing App Check on Firestore.) A page opened with no signal never reached Firestore again once the signal returned, until a reload: the resident view stayed at "Getting the latest alerts…", and an officer's offline saves didn't upload. Seen only once the App Check token saved in the browser (valid about an hour) had expired | App Check loads reCAPTCHA's script once, at start, and handles only its load event. Offline the script fails, every token request then waits forever, and Firestore waits for a token before each connection, enforced or not | `src/firebase/recaptchaRetry.ts` loads the script again, with App Check's own handler, when the browser is back online, and every 5 to 30 s until it loads (PR #30). *Setup status* stops waiting for a token after 15 s and says why |
+| 11 | (Found Nov 13, before enforcing App Check on Firestore.) A page opened with no signal never reached Firestore again once the signal returned, until a reload: the resident view stayed at "Getting the latest alerts…", and an officer's offline saves didn't upload. Seen only once the App Check token saved in the browser (valid about an hour) had expired | App Check loads reCAPTCHA's script once, at start, and handles only its load event. Offline the script fails, every token request then waits forever, and Firestore waits for a token before each connection, enforced or not | `src/firebase/recaptchaRetry.ts` loads the script again, with App Check's own handler, when the browser is back online, and every 5 to 30 s until it loads (PR #30). *System status* stops waiting for a token after 15 s and says why |
 
 ## Cost and usage
 

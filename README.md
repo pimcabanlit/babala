@@ -21,8 +21,9 @@ Then open http://localhost:5173 in Chrome. The home page links to the two views:
 
 1. Copy `.env.example` to `.env.local` (gitignored: never commit it) and fill in the Firebase web
    app config and the reCAPTCHA Enterprise site key from the Firebase console.
-2. Run `npm run dev` and open http://localhost:5173/officer. The **Setup status** panel shows
-   whether Firebase, App Check and Remote Config are working.
+2. Run `npm run dev` and open http://localhost:5173/officer. **System status** (a link under the
+   sign-in card, and the card at the bottom of the workspace's menu) shows whether Firebase, App
+   Check and Remote Config are working.
 
 ### App Check debug token (running locally)
 

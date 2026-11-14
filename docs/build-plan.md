@@ -83,7 +83,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 
 **Done when:** a phone with no signal opens its saved alert in the resident's language, and a question gets an answer by one of the three routes (video, 1:15–1:50). Done: deployed and checked on the laptop and an iPhone, Nov 13 (docs/firebase-setup.md, *Follow-ups*).
 
-### Phase 4 — UI and UX redesign (Nov 14–23) · in progress, slices 1 and 2 built
+### Phase 4 — UI and UX redesign (Nov 14–23) · in progress, slices 1 to 4 built
 
 Every feature works, but the app still looks like a test bench: one long page of stacked panels, with the setup checks at the top. Judges score **Design** as "a complete, coherent product experience, not a proof of concept" ([requirements-map.md](requirements-map.md), *Judging criteria*). This phase makes Babala look and feel like a real product: easy to follow, calm, and never overwhelming, without losing a single feature or state.
 
@@ -124,7 +124,7 @@ Until slice 2, `/` was the console. `firebase.json` gets `/officer` rewrites lik
 **Officer workspace.**
 
 - **App bar:** logo, "Officer workspace", a model pill ("On-device model ready", "Downloading 42%", "Warming up · 8 s", "Cloud only", "Offline"), and an account menu (name, email, an "Officer" or "Shared test officer" chip, "Sign out").
-- **Navigation drawer** (240 px; a menu button under 1024 px). "Create an alert": **1 Bulletin**, **2 Fact sheet**, **3 Draft and approve**, each marked done, current or locked (with the reason). "Manage": **Saved alerts** (the number active, and a dot while any isn't uploaded) and **Ledger**. At the bottom, a *System status* card with a dot and a word each for the on-device model, the cloud and Firebase. It opens the *System status* panel.
+- **Navigation drawer** (288 px, so a locked step's reason fits on one line; a menu button under 1024 px). "Create an alert": **1 Bulletin**, **2 Fact sheet**, **3 Draft and approve**, each marked done, current or locked (with the reason). "Manage": **Saved alerts** (the number active, and a dot while any isn't uploaded) and **Ledger**. At the bottom, a *System status* card with a dot and a word each for the on-device model, the cloud and Firebase. It opens the *System status* panel.
 - **Create an alert** (steps 1 to 3 on one view, two columns from 1200 px, one column below):
   - A greeting ("Good afternoon, Pim", from the Google profile's first name; the test officer gets "Good afternoon" and a banner saying the account is shared and the ledger records what it does) and one line: "Create an alert from a storm bulletin. Every fact is checked before you approve it."
   - A storm summary once the facts are confirmed: "Demo storm · Typhoon Sample · Landfall Nov 14, 6:00 PM", and a chip per area ("Purok Ilaya · Signal 3"). Built only from the confirmed fact sheet.

@@ -6,7 +6,7 @@
 export const WIDTH = {
   home: 'max-w-5xl',
   resident: 'max-w-[40rem]',
-  officer: 'max-w-3xl',
+  officer: 'max-w-none',
   'not-found': 'max-w-3xl',
 } as const
 

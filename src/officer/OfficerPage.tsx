@@ -1,9 +1,12 @@
 import OfficerConsole from '../console/OfficerConsole'
-import { PATHS } from '../route'
-import SetupStatus from '../SetupStatus'
+import { getFirebase } from '../firebase'
+import OfficerGate from './OfficerGate'
+import { SetupRows } from './SystemStatus'
+import { useSetupChecks } from './useSetupChecks'
 import AppBar from '../ui/AppBar'
 import { TITLE, WIDTH } from '../ui/layout'
-import OfficerGate from './OfficerGate'
+
+const firebase = getFirebase()
 
 /**
  * The officer workspace at /officer. App.tsx loads it only when it opens, so
@@ -11,21 +14,26 @@ import OfficerGate from './OfficerGate'
  * Firebase checks.
  */
 export default function OfficerPage() {
+  const checks = useSetupChecks()
+  if (!firebase.ok)
+    return (
+      <>
+        <AppBar title={TITLE.officer} width={WIDTH.officer} />
+        <main className="flex-1 px-4 py-10">
+          <div className="mx-auto max-w-xl rounded-xl border border-outline-variant bg-surface-container-lowest p-6 sm:p-8">
+            <h1 className="text-headline-sm">Set up Firebase first</h1>
+            <p className="mt-2 mb-4 text-body-lg text-on-surface-variant">
+              The officer workspace needs this copy of the app’s Firebase settings. The README’s “Firebase settings” section has
+              the steps.
+            </p>
+            <SetupRows checks={checks} />
+          </div>
+        </main>
+      </>
+    )
   return (
-    <>
-      <AppBar title={TITLE.officer} width={WIDTH.officer} />
-      <main className={`mx-auto w-full flex-1 px-4 py-8 ${WIDTH.officer}`}>
-        <h1 className="sr-only">Officer workspace</h1>
-        <p className="text-body-lg text-on-surface-variant">
-          Draft, check and approve typhoon alerts from a storm bulletin.{' '}
-          <a className="font-medium text-primary underline underline-offset-2" href={PATHS.resident}>
-            Open the resident view
-          </a>{' '}
-          to see what residents’ phones show.
-        </p>
-        <SetupStatus />
-        <OfficerGate>{(session) => <OfficerConsole session={session} />}</OfficerGate>
-      </main>
-    </>
+    <OfficerGate auth={firebase.auth} db={firebase.db} checks={checks}>
+      {(session) => <OfficerConsole session={session} checks={checks} />}
+    </OfficerGate>
   )
 }
