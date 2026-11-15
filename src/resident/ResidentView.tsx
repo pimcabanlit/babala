@@ -73,7 +73,7 @@ export default function ResidentView() {
       <AppBar title={TITLE.resident}>
         <StatusPill pill={syncPill(sync, (ms) => formatShortTime(new Date(ms), openedAt))} />
       </AppBar>
-      <main className={`mx-auto w-full flex-1 px-4 py-5 lg:py-8 ${active ? WIDTH.resident : PHONE_WIDTH}`}>
+      <main id="main" className={`mx-auto w-full flex-1 px-4 py-5 lg:py-8 ${active ? WIDTH.resident : PHONE_WIDTH}`}>
         <h1 className="sr-only">Your typhoon alert</h1>
 
         {/*

@@ -36,7 +36,7 @@ export default function Home() {
       <AppBar home title={TITLE.home}>
         <OfflinePill />
       </AppBar>
-      <main className="flex-1">
+      <main id="main" className="flex-1">
         <section className="overflow-hidden bg-brand text-on-brand">
           {/* On a laptop the padding and headline follow the window's height, so the two ways in below fit on the first screen. */}
           <div className={`relative mx-auto ${WIDTH.home} px-4 py-10 sm:py-12 lg:py-[clamp(1.25rem,4.5vh,4rem)]`}>

@@ -52,7 +52,7 @@ function SignInScreen({ officer, checks }: { officer: ReturnType<typeof useOffic
   return (
     <>
       <AppBar title={TITLE.officer} />
-      <main className="flex-1 px-4 py-10">
+      <main id="main" className="flex-1 px-4 py-10">
         <div className="mx-auto max-w-md rounded-xl border border-outline-variant bg-surface-container-lowest p-6 sm:p-8">
           <img src="/icon.svg" alt="" className="size-12" />
           <h1 className="mt-4 text-headline-sm">Sign in to the officer workspace</h1>

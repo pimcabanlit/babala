@@ -172,7 +172,7 @@ function List({
     <nav aria-label="Saved alerts by area" className="space-y-4">
       {groups.map((group) => (
         <section key={group.area} aria-label={group.area}>
-          <h3 className="px-1 text-title-sm text-on-surface-variant">{group.area}</h3>
+          <h2 className="px-1 text-title-sm text-on-surface-variant">{group.area}</h2>
           <ul className="mt-2 space-y-2">
             {group.alerts.map((alert) => {
               const current = alert.id === selected?.id
@@ -257,9 +257,9 @@ function Detail({
       className="@container scroll-mt-4 rounded-lg border border-outline-variant bg-surface-container-lowest p-4 outline-none sm:p-5"
     >
       <header className="flex flex-wrap items-center gap-2">
-        <h3 id={`${SAVED_DETAIL_ID}-title`} className="text-title-lg">
+        <h2 id={`${SAVED_DETAIL_ID}-title`} className="text-title-lg">
           {title}
-        </h3>
+        </h2>
         <StatusChips alert={alert} />
         {!withdrawn && (
           <Button size="sm" variant="danger-outlined" onClick={() => setWithdrawing(true)} className="ml-auto">

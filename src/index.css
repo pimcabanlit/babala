@@ -149,6 +149,11 @@
     outline-offset: 2px;
   }
 
+  /* "Skip to content" lands here: the next Tab shows where focus went, not a ring round the whole page. */
+  main:focus {
+    outline: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     ::before,

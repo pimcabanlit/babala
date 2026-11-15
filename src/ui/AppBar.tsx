@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { PATHS } from '../route'
 
 /**
@@ -7,6 +7,19 @@ import { PATHS } from '../route'
  * It spans the window on every page, as Google's own apps do, so the logo
  * stays in one place whichever page is open.
  */
+/**
+ * Moves focus to the page's main content (`<main id="main">`), past the bar and
+ * the officer's drawer. Not by following the link: the officer workspace reads
+ * the address's hash as the view to show.
+ */
+function skipToContent(event: MouseEvent<HTMLAnchorElement>) {
+  event.preventDefault()
+  const main = document.querySelector('main')
+  if (!main) return
+  main.tabIndex = -1
+  main.focus()
+}
+
 export default function AppBar({
   title,
   home = false,
@@ -28,7 +41,15 @@ export default function AppBar({
     </>
   )
   return (
-    <header className="bg-brand text-on-brand">
+    <header className="relative bg-brand text-on-brand">
+      <a
+        href="#main"
+        onClick={skipToContent}
+        // Above the window until it has focus, so screen readers still find it.
+        className="absolute top-2 left-4 z-50 flex h-12 -translate-y-20 items-center rounded-full bg-surface-container-lowest px-5 text-label-lg text-primary shadow-md focus:translate-y-0"
+      >
+        Skip to content
+      </a>
       <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
         {leading}
         {home ? (
