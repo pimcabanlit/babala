@@ -31,3 +31,33 @@ export function AssistChip({ className = '', type = 'button', ...rest }: ButtonH
     />
   )
 }
+
+/**
+ * An M3 filter chip: a toggle that narrows a list. A tick marks it as picked,
+ * so the choice never rests on colour alone; screen readers hear "pressed".
+ */
+export function FilterChip({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={`relative inline-flex h-8 items-center gap-1.5 rounded-sm border text-label-lg before:absolute before:inset-x-0 before:top-1/2 before:h-12 before:-translate-y-1/2 ${
+        selected
+          ? 'border-transparent bg-primary-container pr-4 pl-2 text-on-primary-container'
+          : 'border-outline bg-surface-container-lowest px-4 text-on-surface-variant hover:bg-surface-container-low'
+      }`}
+    >
+      {selected && <Icon name="check" className="size-[18px]" />}
+      {children}
+    </button>
+  )
+}

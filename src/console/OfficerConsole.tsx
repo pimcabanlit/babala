@@ -18,11 +18,12 @@ import Drawer from './Drawer'
 import FactSheetEditor from './FactSheetEditor'
 import StormSummary from './StormSummary'
 import Ledger from './Ledger'
-import SavedAlerts from './SavedAlerts'
+import SavedAlerts, { SAVED_DETAIL_ID, type SavedPick } from './SavedAlerts'
 import { attemptLog } from './log'
 import { useDrafts } from './useDrafts'
 import { useHybrid } from './useHybrid'
 import { useLedger } from './useLedger'
+import { ALL_SAVED } from './savedView'
 import { useSavedAlerts } from './useSavedAlerts'
 import { usePublishedTranslations, useTranslations } from './useTranslations'
 import { cloudSummary, deviceSummary, lastOpenStep, modelPill, setupSummary, stepStates, viewFromHash, type Tone, type View } from './workspace'
@@ -56,6 +57,8 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
   const savedAlerts = useSavedAlerts(session.db)
   const ledger = useLedger(session.db)
   const [openEntry, setOpenEntry] = useState<string>()
+  // Kept here, not in the view, so "Next: translate" can open an alert in it.
+  const [savedPick, setSavedPick] = useState<SavedPick>({ filter: ALL_SAVED, selected: undefined })
   const savedList = useMemo(() => (savedAlerts.saved ? [...savedAlerts.saved.byId.values()] : undefined), [savedAlerts.saved])
   const [withdrawErrors, setWithdrawErrors] = useState<Partial<Record<string, string>>>({})
   const [saveErrors, setSaveErrors] = useState<Partial<Record<HouseholdId, string>>>({})
@@ -245,12 +248,15 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
 
   /** Opens a saved alert under *Saved alerts*, where it is translated. */
   function showSavedAlert(id: string) {
+    // Every filter off, so the alert is in the list whatever was picked before.
+    setSavedPick({ filter: ALL_SAVED, selected: id })
     go('saved')
     requestAnimationFrame(() => {
-      const row = document.getElementById(`saved-${id}`)
-      if (!row) return window.scrollTo({ top: 0 })
-      row.scrollIntoView({ block: 'start' })
-      row.focus({ preventScroll: true })
+      const detail = document.getElementById(SAVED_DETAIL_ID)
+      // Under 1024 px the detail sits below the list.
+      if (detail && !window.matchMedia('(min-width: 64rem)').matches) detail.scrollIntoView({ block: 'start' })
+      else window.scrollTo({ top: 0 })
+      detail?.focus({ preventScroll: true })
     })
   }
 
@@ -312,7 +318,8 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:pt-4">
-          <div className="mx-auto max-w-4xl">
+          {/* The saved alerts are wider: a list and the open alert side by side. */}
+          <div className={`mx-auto ${view === 'saved' ? 'max-w-6xl' : 'max-w-4xl'}`}>
             {session.user.method === 'password' && (
               <Notice tone="primary" className="mb-6 lg:mb-3 lg:py-2">
                 This is the shared test officer account for judges. Other judges see what you approve or withdraw, and the ledger
@@ -498,7 +505,11 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
             </div>
 
             <div hidden={view !== 'saved'}>
-              <ViewHeading title="Saved alerts" />
+              <ViewHeading title="Saved alerts">
+                One alert per household and area. Withdrawing one keeps its text and its record, marks it withdrawn so residents no
+                longer get it or its translations, and adds the reason to the ledger. Approving a new alert for the same household and
+                area replaces it, and its translations need publishing again.
+              </ViewHeading>
               <SavedAlerts
                 saved={savedList}
                 unreadable={savedAlerts.saved?.unreadable ?? []}
@@ -507,6 +518,9 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                 withdrawErrors={withdrawErrors}
                 onWithdraw={withdraw}
                 onShowLedger={showLedgerEntry}
+                onCreate={() => openStep(openIndex)}
+                pick={savedPick}
+                onPick={setSavedPick}
                 translations={{
                   published: published.published,
                   error: published.error,
