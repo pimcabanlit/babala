@@ -88,6 +88,10 @@ function checkMissing(text: string, figures: Figure[], sheet: FactSheet, options
             : 'Missing the signal number.',
       })
   }
+  // Every alert for a purok names it, so a resident shown the text alone knows whose alert it is.
+  const area = options.area
+  if (area !== undefined && areaKeys(sheet).has(areaKey(area)) && !findKnownPlaces(text, sheet).some((s) => areaKey(s.text) === areaKey(area)))
+    issues.push({ rule: 'missing', subject: 'area', message: `Missing the area this alert is for (${area}).` })
   if (required.includes('time') && !has('time', sheet.landfallTime))
     issues.push({ rule: 'missing', subject: 'time', message: `Missing the landfall time (${sheet.landfallTime}).` })
   if (required.includes('place') && findCentres(text, sheet).length === 0)
@@ -99,6 +103,30 @@ function checkMissing(text: string, figures: Figure[], sheet: FactSheet, options
       issues.push({ rule: 'missing', subject: 'hotline', message: `Missing the hotline (${sheet.hotline}).` })
   }
   return issues
+}
+
+const areaKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase()
+
+/** The puroks an alert can be for, compared without letter case or extra spaces. */
+const areaKeys = (sheet: FactSheet) => new Set([...sheet.puroks, ...sheet.signals.map((s) => s.area)].map(areaKey))
+
+/**
+ * Rule 2, the alert's own area: a household's alert is for one purok, so it
+ * may not name another. Purok 1 and Purok Ilaya are both under Signal No. 3,
+ * so a draft written for Purok Ilaya passed every rule for Purok 1 (found Nov 15).
+ * The barangay is the whole place, so naming it stays fine.
+ */
+function checkOtherAreas(text: string, sheet: FactSheet, area: string | undefined): Issue[] {
+  const areas = areaKeys(sheet)
+  if (area === undefined || !areas.has(areaKey(area))) return []
+  return findKnownPlaces(text, sheet)
+    .filter((span) => areas.has(areaKey(span.text)) && areaKey(span.text) !== areaKey(area))
+    .map((span) => ({
+      rule: 'places' as const,
+      subject: 'area' as const,
+      message: `“${span.text}” is another area; this alert is for ${area}.`,
+      span,
+    }))
 }
 
 /**
@@ -130,6 +158,7 @@ export function checkDraft(draft: string, sheet: FactSheet, options: CheckOption
     ...checkTimeMeaning(draft, figures, sheet),
     // Placeholders are reported once, not again as unknown places.
     ...checkPlaces(mask(draft, placeholders.flatMap((i) => (i.span ? [i.span] : []))), sheet),
+    ...checkOtherAreas(draft, sheet, options.area),
     ...checkMissing(draft, figures, sheet, options),
     ...checkAddedClaims(draft, sheet.bulletinText, options.claimWords),
     ...checkPlain(draft, options.maxSentences ?? DEFAULT_MAX_SENTENCES, options.maxWords ?? DEFAULT_MAX_WORDS),
