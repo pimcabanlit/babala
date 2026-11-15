@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cloudSummary, deviceSummary, lastOpenStep, modelPill, setupSummary, stepStates, viewFromHash } from './workspace'
+import { cloudSummary, deviceSummary, entryFromHash, hashFor, lastOpenStep, modelPill, setupSummary, stepStates, viewFromHash } from './workspace'
 
 describe('viewFromHash', () => {
   it('opens creating an alert with no hash', () => {
@@ -16,6 +16,43 @@ describe('viewFromHash', () => {
 
   it('opens creating an alert for a hash it doesn’t know', () => {
     expect(viewFromHash('#settings')).toBe('create')
+  })
+
+  it('opens the ledger at one of its entries', () => {
+    expect(viewFromHash('#ledger/Ab12Cd34')).toBe('ledger')
+  })
+
+  it('doesn’t take a hash that only starts like the ledger’s', () => {
+    expect(viewFromHash('#ledgers')).toBe('create')
+  })
+})
+
+describe('entryFromHash', () => {
+  it('reads the entry from #ledger/<entry>', () => {
+    expect(entryFromHash('#ledger/Ab12Cd34')).toBe('Ab12Cd34')
+  })
+
+  it('gives no entry for the ledger’s own address or another view', () => {
+    expect(entryFromHash('#ledger')).toBeUndefined()
+    expect(entryFromHash('#ledger/')).toBeUndefined()
+    expect(entryFromHash('#saved')).toBeUndefined()
+  })
+
+  it('gives no entry for an address that can’t be decoded', () => {
+    expect(entryFromHash('#ledger/%E0%A4%A')).toBeUndefined()
+  })
+})
+
+describe('hashFor', () => {
+  it('gives each view its address, and none for creating an alert', () => {
+    expect(hashFor('create')).toBe('')
+    expect(hashFor('saved')).toBe('#saved')
+    expect(hashFor('ledger')).toBe('#ledger')
+  })
+
+  it('gives a ledger entry an address that reads back as the same entry', () => {
+    expect(hashFor('ledger', 'Ab12Cd34')).toBe('#ledger/Ab12Cd34')
+    expect(entryFromHash(hashFor('ledger', 'a b/c'))).toBe('a b/c')
   })
 })
 

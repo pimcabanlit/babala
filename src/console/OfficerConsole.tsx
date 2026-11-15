@@ -17,7 +17,7 @@ import { approvalsCleared, draftBlockReason, draftsCleared, firstLine, greeting,
 import Drawer from './Drawer'
 import FactSheetEditor from './FactSheetEditor'
 import StormSummary from './StormSummary'
-import Ledger from './Ledger'
+import Ledger, { LEDGER_DETAIL_ID } from './Ledger'
 import SavedAlerts, { SAVED_DETAIL_ID, type SavedPick } from './SavedAlerts'
 import { attemptLog } from './log'
 import { useDrafts } from './useDrafts'
@@ -26,7 +26,7 @@ import { useLedger } from './useLedger'
 import { ALL_SAVED } from './savedView'
 import { useSavedAlerts } from './useSavedAlerts'
 import { usePublishedTranslations, useTranslations } from './useTranslations'
-import { cloudSummary, deviceSummary, lastOpenStep, modelPill, setupSummary, stepStates, viewFromHash, type Tone, type View } from './workspace'
+import { cloudSummary, deviceSummary, lastOpenStep, modelPill, setupSummary, stepStates, entryFromHash, hashFor, viewFromHash, type Tone, type View } from './workspace'
 import AppBar from '../ui/AppBar'
 import Button from '../ui/Button'
 import Dialog from '../ui/Dialog'
@@ -48,7 +48,7 @@ const STEP_IDS = ['step-bulletin', 'step-facts', 'step-drafts'] as const
  */
 export default function OfficerConsole({ session, checks }: { session: OfficerSession; checks: SetupChecks }) {
   const hybrid = useHybrid()
-  const [view, go] = useHashView()
+  const [{ view, entry: openEntry }, go] = useHashRoute()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [step, setStep] = useState(0)
@@ -56,7 +56,6 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
   const [openedHour] = useState(() => new Date().getHours())
   const savedAlerts = useSavedAlerts(session.db)
   const ledger = useLedger(session.db)
-  const [openEntry, setOpenEntry] = useState<string>()
   // Kept here, not in the view, so "Next: translate" can open an alert in it.
   const [savedPick, setSavedPick] = useState<SavedPick>({ filter: ALL_SAVED, selected: undefined })
   const savedList = useMemo(() => (savedAlerts.saved ? [...savedAlerts.saved.byId.values()] : undefined), [savedAlerts.saved])
@@ -260,9 +259,14 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
     })
   }
 
+  /** Opens a ledger entry from a link elsewhere, with focus on it, as a new page would. */
   function showLedgerEntry(id: string) {
-    setOpenEntry(id)
-    go('ledger')
+    go('ledger', id)
+    requestAnimationFrame(() => {
+      // Under 1024 px the ledger brings the entry into view itself.
+      if (window.matchMedia('(min-width: 64rem)').matches) window.scrollTo({ top: 0 })
+      document.getElementById(LEDGER_DETAIL_ID)?.focus({ preventScroll: true })
+    })
   }
 
   const drawer = (
@@ -318,8 +322,8 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:pt-4">
-          {/* The saved alerts are wider: a list and the open alert side by side. */}
-          <div className={`mx-auto ${view === 'saved' ? 'max-w-6xl' : 'max-w-4xl'}`}>
+          {/* Saved alerts and the ledger are wider: a list and the open item side by side. */}
+          <div className={`mx-auto ${view === 'create' ? 'max-w-4xl' : 'max-w-6xl'}`}>
             {session.user.method === 'password' && (
               <Notice tone="primary" className="mb-6 lg:mb-3 lg:py-2">
                 This is the shared test officer account for judges. Other judges see what you approve or withdraw, and the ledger
@@ -533,7 +537,11 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
             </div>
 
             <div hidden={view !== 'ledger'}>
-              <ViewHeading title="Ledger" />
+              <ViewHeading title="Ledger">
+                Every approval, withdrawal and published translation is saved with its record: the facts, each model draft and the
+                checker’s verdict, any hand edit, and who did it when. Records can’t be changed or deleted, so a new approval or a
+                withdrawal changes an alert but not its history.
+              </ViewHeading>
               <Ledger
                 view={ledger.view}
                 error={ledger.error}
@@ -541,7 +549,8 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                 published={published.published}
                 uid={session.uid}
                 openId={openEntry}
-                onOpen={setOpenEntry}
+                onOpen={(id) => go('ledger', id)}
+                onCreate={() => openStep(openIndex)}
               />
             </div>
           </div>
@@ -727,11 +736,19 @@ function ModelPill({ pill, onClick }: { pill: ReturnType<typeof modelPill>; onCl
   )
 }
 
-/** The view in the address, so the back button and a reload keep it: `#saved`, `#ledger`, or nothing for creating an alert. */
-function useHashView(): [View, (view: View) => void] {
-  const [view, setView] = useState(() => viewFromHash(window.location.hash))
+type Route = { view: View; entry: string | undefined }
+
+const routeFromHash = (hash: string): Route => ({ view: viewFromHash(hash), entry: entryFromHash(hash) })
+
+/**
+ * The view in the address, and the ledger entry open in it, so the back button
+ * and a reload keep them: `#saved`, `#ledger`, `#ledger/<entry>`, or nothing
+ * for creating an alert.
+ */
+function useHashRoute(): [Route, (view: View, entry?: string) => void] {
+  const [route, setRoute] = useState(() => routeFromHash(window.location.hash))
   useEffect(() => {
-    const sync = () => setView(viewFromHash(window.location.hash))
+    const sync = () => setRoute(routeFromHash(window.location.hash))
     window.addEventListener('popstate', sync)
     window.addEventListener('hashchange', sync)
     return () => {
@@ -739,13 +756,14 @@ function useHashView(): [View, (view: View) => void] {
       window.removeEventListener('hashchange', sync)
     }
   }, [])
-  function go(next: View) {
-    if (next === viewFromHash(window.location.hash)) return
+  function go(view: View, entry?: string) {
+    const hash = hashFor(view, entry)
+    if (hash === window.location.hash) return
     const { pathname, search } = window.location
-    window.history.pushState(null, '', next === 'create' ? pathname + search : `#${next}`)
-    setView(next)
+    window.history.pushState(null, '', hash || pathname + search)
+    setRoute({ view, entry })
   }
-  return [view, go]
+  return [route, go]
 }
 
 /** Every attempt as plain text, to paste into the thread or a PR. */
