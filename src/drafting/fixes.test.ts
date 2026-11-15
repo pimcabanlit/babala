@@ -19,7 +19,8 @@ describe('editsFor', () => {
     expect(edits(draft)).toEqual([
       'Remove “severe”; the bulletin doesn’t say it.',
       'Change “Signal No. 4” to “Signal No. 3”.',
-      'Remove “Purok 9”; this alert is for Purok 1.',
+      // The draft doesn't name Purok 1, so removing Purok 9 would leave it with no area.
+      'Change “Purok 9” to “Purok 1”.',
       'Change “7 PM” to “6:00 PM”.',
       'Remove “tonight”; the bulletin doesn’t say it.',
       'Remove the emoji “⚠️”.',
@@ -27,6 +28,17 @@ describe('editsFor', () => {
       'Change “municipal Barangay Hall” to “Barangay Hall”.',
       'Replace “[Evacuation Centre]” with “Halimbawa Elementary School gym”.',
       'Change “0917 555 0199” to “0917 555 0100”.',
+    ])
+  })
+
+  it('swaps another purok for the alert’s own, without also adding it', () => {
+    // GOOD_DRAFT is written for Purok Ilaya, which shares Signal No. 3 with Purok 1.
+    expect(edits(GOOD_DRAFT)).toEqual(['Change “Purok Ilaya” to “Purok 1”.'])
+  })
+
+  it('adds the area when the draft names none', () => {
+    expect(edits('Signal No. 3 is raised. Landfall at 6 PM on Nov 14. Go to Barangay Hall and call 0917 555 0100.')).toEqual([
+      'Add the area: “Purok 1”.',
     ])
   })
 

@@ -63,6 +63,7 @@ export function fixFor(issue: Issue, sheet: FactSheet, area: string, centre = sh
       return `Replace “${(quoted(issue.message) ?? found).replace(LEADING_SMALL_WORDS, '')}” with “${centre}”.`
     case 'missing':
       if (issue.subject === 'signal') return `Add “${signalText(sheet, area)} in ${area}”.`
+      if (issue.subject === 'area') return `Add the area: “${area}”.`
       if (issue.subject === 'time') return `Add when: “${whenText(sheet)}”.`
       if (issue.subject === 'place') return `Add where to go: “${sheet.evacuationCentres.join('” or “')}”.`
       if (issue.subject === 'hotline') return `Add the hotline: “${sheet.hotline}”.`
@@ -140,14 +141,20 @@ export function editsFor(issues: Issue[], sheet: FactSheet, area: string, draft:
   const rest = issues.filter((i) => !i.span && i.rule !== 'missing')
   // Two places to fix get two different centres, not "the gym or the gym".
   let centres = 0
+  // A draft that names another purok instead of its own: swap the first one, since removing it would leave no area.
+  const swap = issues.some((i) => i.rule === 'missing' && i.subject === 'area')
+    ? placed.find((i) => i.rule === 'places' && i.subject === 'area')
+    : undefined
   const edits = [...placed, ...rest].map((i) => {
     const centre = sheet.evacuationCentres[centres % sheet.evacuationCentres.length]
     const bare = i.rule === 'figures' && i.subject === 'number' && i.span
     const edit = bare
       ? `Remove “${i.span!.text}” from “${around(draft, i.span!)}”.`
-      : i.subject === 'landfall'
-        ? landfallEdit(i, sheet, area, draft)
-        : fixFor(i, sheet, area, centre)
+      : i === swap
+        ? `Change “${i.span!.text}” to “${area}”.`
+        : i.subject === 'landfall'
+          ? landfallEdit(i, sheet, area, draft)
+          : fixFor(i, sheet, area, centre)
     if (edit.includes(`with “${centre}”`)) centres++
     return edit
   })
@@ -162,6 +169,8 @@ export function editsFor(issues: Issue[], sheet: FactSheet, area: string, draft:
             : undefined
     const values = issue.subject === 'place' ? sheet.evacuationCentres : value ? [value] : []
     if (values.some((v) => edits.some((e) => e.includes(`“${v}`)))) continue
+    // "Add “Signal No. 3 in Purok 1”" and "Change “Purok Ilaya” to “Purok 1”" already name the area.
+    if (issue.subject === 'area' && edits.some((e) => e.includes(`“${area}”`) || e.includes(` in ${area}”`))) continue
     // "Signal No. 2" for an area with Signal No. 3: change it rather than add a second one.
     const otherSignal = issue.subject === 'signal' ? extractFigures(draft).find((f) => f.kind === 'signal') : undefined
     edits.push(otherSignal && value ? `Change “${otherSignal.span.text}” to “${value}”.` : fixFor(issue, sheet, area))

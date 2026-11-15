@@ -68,7 +68,8 @@ const expected3: Record<string, string[]> = {
   'seniors 1: Nano draft': ['places:venue', 'plain:sentences', 'plain:words'],
   // The list markers are formatting, reported once each, not also as the numbers 1 and 3.
   'seniors 2: Nano retry': ['plain:format', 'plain:format', 'plain:format'],
-  'seniors 3: cloud retry': ['figures:phone', 'missing:hotline'],
+  // "raised in Purok ,": the retry took the 1 out of the area's name, so the alert no longer says whose it is.
+  'seniors 3: cloud retry': ['figures:phone', 'missing:area', 'missing:hotline'],
   'families 1: Nano draft': ['plain:sentences', 'plain:words'],
   'families 2: Nano retry': ['plain:sentences'],
   'families 3: cloud retry': [],

@@ -98,6 +98,36 @@ describe('checkDraft on the fictional bulletin', () => {
     expect(flagged(result.issues)).toEqual({ missing: ['Missing the signal number for Purok 2 (Signal No. 2).'] })
   })
 
+  it('rejects a draft that names another purok, even one under the same signal', () => {
+    // GOOD_DRAFT is for Purok Ilaya; Purok 1 is under Signal No. 3 too, so only the place gives it away.
+    const result = checkDraft(GOOD_DRAFT, SAMPLE_SHEET, { ...OPTIONS, area: 'Purok 1' })
+    expect(result.pass).toBe(false)
+    expect(result.issues).toEqual([
+      {
+        rule: 'places',
+        subject: 'area',
+        message: '“Purok Ilaya” is another area; this alert is for Purok 1.',
+        span: { start: 28, end: 39, text: 'Purok Ilaya' },
+      },
+      { rule: 'missing', subject: 'area', message: 'Missing the area this alert is for (Purok 1).' },
+    ])
+  })
+
+  it('rejects another purok named beside the alert’s own', () => {
+    const draft = GOOD_DRAFT.replace('over Purok Ilaya', 'over Purok Ilaya and Purok 1')
+    expect(flagged(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ places: ['Purok 1'] })
+  })
+
+  it('allows the alert’s own purok and its barangay, in any letter case', () => {
+    const draft = GOOD_DRAFT.replace('over Purok Ilaya', 'over purok ilaya, Barangay Halimbawa')
+    expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
+  })
+
+  it('doesn’t judge areas when the alert has no area', () => {
+    const draft = GOOD_DRAFT.replace('over Purok Ilaya', 'over Purok Ilaya and Purok 1')
+    expect(checkDraft(draft, SAMPLE_SHEET, { ...OPTIONS, area: undefined }).issues).toEqual([])
+  })
+
   it('reports an unknown purok once, as a place, not also as a number', () => {
     const result = checkDraft(GOOD_DRAFT.replace('Purok Ilaya', 'Purok 5'), SAMPLE_SHEET, { ...OPTIONS, area: undefined })
     expect(flagged(result.issues)).toEqual({ places: ['Purok 5'] })
@@ -123,7 +153,7 @@ describe('checkDraft on the fictional bulletin', () => {
 
   it('reports each missing fact', () => {
     const result = checkDraft('Please evacuate now.', SAMPLE_SHEET, OPTIONS)
-    expect(result.issues.map((i) => i.rule)).toEqual(['missing', 'missing', 'missing', 'missing'])
+    expect(result.issues.map((i) => i.subject)).toEqual(['signal', 'area', 'time', 'place', 'hotline'])
   })
 
   it('lets a household type skip facts it does not need', () => {
