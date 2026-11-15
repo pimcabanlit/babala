@@ -91,7 +91,7 @@ The dashed line is App Check guarding the cloud calls. `src/ai/` is the only mod
 
 ## Screens
 
-Two users share one web app: a barangay disaster officer on a laptop running Chrome, and residents on any phone browser. Every page has the same full-width app bar at the top, so the logo stays in one place. The home page footer says "Demo, not official guidance. The storm and barangay are fictional."
+Two users share one web app: a barangay disaster officer on a laptop running Chrome, and residents on any phone browser. Every page has the same full-width app bar at the top, so the logo stays in one place, and starts with "Skip to content" for keyboard users, which shows only when it has focus. The home page footer says "Demo, not official guidance. The storm and barangay are fictional."
 
 **Home, at `/`, built.** What Babala is in one line, with faint signal rings beside it on a laptop (decoration only), the two ways in ("View alerts" for residents, "Open workspace" for officers), which fit on the first screen of a laptop from about 600 px tall, a three-step *How it works*, which fits too on a 1280 × 800 full screen, and an "Offline ready" pill once the service worker has saved the app. It loads no Firebase. Each view is its own chunk, loaded with `React.lazy` when it opens (`src/App.tsx`), so the home page stays small and phones never parse the officer console. Any other path shows *Page not found*.
 

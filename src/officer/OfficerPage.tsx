@@ -19,7 +19,7 @@ export default function OfficerPage() {
     return (
       <>
         <AppBar title={TITLE.officer} />
-        <main className="flex-1 px-4 py-10">
+        <main id="main" className="flex-1 px-4 py-10">
           <div className="mx-auto max-w-xl rounded-xl border border-outline-variant bg-surface-container-lowest p-6 sm:p-8">
             <h1 className="text-headline-sm">Set up Firebase first</h1>
             <p className="mt-2 mb-4 text-body-lg text-on-surface-variant">

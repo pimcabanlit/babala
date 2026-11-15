@@ -84,6 +84,16 @@ App Check debug token: the build stops with an error if it would.
 `VITE_FIREBASE_EMULATORS=true` in `.env.local`, `npm run dev` signs in and saves alerts there
 instead of the real project, and the page says so. AI calls still use the real project.
 
+## Design and accessibility
+
+The look follows Google's own: the Google Sans typeface, Material Design 3 colour roles,
+components and shapes (tokens in `src/index.css`, components in `src/ui/`), and no component
+library. Every page starts with "Skip to content", every state has an icon and a word as well as a
+colour, and the pages reflow at 320 px wide and at 200% zoom. On a local production build,
+Lighthouse scores accessibility 100 on the home page, the resident view and the officer sign-in,
+on a phone and a desktop, and axe finds no WCAG 2.2 AA problems on any view of the officer
+workspace ([docs/build-plan.md](docs/build-plan.md), *Phase 4*).
+
 ## Credits
 
 - **Google Sans**, by Google, under the SIL Open Font License 1.1. The font files are served from

@@ -83,7 +83,7 @@ How it works is in [architecture.md](architecture.md), the data and checker rule
 
 **Done when:** a phone with no signal opens its saved alert in the resident's language, and a question gets an answer by one of the three routes (video, 1:15–1:50). Done: deployed and checked on the laptop and an iPhone, Nov 13 (docs/firebase-setup.md, *Follow-ups*).
 
-### Phase 4 — UI and UX redesign (Nov 14–23) · in progress, slices 1 to 5 built
+### Phase 4 — UI and UX redesign (Nov 14–23) · built (slices 1 to 8)
 
 Every feature works, but the app still looks like a test bench: one long page of stacked panels, with the setup checks at the top. Judges score **Design** as "a complete, coherent product experience, not a proof of concept" ([requirements-map.md](requirements-map.md), *Judging criteria*). This phase makes Babala look and feel like a real product: easy to follow, calm, and never overwhelming, without losing a single feature or state.
 
@@ -100,6 +100,16 @@ Pim's three mockups (Nov 13: a home page with a resident entry and an officer en
 **Slice 6, *Saved alerts* (Nov 15).** Built as planned, with four choices made on the way: the view is wider than the others (72rem, not 56rem), so the list and the open alert sit side by side on a laptop, and the translation boxes go side by side when the detail panel, not the screen, is wide enough; the filter chips show a count each, and an area chip clicked again shows every area; the list's Filipino and Cebuano marks are a check or an empty circle with the word, shown on active alerts only, since a withdrawal clears its translations; and "Next: translate" clears the filters, opens that alert and moves focus to it. The withdraw dialog opens with the cursor in the reason box.
 
 **Slice 7, *Ledger* (Nov 15).** Built as planned, with five choices made on the way: the ledger is as wide as *Saved alerts*; every entry has its own address (`#ledger/<id>`), so picking a row, a link in a trace and "See its ledger entry" all work with the back button; with no entry in the address, a laptop shows the newest beside the list, and a phone shows the list alone, then the entry alone with "All entries" (M3's list-detail layout); on a laptop the list scrolls on its own beside a long trace; and "Show the bulletin" and "Show the prompt" stay folded. The trace keeps today's wording. A test officer reloading the page signs in again, as before, and then lands on the same entry.
+
+**Slice 8, *Polish* (Nov 15).** The accessibility pass ran axe 4.14 (WCAG 2.2 AA and best practice) on 22 views and states, at 1280 × 720 and 390 × 844: home, the resident choice sheet and alert, the officer sign-in, each step of *Create an alert*, *Saved alerts*, the withdraw dialog, the ledger and an open entry, *System status* and the phone drawer. It found one problem, the saved alerts' area names skipping a heading level, now fixed. Every page now starts with "Skip to content", hidden above the window until it has focus; it moves focus to `<main id="main">` without changing the address, since the workspace reads its hash as the view. Every page reflows with no sideways scrolling at 640 × 360 (200% zoom of 1280 × 720) and 320 × 640. Lighthouse 12.8 on a local production build (`npm run preview:hosting`), Nov 15:
+
+| Page | Phone: performance, accessibility, best practices | Desktop: performance, accessibility, best practices |
+| --- | --- | --- |
+| `/` | 99, 100, 100 | 100, 100, 100 |
+| `/resident` | 85, 100, 96 | 100, 100, 96 |
+| `/officer` (sign-in) | 85, 100, 96 | 100, 100, 96 |
+
+Best practices lose 4 points on a local build only: its Firebase calls fail without App Check (*Checks* above) and log errors, and the build has no source maps. SEO is 91 on each, for the missing meta description, which `index.html` could add later.
 
 #### Ground rules
 

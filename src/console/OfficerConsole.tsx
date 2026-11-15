@@ -321,7 +321,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
           <div className="sticky top-0 max-h-dvh overflow-y-auto">{drawer}</div>
         </aside>
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:pt-4">
+        <main id="main" className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:pt-4">
           {/* Saved alerts and the ledger are wider: a list and the open item side by side. */}
           <div className={`mx-auto ${view === 'create' ? 'max-w-4xl' : 'max-w-6xl'}`}>
             {session.user.method === 'password' && (

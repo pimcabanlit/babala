@@ -36,7 +36,7 @@ function NotFound() {
   return (
     <>
       <AppBar />
-      <main className={`mx-auto w-full flex-1 px-4 py-8 ${WIDTH['not-found']}`}>
+      <main id="main" className={`mx-auto w-full flex-1 px-4 py-8 ${WIDTH['not-found']}`}>
         <h1 className="text-headline-sm">Page not found</h1>
         <p className="mt-2 text-body-lg text-on-surface-variant">There’s no page at this address.</p>
         <ButtonLink variant="filled" href={PATHS.home} className="mt-6">
@@ -64,7 +64,7 @@ class PageBoundary extends Component<{ page: Exclude<Page, 'home' | 'not-found'>
     return (
       <>
         <AppBar title={TITLE[page]} />
-        <main className={`mx-auto w-full flex-1 px-4 py-8 ${WIDTH[page]}`}>
+        <main id="main" className={`mx-auto w-full flex-1 px-4 py-8 ${WIDTH[page]}`}>
           <Notice tone="error" role="alert">
             <p>Something went wrong opening this page. Check the signal, then reload.</p>
             <Button size="sm" className="mt-3" onClick={() => window.location.reload()}>
