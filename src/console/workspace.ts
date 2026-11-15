@@ -7,11 +7,27 @@ import type { DeviceStatus } from '../ai/deviceStatus'
 
 export type View = 'create' | 'saved' | 'ledger'
 
-/** The view an address opens: `#saved` and `#ledger`, and creating an alert for anything else, so the back button works. */
+/** The view an address opens: `#saved` and `#ledger` (or `#ledger/<entry>`), and creating an alert for anything else, so the back button works. */
 export function viewFromHash(hash: string): View {
   if (hash === '#saved') return 'saved'
-  if (hash === '#ledger') return 'ledger'
+  if (hash === '#ledger' || hash.startsWith('#ledger/')) return 'ledger'
   return 'create'
+}
+
+/** The ledger entry an address opens, from `#ledger/<entry>`, so a link to one survives a reload and the back button. */
+export function entryFromHash(hash: string): string | undefined {
+  if (!hash.startsWith('#ledger/')) return undefined
+  try {
+    return decodeURIComponent(hash.slice('#ledger/'.length)) || undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** The address for a view, and for one ledger entry. */
+export function hashFor(view: View, entry?: string): string {
+  if (view === 'ledger' && entry) return `#ledger/${encodeURIComponent(entry)}`
+  return view === 'create' ? '' : `#${view}`
 }
 
 export type StepState = { state: 'done' | 'current' } | { state: 'locked'; reason: string }
