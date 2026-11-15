@@ -1,16 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SavedAlert } from '../alerts/record'
 import { HOUSEHOLDS } from '../drafting/households'
 import { LEDGER_LIMITS } from '../ledger/record'
 import { formatTime } from './format'
 import { approverLabel } from './ledgerView'
-import { inDisplayOrder } from './savedView'
+import { ALL_SAVED, filterCounts, groupByArea, selectedAlert, type SavedFilter, type SavedStatus } from './savedView'
 import Translations, { type TranslationActions } from './Translations'
 import type { TranslationClaims } from '../firebase/remoteConfig'
+import { LANGUAGES } from '../translation/languages'
 import type { PublishedTranslations } from '../translation/record'
 import Button, { LinkButton } from '../ui/Button'
-import { StatusChip } from '../ui/Chip'
+import { FilterChip, StatusChip } from '../ui/Chip'
+import Dialog from '../ui/Dialog'
+import Icon from '../ui/Icon'
 import Notice from '../ui/Notice'
+
+/** What the officer picked: the filter chips and the alert open in the detail panel. */
+export type SavedPick = { filter: SavedFilter; selected: string | undefined }
 
 type Props = {
   saved: SavedAlert[] | undefined
@@ -23,6 +29,10 @@ type Props = {
   /** Starts a withdrawal; returns why it can't start, or undefined once it is saved on the laptop. */
   onWithdraw: (alert: SavedAlert, reason: string) => string | undefined
   onShowLedger: (ledgerId: string) => void
+  /** Opens *Create an alert*, from the empty state. */
+  onCreate: () => void
+  pick: SavedPick
+  onPick: (pick: SavedPick) => void
   translations: TranslationProps
 }
 
@@ -38,114 +48,237 @@ export type TranslationProps = {
   translationClaims: TranslationClaims | undefined
 }
 
+/** The detail panel's ID, which "Next: translate" in *Create an alert* moves focus to. */
+export const SAVED_DETAIL_ID = 'saved-detail'
+
+const householdLabel = (alert: SavedAlert) => HOUSEHOLDS.find((h) => h.id === alert.household)?.label ?? alert.household
+
 /**
- * Every saved alert, in every area: what residents will get, the place to
- * translate an active one, and the place to withdraw one. It needs no
- * bulletin, so an officer can act on an alert straight after opening the console.
+ * Every saved alert, in every area: a list to pick one from, filtered by
+ * status and area, and beside it (below it on a narrow screen) what residents
+ * get, its translations, and the place to withdraw it. It needs no bulletin,
+ * so an officer can act on an alert straight after opening the console.
  */
-export default function SavedAlerts({ saved, unreadable, error, uid, withdrawErrors, onWithdraw, onShowLedger, translations }: Props) {
+export default function SavedAlerts(props: Props) {
+  const { saved, unreadable, error, pick, onPick, translations } = props
+  const groups = useMemo(() => (saved ? groupByArea(saved, pick.filter) : []), [saved, pick.filter])
+  const selected = selectedAlert(groups, pick.selected)
+
+  function choose(id: string) {
+    onPick({ ...pick, selected: id })
+    // Under 1024 px the detail sits below the list, out of sight: take the officer to it.
+    if (window.matchMedia('(min-width: 64rem)').matches) return
+    requestAnimationFrame(() => {
+      const detail = document.getElementById(SAVED_DETAIL_ID)
+      detail?.scrollIntoView({ block: 'start' })
+      detail?.focus({ preventScroll: true })
+    })
+  }
+
   return (
-    <div className="space-y-3 text-body-md">
-      <p className="text-on-surface-variant">
-        One alert per household and area. Withdrawing one keeps its text and its record, marks it withdrawn so residents no
-        longer get it or its translations, and adds the reason to the ledger. Approving a new alert for the same household and
-        area replaces it, and its translations need publishing again.
-      </p>
+    <div className="space-y-4 text-body-md">
       {translations.error && <Notice tone="error">Couldn’t read the published translations: {translations.error}</Notice>}
       {error && <Notice tone="error">Couldn’t read the saved alerts: {error}</Notice>}
-      {!saved && !error && <p className="text-on-surface-variant">Loading the saved alerts…</p>}
-      {saved && saved.length === 0 && <p className="text-on-surface-variant">No alerts saved yet.</p>}
       {unreadable.length > 0 && (
         <Notice tone="warning">These saved documents aren’t alerts this app can read: {unreadable.join(', ')}.</Notice>
       )}
-      <ul className="space-y-3">
-        {saved &&
-          inDisplayOrder(saved).map((alert) => (
-            <li key={alert.id}>
-              <Row
-                alert={alert}
-                uid={uid}
-                error={withdrawErrors[alert.id]}
-                onWithdraw={(reason) => onWithdraw(alert, reason)}
-                onShowLedger={onShowLedger}
-                translations={translations}
-              />
-            </li>
-          ))}
-      </ul>
+      {!saved && !error && <Loading />}
+      {saved?.length === 0 && <Empty onCreate={props.onCreate} />}
+      {saved && saved.length > 0 && (
+        <>
+          <Filters saved={saved} filter={pick.filter} onFilter={(filter) => onPick({ ...pick, filter })} />
+          {groups.length === 0 ? (
+            <p className="text-on-surface-variant">
+              No saved alerts match these filters.{' '}
+              <LinkButton onClick={() => onPick({ ...pick, filter: ALL_SAVED })}>Show all</LinkButton>
+            </p>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[20rem_minmax(0,1fr)]">
+              <List groups={groups} selected={selected} published={translations.published} onChoose={choose} />
+              {selected && <Detail key={selected.id} {...props} alert={selected} />}
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
 
-function Row({
+const STATUS_LABEL: Record<SavedStatus, string> = { all: 'All', active: 'Active', withdrawn: 'Withdrawn' }
+
+function Filters({ saved, filter, onFilter }: { saved: SavedAlert[]; filter: SavedFilter; onFilter: (filter: SavedFilter) => void }) {
+  const counts = filterCounts(saved, filter)
+  return (
+    <div role="group" aria-label="Filter saved alerts" className="flex flex-wrap items-center gap-2">
+      {(['all', 'active', 'withdrawn'] as const).map((status) => (
+        <FilterChip key={status} selected={filter.status === status} onClick={() => onFilter({ ...filter, status })}>
+          {STATUS_LABEL[status]} <span className="tabular-nums opacity-80">{counts.status[status]}</span>
+        </FilterChip>
+      ))}
+      {counts.areas.length > 1 && (
+        <>
+          <span aria-hidden="true" className="mx-1 h-6 w-px bg-outline-variant max-sm:hidden" />
+          {counts.areas.map(({ area, count }) => (
+            <FilterChip
+              key={area}
+              selected={filter.area === area}
+              // A second click on the picked area shows every area again.
+              onClick={() => onFilter({ ...filter, area: filter.area === area ? undefined : area })}
+            >
+              {area} <span className="tabular-nums opacity-80">{count}</span>
+            </FilterChip>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+function StatusChips({ alert }: { alert: SavedAlert }) {
+  return (
+    <>
+      {alert.withdrawn ? (
+        <StatusChip tone="warning" icon="block">
+          Withdrawn
+        </StatusChip>
+      ) : (
+        <StatusChip tone="success" icon="check_circle">
+          Active
+        </StatusChip>
+      )}
+      {alert.pending && (
+        <StatusChip tone="warning" icon="cloud_upload">
+          Not uploaded yet
+        </StatusChip>
+      )}
+    </>
+  )
+}
+
+const approvedText = (alert: SavedAlert) => (alert.approvedAt ? `Approved ${formatTime(alert.approvedAt)}` : 'Approval time pending')
+
+function List({
+  groups,
+  selected,
+  published,
+  onChoose,
+}: {
+  groups: { area: string; alerts: SavedAlert[] }[]
+  selected: SavedAlert | undefined
+  published: ReadonlyMap<string, PublishedTranslations> | undefined
+  onChoose: (id: string) => void
+}) {
+  return (
+    <nav aria-label="Saved alerts by area" className="space-y-4">
+      {groups.map((group) => (
+        <section key={group.area} aria-label={group.area}>
+          <h3 className="px-1 text-title-sm text-on-surface-variant">{group.area}</h3>
+          <ul className="mt-2 space-y-2">
+            {group.alerts.map((alert) => {
+              const current = alert.id === selected?.id
+              const languages = published?.get(alert.id)
+              return (
+                <li key={alert.id}>
+                  <button
+                    type="button"
+                    id={`saved-${alert.id}`}
+                    aria-pressed={current}
+                    aria-controls={SAVED_DETAIL_ID}
+                    onClick={() => onChoose(alert.id)}
+                    className={`w-full rounded-md border p-3 text-left transition-colors ${
+                      current
+                        ? 'border-transparent bg-primary-container text-on-primary-container'
+                        : 'border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-title-sm">{householdLabel(alert)}</span>
+                      <StatusChip tone={alert.withdrawn ? 'warning' : 'success'} icon={alert.withdrawn ? 'block' : 'check_circle'}>
+                        {alert.withdrawn ? 'Withdrawn' : 'Active'}
+                      </StatusChip>
+                    </span>
+                    <span className="mt-1 flex flex-wrap items-center gap-2 text-body-sm opacity-80">
+                      {approvedText(alert)}
+                      {alert.pending && (
+                        <StatusChip tone="warning" icon="cloud_upload">
+                          Not uploaded yet
+                        </StatusChip>
+                      )}
+                    </span>
+                    {/* A withdrawn alert's translations go with it, so only an active one shows them. */}
+                    {!alert.withdrawn && (
+                      <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-body-sm">
+                        {LANGUAGES.map((language) => {
+                          const done = Boolean(languages?.[language.code])
+                          return (
+                            <span key={language.code} className="inline-flex items-center gap-1">
+                              <Icon
+                                name={done ? 'check_circle' : 'radio_button_unchecked'}
+                                className={`size-4 ${done ? 'text-success' : 'opacity-60'}`}
+                              />
+                              {language.label}
+                              <span className="sr-only">{done ? ': published' : ': not published'}</span>
+                            </span>
+                          )
+                        })}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ))}
+    </nav>
+  )
+}
+
+function Detail({
   alert,
   uid,
-  error,
+  withdrawErrors,
   onWithdraw,
   onShowLedger,
   translations,
-}: {
-  alert: SavedAlert
-  uid: string
-  error: string | undefined
-  onWithdraw: (reason: string) => string | undefined
-  onShowLedger: (ledgerId: string) => void
-  translations: TranslationProps
-}) {
-  const [form, setForm] = useState<{ reason: string; problem?: string }>()
-  const household = HOUSEHOLDS.find((h) => h.id === alert.household)?.label ?? alert.household
+}: Props & { alert: SavedAlert }) {
+  const [withdrawing, setWithdrawing] = useState(false)
   const { withdrawn } = alert
   // A withdrawn alert's latest entry is its withdrawal; otherwise its approval, if it has one.
   const entryId = withdrawn?.ledgerId ?? alert.ledgerId
-
-  function confirm() {
-    if (!form) return
-    const problem = onWithdraw(form.reason)
-    setForm(problem ? { ...form, problem } : undefined)
-  }
+  const error = withdrawErrors[alert.id]
+  const title = `${householdLabel(alert)} · ${alert.area}`
 
   return (
-    <article
-      id={`saved-${alert.id}`}
+    <section
+      id={SAVED_DETAIL_ID}
       tabIndex={-1}
-      aria-label={`${household} · ${alert.area}`}
-      className="scroll-mt-4 rounded-md border border-outline-variant p-4"
+      aria-labelledby={`${SAVED_DETAIL_ID}-title`}
+      className="@container scroll-mt-4 rounded-lg border border-outline-variant bg-surface-container-lowest p-4 outline-none sm:p-5"
     >
       <header className="flex flex-wrap items-center gap-2">
-        <h3 className="text-title-md">
-          {household} · {alert.area}
+        <h3 id={`${SAVED_DETAIL_ID}-title`} className="text-title-lg">
+          {title}
         </h3>
-        {withdrawn ? (
-          <StatusChip tone="warning" icon="block">
-            Withdrawn
-          </StatusChip>
-        ) : (
-          <StatusChip tone="success" icon="check_circle">
-            Active
-          </StatusChip>
-        )}
-        {alert.pending && (
-          <StatusChip tone="warning" icon="cloud_upload">
-            Not uploaded yet
-          </StatusChip>
-        )}
-        {!withdrawn && !form && (
-          <Button size="sm" variant="danger-outlined" onClick={() => setForm({ reason: '' })} className="ml-auto">
+        <StatusChips alert={alert} />
+        {!withdrawn && (
+          <Button size="sm" variant="danger-outlined" onClick={() => setWithdrawing(true)} className="ml-auto">
             Withdraw
           </Button>
         )}
       </header>
-      <p className={`mt-2 whitespace-pre-wrap text-body-lg ${withdrawn ? 'text-on-surface-variant line-through' : ''}`}>{alert.text}</p>
-      <p className="mt-2 text-body-sm text-on-surface-variant">
-        {alert.approvedAt ? `Approved ${formatTime(alert.approvedAt)}` : 'Approval time pending'}
-        {withdrawn &&
-          ` · withdrawn by ${approverLabel(withdrawn.by, uid)}${withdrawn.at ? ` ${formatTime(withdrawn.at)}` : ''}`}
+      <p className="mt-1 text-body-md text-on-surface-variant">
+        {approvedText(alert)}
+        {withdrawn && ` · withdrawn by ${approverLabel(withdrawn.by, uid)}${withdrawn.at ? ` ${formatTime(withdrawn.at)}` : ''}`}
         {' · '}
-        {entryId ? (
-          <LinkButton onClick={() => onShowLedger(entryId)}>See its ledger entry</LinkButton>
-        ) : (
-          'saved before the ledger'
-        )}
+        {entryId ? <LinkButton onClick={() => onShowLedger(entryId)}>See its ledger entry</LinkButton> : 'saved before the ledger'}
+      </p>
+      <p
+        className={`mt-3 rounded-md border-l-4 p-3 text-body-lg whitespace-pre-wrap ${
+          withdrawn ? 'border-outline-variant bg-surface-container text-on-surface-variant line-through' : 'border-error bg-error-container'
+        }`}
+      >
+        {alert.text}
       </p>
       {error && (
         <Notice tone="error" className="mt-3">
@@ -163,30 +296,119 @@ function Row({
           onShowLedger={onShowLedger}
         />
       )}
-      {form && (
-        <div className="mt-3 rounded-md border border-error bg-error-container p-4 text-on-error-container">
-          <label className="block text-body-md font-medium" htmlFor={`reason-${alert.id}`}>
-            Why are you withdrawing it? The reason goes in the ledger only; residents don’t see it.
-          </label>
-          <textarea
-            id={`reason-${alert.id}`}
-            value={form.reason}
-            maxLength={LEDGER_LIMITS.reason}
-            onChange={(e) => setForm({ reason: e.target.value })}
-            rows={2}
-            className="field mt-2"
-          />
-          {form.problem && <p className="mt-2 font-medium">{form.problem}</p>}
-          <div className="mt-3 flex gap-2">
-            <Button size="sm" variant="danger" onClick={confirm}>
-              Withdraw this alert
-            </Button>
-            <Button size="sm" onClick={() => setForm(undefined)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
+      {!withdrawn && (
+        <WithdrawDialog
+          open={withdrawing}
+          title={title}
+          onClose={() => setWithdrawing(false)}
+          onWithdraw={(reason) => onWithdraw(alert, reason)}
+        />
       )}
-    </article>
+    </section>
+  )
+}
+
+/** Asks for the reason, which goes in the ledger only, then withdraws. */
+function WithdrawDialog({
+  open,
+  title,
+  onClose,
+  onWithdraw,
+}: {
+  open: boolean
+  title: string
+  onClose: () => void
+  onWithdraw: (reason: string) => string | undefined
+}) {
+  const [reason, setReason] = useState('')
+  const [problem, setProblem] = useState<string>()
+  const field = useRef<HTMLTextAreaElement>(null)
+
+  // Into the reason box, not the close button: the sheet opens to be filled in.
+  // A frame later, since the sheet's showModal() runs after this effect and moves focus itself.
+  useEffect(() => {
+    if (!open) return
+    const frame = requestAnimationFrame(() => field.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [open])
+
+  function close() {
+    setReason('')
+    setProblem(undefined)
+    onClose()
+  }
+
+  function confirm() {
+    const why = onWithdraw(reason)
+    if (why) {
+      setProblem(why)
+      field.current?.focus()
+    } else close()
+  }
+
+  return (
+    <Dialog open={open} onClose={close} title="Withdraw this alert?" side="bottom">
+      <p className="text-body-md">
+        <span className="font-medium">{title}.</span> Withdrawing it keeps its text and its record, marks it withdrawn so residents no
+        longer get it or its translations, and adds the reason to the ledger.
+      </p>
+      <label className="mt-4 block text-body-md font-medium" htmlFor="withdraw-reason">
+        Why are you withdrawing it? The reason goes in the ledger only; residents don’t see it.
+      </label>
+      <textarea
+        ref={field}
+        id="withdraw-reason"
+        value={reason}
+        maxLength={LEDGER_LIMITS.reason}
+        onChange={(e) => setReason(e.target.value)}
+        rows={3}
+        aria-describedby="withdraw-count"
+        className="field mt-2"
+      />
+      <p id="withdraw-count" className="mt-1 text-right text-body-sm text-on-surface-variant tabular-nums">
+        {reason.length} / {LEDGER_LIMITS.reason}
+      </p>
+      {problem && (
+        <p role="alert" className="mt-2 font-medium text-error">
+          {problem}
+        </p>
+      )}
+      <div className="mt-4 flex justify-end gap-2">
+        <Button variant="text" onClick={close}>
+          Cancel
+        </Button>
+        <Button variant="danger" onClick={confirm}>
+          Withdraw this alert
+        </Button>
+      </div>
+    </Dialog>
+  )
+}
+
+/** Grey blocks in the shape of the list and the detail, while the saved alerts load. */
+function Loading() {
+  return (
+    <div role="status" className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)]">
+      <span className="sr-only">Loading the saved alerts…</span>
+      <div className="space-y-2">
+        <div className="h-8 w-40 animate-pulse rounded-sm bg-surface-container-high" />
+        <div className="h-24 animate-pulse rounded-md bg-surface-container-high" />
+        <div className="h-24 animate-pulse rounded-md bg-surface-container-high" />
+      </div>
+      <div className="hidden h-64 animate-pulse rounded-lg bg-surface-container-high lg:block" />
+    </div>
+  )
+}
+
+function Empty({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div className="rounded-lg border border-dashed border-outline-variant px-6 py-10 text-center">
+      <Icon name="campaign" className="mx-auto size-10 text-on-surface-variant" />
+      <p className="mt-3 text-title-md">No alerts saved yet.</p>
+      <p className="mt-1 text-on-surface-variant">An alert shows here once you approve it, ready to translate or withdraw.</p>
+      <Button variant="filled" onClick={onCreate} className="mt-5">
+        Create an alert
+      </Button>
+    </div>
   )
 }

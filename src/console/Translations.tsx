@@ -68,7 +68,7 @@ export default function Translations(props: Props) {
         <p className="mt-2 text-body-sm text-on-surface-variant">Translating needs the cloud: connect to the internet. You can still type one yourself.</p>
       )}
       {!blocked && (
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div className="mt-3 grid gap-3 @2xl:grid-cols-2">
           {LANGUAGES.map((language) => (
             <LanguageBox key={language.code} {...props} language={language} />
           ))}
