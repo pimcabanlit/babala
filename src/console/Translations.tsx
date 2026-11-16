@@ -49,7 +49,7 @@ export default function Translations(props: Props) {
   return (
     <div className="mt-4 rounded-md bg-surface-container-low p-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h4 className="text-title-sm">Translations</h4>
+        <h3 className="text-title-sm">Translations</h3>
         <span className="text-body-sm text-on-surface-variant">Cloud only, each checked against the English alert, then published by you.</span>
         {!blocked && (
           <Button
@@ -105,9 +105,9 @@ function LanguageBox({
   return (
     <section aria-label={`${language.label} translation`} className="rounded-md border border-outline-variant bg-surface-container-lowest p-3">
       <header className="flex flex-wrap items-center gap-2">
-        <h5 className="text-title-sm">{language.label}</h5>
+        <h4 className="text-title-sm">{language.label}</h4>
         {current ? (
-          <StatusChip tone="success" icon="check_circle">
+          <StatusChip tone="neutral" icon="check_circle">
             Published
           </StatusChip>
         ) : (

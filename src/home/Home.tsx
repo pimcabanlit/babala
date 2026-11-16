@@ -89,7 +89,8 @@ export default function Home() {
             <ol className="mt-6 grid gap-6 md:grid-cols-3 lg:mt-4">
               {STEPS.map((step, i) => (
                 <li key={step.title} className="flex gap-4">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+                  {/* Grey, not blue, so the two ways in above stay the first thing the eye lands on. */}
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant">
                     <Icon name={step.icon} />
                   </span>
                   <div>
