@@ -6,6 +6,7 @@
 import { InferenceSource } from '../ai'
 import type { DeviceStatus } from '../ai/deviceStatus'
 import type { FactSheet, Rule } from '../checker'
+import type { Unconfirmed } from '../factsheet/cloud'
 import { to12h, type FactSheetForm } from '../factsheet/form'
 import type { SignInMethod } from '../officer/status'
 import type { Attempt } from './useDrafts'
@@ -39,13 +40,66 @@ const NOT_FOUND_FIELD: Record<string, keyof FactSheetForm> = {
   'storm name': 'stormName',
   'signal numbers': 'signals',
   'landfall time': 'landfallTime',
+  'landfall date': 'landfallDate',
   'evacuation centres': 'evacuationCentres',
   hotline: 'hotline',
 }
 
-/** The fields that open for the officer to fill in: the facts the bulletin didn't give. */
-export function openFactFields(notFound: string[]): (keyof FactSheetForm)[] {
-  return notFound.map((name) => NOT_FOUND_FIELD[name]).filter((key) => key !== undefined)
+/** The fields that open for the officer to fill in: the facts the bulletin didn't give, or the cloud's that code left out. */
+export function openFactFields(missing: string[]): (keyof FactSheetForm)[] {
+  return missing.map((name) => NOT_FOUND_FIELD[name]).filter((key) => key !== undefined)
+}
+
+/** Every fact the officer must fill in: not found, or left out by the cloud reading's check, each named once. */
+export function missingFacts(notFound: string[], unconfirmed: Unconfirmed[]): string[] {
+  return [...new Set([...notFound, ...unconfirmed.map((u) => u.fact)])]
+}
+
+/** Who read the facts last: plain code on the laptop, or the cloud with code confirming each fact. */
+export type ReadBy = 'code' | 'cloud'
+
+/** Step 1's line once a bulletin is read, with how many facts need filling in. */
+export function bulletinReadText(by: ReadBy, missing: number): string {
+  const facts = `${missing} fact${missing === 1 ? '' : 's'}`
+  if (by === 'cloud') return missing === 0 ? 'Read in the cloud. Every fact was confirmed.' : `Read in the cloud. ${facts} to check.`
+  return missing === 0 ? 'Bulletin read. Every fact was found.' : `Bulletin read. ${facts} ${missing === 1 ? 'wasn’t' : 'weren’t'} found.`
+}
+
+/** Where the cloud reading of the bulletin stands. */
+export type CloudReadStatus =
+  | { state: 'idle' }
+  | { state: 'reading'; startedAt: number }
+  | { state: 'read'; seconds: number; cloudModel: string }
+  | { state: 'failed'; error: string }
+
+/** The line above the fact sheet: who read the facts, or the cloud reading in progress. */
+export function readingLine(by: ReadBy, status: CloudReadStatus, now: number): string {
+  if (status.state === 'reading') return `Reading in the cloud · ${Math.max(0, Math.round((now - status.startedAt) / 1000))} s`
+  if (by === 'code') return 'Read by plain code on this laptop, with no AI.'
+  const how = status.state === 'read' ? ` by ${status.cloudModel} in ${status.seconds.toFixed(1)} s` : ''
+  return `Read in the cloud${how}. Code kept only the facts it found in the bulletin’s own words.`
+}
+
+/** A cloud reading gives up after this: a long bulletin takes the cloud a few seconds. */
+export const CLOUD_READ_TIMEOUT_MS = 60_000
+
+/** Why "Read in the cloud" is off, or undefined when it can run. */
+export function cloudReadBlock(s: { online: boolean; modelReady: boolean; busy: boolean; length: number; maxLength: number }): string | undefined {
+  if (!s.online) return 'Reading in the cloud needs a connection.'
+  if (!s.modelReady) return 'Loading the model settings…'
+  if (s.busy) return 'Wait for the draft in progress.'
+  if (s.length > s.maxLength)
+    return `The bulletin is over ${s.maxLength.toLocaleString('en-US')} characters, the most a saved alert can keep. Paste the part with the signals, landfall and evacuation centres.`
+  return undefined
+}
+
+/** A failed cloud reading as the officer reads it: too slow, busy, or the error itself. */
+export function cloudReadError(err: unknown): string {
+  const name = err instanceof Error ? err.name : ''
+  const message = err instanceof Error ? err.message : String(err)
+  if (name === 'TimeoutError') return `The cloud took longer than ${CLOUD_READ_TIMEOUT_MS / 1000} s, so it was stopped. Try again, or fill the facts in by hand.`
+  if (isBusyError(message)) return 'The cloud is busy right now. Try again shortly.'
+  return `The cloud didn’t read it: ${message}`
 }
 
 /**

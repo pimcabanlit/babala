@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canPrepare, describeDeviceStatus } from '../ai/deviceStatus'
-import { approvedAlert, type SavedAlert } from '../alerts/record'
+import { approvedAlert, LIMITS, type SavedAlert } from '../alerts/record'
 import { newLedgerId, saveApprovedAlert, withdrawAlert } from '../alerts/store'
 import { withdrawalWrites } from '../ledger/record'
-import { SAMPLE_BULLETIN } from '../factsheet/sample'
+import type { CloudReading, Unconfirmed } from '../factsheet/cloud'
+import { LONG_BULLETIN, SAMPLE_BULLETIN } from '../factsheet/sample'
 import { fromForm, toForm, type FactSheetForm } from '../factsheet/form'
 import { parseBulletin } from '../factsheet/parse'
 import { HOUSEHOLDS, type Household, type HouseholdId } from '../drafting/households'
@@ -13,13 +14,25 @@ import type { SetupChecks } from '../officer/useSetupChecks'
 import AccountMenu from './AccountMenu'
 import { unrecordedDrafts, writtenBy } from './approval'
 import AlertBuilder from './AlertBuilder'
-import { approvalsCleared, draftBlockReason, draftsCleared, greeting, openFactFields } from './create'
+import BulletinReading from './BulletinReading'
+import {
+  approvalsCleared,
+  bulletinReadText,
+  cloudReadBlock,
+  draftBlockReason,
+  draftsCleared,
+  greeting,
+  missingFacts,
+  openFactFields,
+  type ReadBy,
+} from './create'
 import Drawer from './Drawer'
 import FactSheetEditor from './FactSheetEditor'
 import StormSummary from './StormSummary'
 import Ledger, { LEDGER_DETAIL_ID } from './Ledger'
 import SavedAlerts, { SAVED_DETAIL_ID, type SavedPick } from './SavedAlerts'
-import { attemptLog } from './log'
+import { attemptLog, readingLog } from './log'
+import { useCloudReading } from './useCloudReading'
 import { useDrafts } from './useDrafts'
 import { useHybrid } from './useHybrid'
 import { useLedger } from './useLedger'
@@ -71,6 +84,9 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
   const closeSnack = useCallback(() => setSnack(undefined), [])
   const [form, setForm] = useState<FactSheetForm>()
   const [notFound, setNotFound] = useState<string[]>([])
+  /** Facts the cloud gave that code couldn't find in the bulletin's words, so they were left out. */
+  const [unconfirmed, setUnconfirmed] = useState<Unconfirmed[]>([])
+  const [readBy, setReadBy] = useState<ReadBy>('code')
   const [confirmed, setConfirmed] = useState(false)
   const [area, setArea] = useState('')
 
@@ -97,6 +113,9 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
     warmPromise: hybrid.warmPromise,
   })
   const busy = HOUSEHOLDS.some((h) => drafts.drafts[h.id].running)
+  const cloudReading = useCloudReading({ model: hybrid.readingModel, cloudModel: hybrid.tunables?.cloudModelName ?? '' })
+  const reading = cloudReading.status.state === 'reading'
+  const missing = missingFacts(notFound, unconfirmed)
 
   /** Shows a snackbar, when there is something to say. */
   function say(text: string | undefined) {
@@ -164,14 +183,18 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
   // A second of resolution is enough for the budget and the timers.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    if (!busy && hybrid.warmUp.state !== 'warming') return
+    if (!busy && !reading && hybrid.warmUp.state !== 'warming') return
     const timer = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(timer)
-  }, [busy, hybrid.warmUp.state])
+  }, [busy, reading, hybrid.warmUp.state])
 
-  function readBulletin(text: string) {
+  /** How many readings have filled the fact sheet, so a cloud answer for an earlier one is dropped. */
+  const readings = useRef(0)
+
+  /** Puts a reading in the fact sheet, for the officer to check: it replaces the facts and clears the drafts. */
+  function applyReading(text: string, result: Pick<CloudReading, 'sheet' | 'unconfirmed'> & { notFound: string[] }, by: ReadBy) {
     const drafted = HOUSEHOLDS.filter((h) => drafts.drafts[h.id].attempts.length > 0 || drafts.drafts[h.id].text.trim() !== '').length
-    const result = parseBulletin(text)
+    readings.current += 1
     setBulletinInput(text)
     setBulletin(text)
     setEditingBulletin(false)
@@ -179,12 +202,40 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
     setEditingFacts(true)
     setForm(toForm(result.sheet))
     setNotFound(result.notFound)
+    setUnconfirmed(result.unconfirmed)
+    setReadBy(by)
     setConfirmed(false)
     setArea(result.sheet.signals[0]?.area ?? '')
     drafts.reset()
     setSaveErrors({})
     say(draftsCleared(drafted))
   }
+
+  /** Reads the bulletin with plain code on the laptop: the demo format, no AI. */
+  function readBulletin(text: string) {
+    cloudReading.reset()
+    applyReading(text, { ...parseBulletin(text), unconfirmed: [] }, 'code')
+  }
+
+  /**
+   * Reads the bulletin in the cloud: the text last read, not the box being
+   * edited. One call per click. Code keeps only the facts it finds in the
+   * bulletin's words; the officer confirms them.
+   */
+  async function readInCloud() {
+    const text = bulletin
+    const seq = readings.current
+    const result = await cloudReading.read(text)
+    // The officer can't read another bulletin meanwhile (the buttons are off), but a stale answer must never land.
+    if (result && readings.current === seq) applyReading(text, result, 'cloud')
+  }
+  const cloudBlock = cloudReadBlock({
+    online: hybrid.online,
+    modelReady: hybrid.readingModel !== undefined,
+    busy,
+    length: bulletin.length,
+    maxLength: LIMITS.bulletinText,
+  })
 
   function editForm(next: FactSheetForm) {
     setForm(next)
@@ -194,7 +245,10 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
 
   const blockReason = !area
     ? 'Choose an area first.'
-    : draftBlockReason({ modelsReady: hybrid.models !== undefined, online: hybrid.online, device: hybrid.device, busy })
+    : reading
+      ? // Its answer replaces the facts and clears the drafts, so a draft started now would be lost.
+        'The cloud is reading the bulletin. Drafting waits for the new facts.'
+      : draftBlockReason({ modelsReady: hybrid.models !== undefined, online: hybrid.online, device: hybrid.device, busy })
 
   const steps = stepStates({
     bulletinRead: form !== undefined,
@@ -215,7 +269,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
   ]
   const activeAlerts = savedList?.filter((a) => !a.withdrawn).length
   const waitingToUpload = savedList?.some((a) => a.pending) ?? false
-  const testLog = HOUSEHOLDS.some((h) => drafts.drafts[h.id].attempts.length > 0)
+  const testLog = HOUSEHOLDS.some((h) => drafts.drafts[h.id].attempts.length > 0) || cloudReading.log
     ? attemptLog(HOUSEHOLDS, drafts.drafts, {
         area,
         cloudModel: hybrid.tunables?.cloudModelName ?? 'none',
@@ -224,7 +278,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
           hybrid.warmUp.state === 'warm'
             ? `warmed up in ${hybrid.warmUp.seconds.toFixed(1)} s (${hybrid.warmUp.source ?? 'unknown source'})`
             : `warm-up ${hybrid.warmUp.state}`,
-      })
+      }) + (cloudReading.log ? `\n${readingLog(cloudReading.log)}` : '')
     : undefined
 
   function openView(next: View) {
@@ -348,10 +402,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                   label: 'Next: Fact sheet',
                   enabled: form !== undefined,
                   hint: 'Read a bulletin to continue.',
-                  done:
-                    notFound.length === 0
-                      ? 'Bulletin read. Every fact was found.'
-                      : `Bulletin read. ${notFound.length} fact${notFound.length === 1 ? ' wasn’t' : 's weren’t'} found.`,
+                  done: bulletinReadText(readBy, missing.length),
                 }}
                 onGo={openStep}
               >
@@ -361,7 +412,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                     <div className="flex items-center gap-3 border-b border-outline-variant py-1 pr-2 pl-4">
                       <Icon name="description" className="size-5 text-on-surface-variant" />
                       <h3 className="flex-1 text-title-sm">The bulletin you read</h3>
-                      <Button variant="text" onClick={() => setEditingBulletin(true)} disabled={busy}>
+                      <Button variant="text" onClick={() => setEditingBulletin(true)} disabled={busy || reading}>
                         <Icon name="edit" className="size-[18px]" />
                         Edit
                       </Button>
@@ -406,11 +457,19 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                       </p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button variant="filled" onClick={() => readBulletin(bulletinInput)} disabled={bulletinInput.trim() === '' || busy}>
+                      <Button
+                        variant="filled"
+                        onClick={() => readBulletin(bulletinInput)}
+                        disabled={bulletinInput.trim() === '' || busy || reading}
+                      >
                         Read bulletin
                       </Button>
-                      <Button variant="text" onClick={() => readBulletin(SAMPLE_BULLETIN)} disabled={busy}>
+                      <Button variant="text" onClick={() => readBulletin(SAMPLE_BULLETIN)} disabled={busy || reading}>
                         Use the demo bulletin
+                      </Button>
+                      {/* Laid out like a real bulletin, so plain code misses facts and the cloud reading has work to do. */}
+                      <Button variant="text" onClick={() => readBulletin(LONG_BULLETIN)} disabled={busy || reading}>
+                        Use the long demo bulletin
                       </Button>
                       {form && (
                         <Button
@@ -437,7 +496,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                     <Button
                       variant="text"
                       onClick={() => setEditingFacts(!editingFacts)}
-                      disabled={busy || (editingFacts && !parsed?.ok)}
+                      disabled={busy || reading || (editingFacts && !parsed?.ok)}
                     >
                       {editingFacts ? <Icon name="check" className="size-[18px]" /> : <Icon name="edit" className="size-[18px]" />}
                       {editingFacts ? 'Done editing' : 'Edit facts'}
@@ -451,12 +510,21 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                   }}
                   onGo={openStep}
                 >
-                  {notFound.length > 0 && (
-                    <Notice tone="warning" className="mb-4">
-                      Not found in the bulletin: {notFound.join(', ')}. Fill these in if the bulletin has them.
-                    </Notice>
-                  )}
-                  <FactSheetEditor form={form} onChange={editForm} open={editingFacts ? 'all' : openFactFields(notFound)} disabled={busy} />
+                  <BulletinReading
+                    by={readBy}
+                    status={cloudReading.status}
+                    now={now}
+                    block={cloudBlock}
+                    notFound={notFound}
+                    unconfirmed={unconfirmed}
+                    onRead={() => void readInCloud()}
+                  />
+                  <FactSheetEditor
+                    form={form}
+                    onChange={editForm}
+                    open={editingFacts ? 'all' : openFactFields(missing)}
+                    disabled={busy || reading}
+                  />
                   {parsed && !parsed.ok && (
                     <Notice tone="error" role="alert" className="mt-4">
                       <ul className="list-disc pl-4">
@@ -471,7 +539,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                       type="checkbox"
                       className="size-[18px] accent-primary"
                       checked={confirmed}
-                      disabled={!parsed?.ok || busy}
+                      disabled={!parsed?.ok || busy || reading}
                       onChange={(e) => {
                         setConfirmed(e.target.checked)
                         clearApprovals('unconfirmed')
@@ -628,7 +696,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
             <TestLog text={testLog} />
           ) : (
             <p className="text-on-surface-variant">
-              {busy ? 'The test log is ready when the drafts finish.' : 'The test log of prompts, answers and problems appears here after a draft.'}
+              {busy ? 'The test log is ready when the drafts finish.' : 'The test log of prompts, answers and problems appears here after a draft or a cloud reading.'}
             </p>
           )}
         </StatusSection>

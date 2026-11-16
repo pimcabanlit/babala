@@ -44,3 +44,28 @@ export function attemptLog(households: Household[], drafts: Record<string, Draft
   }
   return lines.join('\n')
 }
+
+/** The last cloud reading of a bulletin, for the test log. */
+export type ReadingLog = {
+  cloudModel: string
+  source: string | undefined
+  seconds: number
+  /** How it ended: the facts kept and left out, an unreadable answer, or the error. */
+  outcome: string
+  prompt: string
+  raw: string
+}
+
+/** The cloud reading in the test log: its prompt and the model's raw answer, so a real answer can become a test case. */
+export function readingLog(r: ReadingLog): string {
+  return [
+    '',
+    '== Bulletin read in the cloud ==',
+    '',
+    `only_in_cloud → ${r.source ?? 'unknown source'} · ${r.cloudModel} · ${r.seconds.toFixed(1)} s · ${r.outcome}`,
+    'Prompt:',
+    r.prompt,
+    'Raw answer:',
+    r.raw.trim() || '(none)',
+  ].join('\n')
+}

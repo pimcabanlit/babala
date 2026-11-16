@@ -8,6 +8,11 @@ import {
   approvalsCleared,
   attemptError,
   attemptText,
+  bulletinReadText,
+  cloudReadBlock,
+  cloudReadError,
+  missingFacts,
+  readingLine,
   draftBlockReason,
   draftsCleared,
   greeting,
@@ -262,5 +267,80 @@ describe('draftsCleared', () => {
 
   it('counts the drafts a second reading cleared', () => {
     expect(draftsCleared(4)).toBe('Bulletin read again, so the 4 drafts were cleared. Saved alerts stay as they are until you approve new ones.')
+  })
+})
+
+describe('reading a bulletin in the cloud', () => {
+  const can = { online: true, modelReady: true, busy: false, length: 500, maxLength: 20000 }
+
+  it('opens the landfall date for the officer when the cloud’s date was left out', () => {
+    expect(openFactFields(['landfall date'])).toEqual(['landfallDate'])
+  })
+
+  it('names each fact to fill in once, whether not found or left out', () => {
+    const unconfirmed = [
+      { fact: 'hotline' as const, message: 'a' },
+      { fact: 'signal numbers' as const, message: 'b' },
+      { fact: 'signal numbers' as const, message: 'c' },
+    ]
+    expect(missingFacts(['storm name', 'hotline'], unconfirmed)).toEqual(['storm name', 'hotline', 'signal numbers'])
+  })
+
+  it.each([
+    ['code', 0, 'Bulletin read. Every fact was found.'],
+    ['code', 3, 'Bulletin read. 3 facts weren’t found.'],
+    ['cloud', 0, 'Read in the cloud. Every fact was confirmed.'],
+    ['cloud', 1, 'Read in the cloud. 1 fact to check.'],
+  ] as const)('says what reading by %s left with %i facts missing', (by, missing, text) => {
+    expect(bulletinReadText(by, missing)).toBe(text)
+  })
+
+  it('can read when online, with the model loaded and no draft running', () => {
+    expect(cloudReadBlock(can)).toBeUndefined()
+  })
+
+  it('says offline first, since nothing else matters without a connection', () => {
+    expect(cloudReadBlock({ ...can, online: false, modelReady: false })).toBe('Reading in the cloud needs a connection.')
+  })
+
+  it('refuses a bulletin longer than a saved alert can keep', () => {
+    expect(cloudReadBlock({ ...can, length: 20001 })).toMatch(/^The bulletin is over 20,000 characters/)
+  })
+
+  it('waits for a draft in progress, since reading replaces the facts it uses', () => {
+    expect(cloudReadBlock({ ...can, busy: true })).toBe('Wait for the draft in progress.')
+  })
+
+  it('says the cloud took too long when the call timed out', () => {
+    const timeout = new DOMException('signal timed out', 'TimeoutError')
+    expect(cloudReadError(timeout)).toBe('The cloud took longer than 60 s, so it was stopped. Try again, or fill the facts in by hand.')
+  })
+
+  it('says the cloud is busy for a quota error', () => {
+    expect(cloudReadError(new Error('[429] Resource exhausted'))).toBe('The cloud is busy right now. Try again shortly.')
+  })
+
+  it('shows any other error as it is', () => {
+    expect(cloudReadError(new Error('App Check token is invalid'))).toBe('The cloud didn’t read it: App Check token is invalid')
+  })
+
+  it('counts the seconds while the cloud reads', () => {
+    expect(readingLine('code', { state: 'reading', startedAt: 1000 }, 4400)).toBe('Reading in the cloud · 3 s')
+  })
+
+  it('says plain code read it, with no AI', () => {
+    expect(readingLine('code', { state: 'idle' }, 0)).toBe('Read by plain code on this laptop, with no AI.')
+  })
+
+  it('names the cloud model and its time, and that code kept only confirmed facts', () => {
+    expect(readingLine('cloud', { state: 'read', seconds: 2.44, cloudModel: 'gemini-3.5-flash-lite' }, 0)).toBe(
+      'Read in the cloud by gemini-3.5-flash-lite in 2.4 s. Code kept only the facts it found in the bulletin’s own words.',
+    )
+  })
+
+  it('keeps saying the cloud read the facts after a later try fails', () => {
+    expect(readingLine('cloud', { state: 'failed', error: 'x' }, 0)).toBe(
+      'Read in the cloud. Code kept only the facts it found in the bulletin’s own words.',
+    )
   })
 })
