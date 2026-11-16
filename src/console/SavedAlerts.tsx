@@ -135,20 +135,16 @@ function Filters({ saved, filter, onFilter }: { saved: SavedAlert[]; filter: Sav
 }
 
 /**
- * Few colours, so the alert's own text is what the eye goes to: green for an
- * active alert, grey for a withdrawn one, and amber for the one state that
- * needs the officer, an alert that isn't uploaded yet.
+ * The open alert's chips. An active one needs none: its row says so, and
+ * "Withdraw" beside the title shows it. Grey for withdrawn, and amber for the
+ * one state that needs the officer, an alert that isn't uploaded yet.
  */
 function StatusChips({ alert }: { alert: SavedAlert }) {
   return (
     <>
-      {alert.withdrawn ? (
+      {alert.withdrawn && (
         <StatusChip tone="neutral" icon="block">
           Withdrawn
-        </StatusChip>
-      ) : (
-        <StatusChip tone="success" icon="check_circle">
-          Active
         </StatusChip>
       )}
       {alert.pending && (
@@ -198,6 +194,7 @@ function List({
                   >
                     <span className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate text-title-sm">{householdLabel(alert)}</span>
+                      {/* Green for an active alert, grey for a withdrawn one: few colours, so the open alert's text stands out. */}
                       <StatusChip tone={alert.withdrawn ? 'neutral' : 'success'} icon={alert.withdrawn ? 'block' : 'check_circle'}>
                         {alert.withdrawn ? 'Withdrawn' : 'Active'}
                       </StatusChip>
