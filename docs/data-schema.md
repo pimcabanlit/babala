@@ -4,7 +4,7 @@ The data contract for Babala: bulletin, fact sheet, draft, check result, saved a
 
 ## Design principles
 
-- **Facts come from the bulletin, never from a model.** Plain code reads the bulletin into a fact sheet, and the officer confirms every fact. A fact the parser misses is typed in by the officer, never guessed by a model.
+- **Facts come from the bulletin, never from a model.** Plain code reads the bulletin into a fact sheet, and the officer confirms every fact. A free-form bulletin can be read in the cloud, but the model only proposes facts: code keeps those it finds in the bulletin's own words, read from the bulletin's text. A fact neither finds is typed in by the officer, never guessed by a model.
 - **The checker compares, it doesn't judge.** Every figure and place in a draft must be in the fact sheet. Words that add severity, safety, timing or authority are allowed only when the bulletin itself uses them.
 - **One normalized form per figure.** "6 PM", "6:00 p.m.", "18:00" and "alas-6 ng gabi" are the same time. "+63 917…" is the same phone number as "0917…".
 - **The saved alert carries its own evidence.** It is saved with the confirmed fact sheet, the bulletin text included, so it can be re-checked later. It also records which model wrote it, whether the officer edited it, and who approved it when.
@@ -32,7 +32,7 @@ The officer pastes the bulletin as text. `parseBulletin()` (`src/factsheet/parse
 | Fact | What the parser looks for |
 | --- | --- |
 | Storm name | "Typhoon", "Super Typhoon", "Tropical Storm", "Severe Tropical Storm" or "Tropical Depression", then a capitalised name |
-| Signal per area | A sentence with a signal number ("Signal No. 3", "TCWS No. 2") and "over", "for" or "in", then a list of areas. A trailing "of Barangay …" is dropped |
+| Signal per area | A sentence with a signal number ("Signal No. 3", "TCWS No. 2") and "over", "for" or "in", then a list of areas. A trailing "of Barangay …" is dropped. A sentence that says the signal is lifted ("lifted", "lowered", "cancelled" and so on) is skipped |
 | Landfall time and date | The first sentence that says "landfall" |
 | Evacuation centres | The first sentence with "evacuate to" (or "evacuation to"), split on commas, "and" and "or" |
 | Puroks | Every "Purok" plus a number or a capitalised name |
@@ -53,6 +53,31 @@ Strong winds and storm surge of up to 2 meters are possible in coastal puroks.
 Residents must evacuate to Halimbawa Elementary School gym or the Barangay Hall.
 Hotline: 0917 555 0100.
 ```
+
+## Bulletin (free-form, read in the cloud)
+
+"Read in the cloud" sends the bulletin to the cloud model ("only in cloud", temperature 0), which answers in JSON fitting `READING_SCHEMA` (`src/factsheet/cloud.ts`). Every value is to be copied from the bulletin:
+
+| Field | Type | Description given to the model |
+| --- | --- | --- |
+| storm_name | string | The storm's category and name, exactly as the bulletin writes them. Empty if none |
+| signals | list of {signal: integer, areas: list of string, quote: string} | Each wind signal now raised, the areas under it, and the bulletin's words that give them. Lifted signals left out |
+| landfall | {time, date, quote: string} | The landfall time and date as written, and the sentence that gives them. Empty if not given |
+| evacuation_centres | list of string | Each centre residents are told to go to, as the bulletin names it |
+| hotline | string | The number to call, as written. Empty if none |
+
+`confirmReading(answer, bulletin)` turns it into a fact sheet, keeping a fact only when code finds it in the bulletin's own words:
+
+| Fact | Kept when | Taken from |
+| --- | --- | --- |
+| Storm name | It appears in the bulletin, in any letter case or spacing | The bulletin's spelling |
+| Signal per area | The quote's words are in the bulletin in that order (spacing, bullets, punctuation and case aside); the bulletin's text there has exactly one signal number, equal to the model's, and names the area; and it doesn't say "lifted", "lowered", "cancelled", "discontinued", "terminated" or "no longer". An area under two signals keeps neither | The bulletin's spelling of the area, the number from the model once confirmed |
+| Landfall time | The quote is in the bulletin, and one of its sentences about landfall ("landfall", "make land", "hit", "strike") has that time | Normalized `HH:MM` |
+| Landfall date | That same sentence has that date | The date as that sentence writes it |
+| Evacuation centres | Each appears in the bulletin | The bulletin's spelling |
+| Hotline | A phone number in the bulletin has the same digits, or a short number (under 7 digits) appears word for word | The bulletin's text of the number |
+
+Puroks, barangays and other figures are read by plain code (`namedFacts`), as for the demo format, using the confirmed centres. The result also has `notFound` (the facts the model left empty) and `unconfirmed`, one `{fact, message}` per fact the model gave that code couldn't confirm, such as "The cloud gave the hotline “0917 555 0101”, but the bulletin doesn't say it." The console names these and opens their fields. The long demo bulletin, `LONG_BULLETIN` in `src/factsheet/sample.ts`, is the fictional test case: plain code finds only the storm name and landfall in it, and its lifted "Wind Signal No. 1" over Purok Baybay must never be read as raised.
 
 ## Fact sheet
 
