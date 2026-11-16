@@ -135,8 +135,9 @@ function Filters({ saved, filter, onFilter }: { saved: SavedAlert[]; filter: Sav
 }
 
 /**
- * Grey, so the alert's own text is what the eye goes to. Amber is kept for
- * the one state that needs the officer: an alert that isn't uploaded yet.
+ * Few colours, so the alert's own text is what the eye goes to: green for an
+ * active alert, grey for a withdrawn one, and amber for the one state that
+ * needs the officer, an alert that isn't uploaded yet.
  */
 function StatusChips({ alert }: { alert: SavedAlert }) {
   return (
@@ -146,7 +147,7 @@ function StatusChips({ alert }: { alert: SavedAlert }) {
           Withdrawn
         </StatusChip>
       ) : (
-        <StatusChip tone="neutral" icon="check_circle">
+        <StatusChip tone="success" icon="check_circle">
           Active
         </StatusChip>
       )}
@@ -197,7 +198,7 @@ function List({
                   >
                     <span className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate text-title-sm">{householdLabel(alert)}</span>
-                      <StatusChip tone="neutral" icon={alert.withdrawn ? 'block' : 'check_circle'}>
+                      <StatusChip tone={alert.withdrawn ? 'neutral' : 'success'} icon={alert.withdrawn ? 'block' : 'check_circle'}>
                         {alert.withdrawn ? 'Withdrawn' : 'Active'}
                       </StatusChip>
                     </span>
@@ -280,7 +281,7 @@ function Detail({
       </p>
       <p
         className={`mt-3 rounded-md border-l-4 p-3 text-body-lg whitespace-pre-wrap ${
-          withdrawn ? 'border-outline-variant bg-surface-container text-on-surface-variant line-through' : 'border-primary bg-surface-container-low'
+          withdrawn ? 'border-outline-variant bg-surface-container text-on-surface-variant line-through' : 'border-error bg-surface-container-low'
         }`}
       >
         {alert.text}
