@@ -15,7 +15,6 @@ import {
   readingLine,
   draftBlockReason,
   draftsCleared,
-  firstLine,
   greeting,
   historySummary,
   isBusyError,
@@ -268,16 +267,6 @@ describe('draftsCleared', () => {
 
   it('counts the drafts a second reading cleared', () => {
     expect(draftsCleared(4)).toBe('Bulletin read again, so the 4 drafts were cleared. Saved alerts stay as they are until you approve new ones.')
-  })
-})
-
-describe('firstLine', () => {
-  it('gives the bulletin’s first line', () => {
-    expect(firstLine(SAMPLE_BULLETIN)).toBe('DEMO BULLETIN (fictional). Typhoon Sample.')
-  })
-
-  it('skips blank lines before it', () => {
-    expect(firstLine('\n\n  Typhoon Sample.\nSignal No. 3')).toBe('Typhoon Sample.')
   })
 })
 

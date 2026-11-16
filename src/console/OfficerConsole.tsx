@@ -21,7 +21,6 @@ import {
   cloudReadBlock,
   draftBlockReason,
   draftsCleared,
-  firstLine,
   greeting,
   missingFacts,
   openFactFields,
@@ -199,7 +198,8 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
     setBulletinInput(text)
     setBulletin(text)
     setEditingBulletin(false)
-    setEditingFacts(false)
+    // The fact sheet opens as text boxes, so the officer checks and fixes each fact before reading it as a summary.
+    setEditingFacts(true)
     setForm(toForm(result.sheet))
     setNotFound(result.notFound)
     setUnconfirmed(result.unconfirmed)
@@ -407,19 +407,36 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                 onGo={openStep}
               >
                 {form && !editingBulletin ? (
-                  // Once read, the bulletin folds to its first line, so the step's status and Next are what stand out.
-                  <div className="flex items-center gap-3 rounded-md bg-surface-container-low py-2 pr-2 pl-4">
-                    <Icon name="description" className="size-5 text-on-surface-variant" />
-                    <p className="min-w-0 flex-1">
-                      <span className="block truncate text-body-lg">{firstLine(bulletin)}</span>
-                      <span className="block text-body-sm text-on-surface-variant">
-                        {bulletin.trim().split('\n').length} lines read
-                      </span>
-                    </p>
-                    <Button variant="text" onClick={() => setEditingBulletin(true)} disabled={busy || reading}>
-                      <Icon name="edit" className="size-[18px]" />
-                      Edit
-                    </Button>
+                  // Once read, the bulletin stays in view, so the officer can check the facts in the next step against it.
+                  <div className="rounded-md bg-surface-container-low">
+                    <div className="flex items-center gap-3 border-b border-outline-variant py-1 pr-2 pl-4">
+                      <Icon name="description" className="size-5 text-on-surface-variant" />
+                      <h3 className="flex-1 text-title-sm">The bulletin you read</h3>
+                      <Button variant="text" onClick={() => setEditingBulletin(true)} disabled={busy || reading}>
+                        <Icon name="edit" className="size-[18px]" />
+                        Edit
+                      </Button>
+                    </div>
+                    {/*
+                      A long bulletin scrolls inside the box, so Next stays in view above the step's footer on a short laptop
+                      screen; the demo bulletin fits whole. The focus stop lets a keyboard scroll it.
+                    */}
+                    <div
+                      role="region"
+                      aria-label="Bulletin text"
+                      tabIndex={0}
+                      className="max-h-[60vh] overflow-y-auto rounded-b-md px-4 py-3 text-body-md whitespace-pre-wrap lg:max-h-[max(10rem,calc(100vh_-_28rem))]"
+                    >
+                      {/* A line apiece, with a little space between, so a line that wraps on a phone still reads as one. */}
+                      {bulletin
+                        .trim()
+                        .split('\n')
+                        .map((line, i) => (
+                          <span key={i} className="block min-h-5 not-first:mt-1">
+                            {line}
+                          </span>
+                        ))}
+                    </div>
                   </div>
                 ) : (
                   <>

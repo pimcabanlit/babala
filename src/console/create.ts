@@ -200,11 +200,6 @@ export function approvalsCleared(cause: 'facts' | 'unconfirmed' | 'area', count:
   return `${what}, so ${approvals} cleared. Saved alerts stay as they are until you approve new ones.`
 }
 
-/** The first line of a bulletin, for the folded step: what the officer pasted, at a glance. */
-export function firstLine(text: string): string {
-  return text.trim().split('\n')[0]?.trim() ?? ''
-}
-
 /** What the snackbar says when reading a bulletin again clears the drafts, or nothing when there were none. */
 export function draftsCleared(count: number): string | undefined {
   if (count === 0) return undefined

@@ -5,7 +5,7 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from 'react'
  * secondary action; outlined and text are lesser ones; danger is only for
  * confirming something that takes an alert away from residents.
  */
-type ButtonVariant = 'filled' | 'tonal' | 'outlined' | 'text' | 'danger' | 'danger-outlined'
+type ButtonVariant = 'filled' | 'tonal' | 'outlined' | 'text' | 'danger'
 
 /** sm sits in dense rows on the laptop; lg is for phones. Every size keeps a 48 px tap target. */
 type ButtonSize = 'sm' | 'md' | 'lg'
@@ -16,7 +16,6 @@ const VARIANT: Record<ButtonVariant, string> = {
   outlined: 'border border-outline text-primary',
   text: 'text-primary',
   danger: 'bg-error text-on-error hover:shadow-sm',
-  'danger-outlined': 'border border-outline text-error',
 }
 
 const SIZE: Record<ButtonSize, string> = {
