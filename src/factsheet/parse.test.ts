@@ -29,6 +29,11 @@ describe('parseBulletin', () => {
     expect(sheet.otherFigures).toEqual([])
   })
 
+  it('does not read a lifted signal as raised', () => {
+    const { sheet } = parseBulletin(`${SAMPLE_BULLETIN}\nSignal No. 1 has been lifted over Purok Baybay.`)
+    expect(sheet.signals).toEqual(SAMPLE_SHEET.signals)
+  })
+
   it('lists what it could not find, so the officer fills it in', () => {
     const { sheet, notFound } = parseBulletin('Stay alert and wait for the next bulletin.')
     expect(notFound).toEqual(['storm name', 'signal numbers', 'landfall time', 'evacuation centres', 'hotline'])

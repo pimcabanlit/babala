@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { HOUSEHOLDS } from '../drafting/households'
-import { attemptLog } from './log'
+import { attemptLog, readingLog } from './log'
 import type { Draft } from './useDrafts'
 
 const failed: Draft = {
@@ -70,5 +70,30 @@ describe('attemptLog', () => {
     expect(log).toContain(['Answer:', 'A. B.', 'Raw answer:', json].join('\n'))
     const plain = { ...draft, attempts: [{ ...draft.attempts[0], text: 'Leave.', raw: 'Leave.\n' }] }
     expect(attemptLog(HOUSEHOLDS, { general: plain }, { area: 'Purok 1', cloudModel: 'm', device: 'available', warmUp: 'w' })).not.toContain('Raw answer')
+  })
+})
+
+describe('readingLog', () => {
+  it('keeps the prompt and the raw answer, so a real cloud reading can become a test case', () => {
+    const text = readingLog({
+      cloudModel: 'gemini-3.5-flash-lite',
+      source: 'in_cloud',
+      seconds: 2.34,
+      outcome: '0 left out by code, not found: none',
+      prompt: 'Read this typhoon bulletin…',
+      raw: ' {"storm_name": "Typhoon Sample"} ',
+    })
+    expect(text).toBe(
+      [
+        '',
+        '== Bulletin read in the cloud ==',
+        '',
+        'only_in_cloud → in_cloud · gemini-3.5-flash-lite · 2.3 s · 0 left out by code, not found: none',
+        'Prompt:',
+        'Read this typhoon bulletin…',
+        'Raw answer:',
+        '{"storm_name": "Typhoon Sample"}',
+      ].join('\n'),
+    )
   })
 })

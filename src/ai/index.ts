@@ -149,6 +149,34 @@ export async function translateOnce(model: TranslationModel, prompt: string, sig
   return { text: result.response.text(), source: result.response.inferenceSource }
 }
 
+export type ReadingModel = GenerativeModel
+
+/**
+ * The model that reads a free-form bulletin into facts (src/factsheet/cloud.ts):
+ * "only in cloud", because a long bulletin is too much for Gemini Nano on the
+ * laptop in time. Temperature 0: the facts must be the bulletin's own words.
+ * It answers in JSON that fits `jsonSchema`. The cloud model name comes from
+ * Remote Config.
+ */
+export function createReadingModel(app: FirebaseApp, cloudModelName: string, jsonSchema: Record<string, unknown>): ReadingModel {
+  return getGenerativeModel(aiFor(app), {
+    mode: InferenceMode.ONLY_IN_CLOUD,
+    inCloudParams: {
+      model: cloudModelName,
+      generationConfig: { temperature: 0, responseMimeType: 'application/json', responseJsonSchema: jsonSchema },
+    },
+  })
+}
+
+/**
+ * One reading of a bulletin, not streamed: code confirms the whole answer
+ * before the officer sees any fact. One call per click; nothing here retries.
+ */
+export async function readBulletinOnce(model: ReadingModel, prompt: string, signal?: AbortSignal): Promise<StreamResult> {
+  const result = await model.generateContent(prompt, { signal })
+  return { text: result.response.text(), source: result.response.inferenceSource }
+}
+
 /** The two models that answer residents' questions (src/ask/). */
 export type AskModels = { on_device: GenerativeModel; cloud: GenerativeModel }
 

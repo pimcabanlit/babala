@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ALERT_SCHEMA } from '../drafting/structured'
+import { READING_SCHEMA } from '../factsheet/cloud'
 import { TRANSLATION_SCHEMA } from '../translation/prompt'
 import {
   createDraftModels,
+  createReadingModel,
   createTranslationModel,
   prepareOnDeviceModel,
   warmUpOnDevice,
   type DraftModels,
+  type ReadingModel,
   type Source,
   type TranslationModel,
 } from '../ai'
@@ -23,14 +26,15 @@ export type WarmUp =
 const firebase = getFirebase()
 
 /**
- * The console's AI setup: tunables, the two draft models and the translation
- * model, Chrome's on-device
+ * The console's AI setup: tunables, the two draft models, the translation
+ * model and the bulletin reading model, Chrome's on-device
  * status, the network, the download button and the warm-up on open.
  */
 export function useHybrid() {
   const [tunables, setTunables] = useState<Tunables | undefined>(firebase.ok ? undefined : DEFAULT_TUNABLES)
   const [models, setModels] = useState<DraftModels>()
   const [translationModel, setTranslationModel] = useState<TranslationModel>()
+  const [readingModel, setReadingModel] = useState<ReadingModel>()
   const [device, setDevice] = useState<DeviceStatus>('unknown')
   const [online, setOnline] = useState(navigator.onLine)
   const [download, setDownload] = useState<number>()
@@ -62,6 +66,7 @@ export function useHybrid() {
         setTunables(t)
         setModels(m)
         setTranslationModel(createTranslationModel(firebase.app, t.cloudModelName, TRANSLATION_SCHEMA))
+        setReadingModel(createReadingModel(firebase.app, t.cloudModelName, READING_SCHEMA))
         return refreshDevice(m)
       })
     else void readDeviceStatus().then(setDevice)
@@ -91,6 +96,8 @@ export function useHybrid() {
     models,
     /** The cloud-only model for Filipino and Cebuano translations. */
     translationModel,
+    /** The cloud-only model that reads a free-form bulletin into facts. */
+    readingModel,
     device,
     deviceRef,
     online,
