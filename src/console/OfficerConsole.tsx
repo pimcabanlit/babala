@@ -388,7 +388,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
 
             <div hidden={view !== 'create'}>
               <div className="mb-4 lg:mb-3">
-                <h1 className="text-headline-md">{greeting(openedHour, session.user)}</h1>
+                <h1 className="text-headline-sm sm:text-headline-md">{greeting(openedHour, session.user)}</h1>
                 <p className="mt-1 text-body-lg text-on-surface-variant">
                   Create an alert from a storm bulletin. Every fact is checked before you approve it.
                 </p>
@@ -791,7 +791,7 @@ function StepCard({
 function ViewHeading({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="mb-6 lg:mb-4">
-      <h1 className="text-headline-md">{title}</h1>
+      <h1 className="text-headline-sm sm:text-headline-md">{title}</h1>
       {children && <p className="mt-1 text-body-lg text-on-surface-variant">{children}</p>}
     </div>
   )

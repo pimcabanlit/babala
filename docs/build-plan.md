@@ -113,6 +113,8 @@ Best practices lose 4 points on a local build only: its Firebase calls fail with
 
 **Pim's fourth look (Nov 16).** Four changes, the layout kept: *How it works* takes grey icon circles, so the two ways in above it are what the eye lands on first; a bulletin once read (the demo one too) stays in view in full, a line apiece, with "Edit", and a long one scrolls inside its box so Next stays on a short laptop screen; the fact sheet opens as fields to check and fix, and "Done editing" turns it into the two-column list; and *Saved alerts* drops to two colours: blue for what is picked (the row and the filter chip) and the alert text's edge, and amber only for "Not uploaded yet". "Active", "Withdrawn" and "Published" are grey chips, the list's published marks are grey, the alert text sits on grey, not pink, and "Withdraw" is an outlined button: red waits for the dialog that confirms it. The translation headings move up a level, which axe flagged. After the deploy, Pim asked for two colours back: "Active" is green again, and the alert text's edge is red, on the same grey. The open alert drops its "Active" chip, which repeated the row's; "Withdrawn" and "Not uploaded yet" stay.
 
+**Pim's fifth look (Nov 22, on the laptop and an iPhone).** Two changes. The officer workspace's drawer starts with "Home page", since the logo's link home wasn't easy to find (the logo now says "Home page" on hover too); the drawer's items are 48 px tall, not M3's 56, so it still fits above the System status card on a 650 px tall window. And on phones the largest text comes down to the sizes other phone apps use, below 640 px only: "Signal No. 3" 36 to 28 px, the resident's alert text and an answer 22 to 16 px, the hotline number 24 to 22 px, and the officer's page titles 28 to 24 px. The laptop keeps its sizes.
+
 #### Ground rules
 
 - **UI only.** No change to the checker, `src/ai/`, routing, the Firestore rules, data shapes, the ledger or Remote Config. The hooks keep their contracts (`useDrafts`, `useHybrid`, `useSavedAlerts`, `useLedger`, `useTranslations`, `useResidentPack`, `useAsk`, `useOfficer`), and the screens are laid out again around them.
@@ -148,7 +150,7 @@ Until slice 2, `/` was the console. `firebase.json` gets `/officer` rewrites lik
 **Officer workspace.**
 
 - **App bar:** logo, "Officer workspace", a model pill ("On-device model ready", "Downloading 42%", "Warming up · 8 s", "Cloud only", "Offline"), and an account menu (name, email, an "Officer" or "Shared test officer" chip, "Sign out").
-- **Navigation drawer** (288 px, so a locked step's reason fits on one line; a menu button under 1024 px). "Create an alert": **1 Bulletin**, **2 Fact sheet**, **3 Draft and approve**, each marked done, current or locked (with the reason). "Manage": **Saved alerts** (the number active, and a dot while any isn't uploaded) and **Ledger**. At the bottom, a *System status* card with a dot and a word each for the on-device model, the cloud and Firebase. It opens the *System status* panel.
+- **Navigation drawer** (288 px, so a locked step's reason fits on one line; a menu button under 1024 px). **Home page** first, then "Create an alert": **1 Bulletin**, **2 Fact sheet**, **3 Draft and approve**, each marked done, current or locked (with the reason). "Manage": **Saved alerts** (the number active, and a dot while any isn't uploaded) and **Ledger**. At the bottom, a *System status* card with a dot and a word each for the on-device model, the cloud and Firebase. It opens the *System status* panel.
 - **Create an alert** (one step at a time, each with "Step N of 3", Back, and a Next that stays off with the reason until the step is done; the last one's Next opens *Saved alerts*. Built with the frame on Nov 14. The steps' insides below are slice 5, built Nov 15):
   - A greeting ("Good afternoon, Pim", from the Google profile's first name; the test officer gets "Good afternoon" and a banner saying the account is shared and the ledger records what it does) and one line: "Create an alert from a storm bulletin. Every fact is checked before you approve it."
   - A storm summary once the facts are confirmed: "Demo storm · Typhoon Sample · Landfall Nov 14, 6:00 PM", and a chip per area ("Purok Ilaya · Signal 3"). Built only from the confirmed fact sheet.
@@ -166,7 +168,7 @@ Until slice 2, `/` was the console. `firebase.json` gets `/officer` rewrites lik
 - **Header card** in alert red: "Typhoon warning · Barangay Halimbawa", "Signal No. 3", "Purok Ilaya · General households". A withdrawn alert gets a grey card, "Alert withdrawn", with "Don't follow it. Wait for a new alert, and listen to your barangay officials." No alert gets a neutral card: "No alert for General households in Purok Ilaya right now."
 - **Your purok and household:** one bar with both choices and "Change", which opens a sheet with the two lists. On the first visit the sheet is open as the first card: "Choose your purok and household. This phone remembers them."
 - **Language:** segmented buttons for the languages the alert has (English, Filipino, Cebuano). Hidden when there is only English.
-- **Your alert:** the approved text in a highlighted box, large (22/32), with its `lang` attribute.
+- **Your alert:** the approved text in a highlighted box, large (22/32) from 640 px and 16/24 on phones, with its `lang` attribute.
 - **Need help?** The navy hotline card, with the number from the alert (see change 3).
 - **Footer lines:** "Last updated 2:14 PM · Approved by a barangay officer after a code check against the storm bulletin", and whether the page and alerts open with no signal.
 - **Ask about your alert:** as today, restyled. A 48 px field and "Ask" button, example questions as chips, and the route line, cloud answers left and the privacy line in small text. While answering: a progress bar and seconds, with the on-device note. The answer card has a route chip, the answer, the quoted sentences with a left rule, the "written by AI and checked by code" note, and a line for each route that didn't answer.
@@ -210,10 +212,10 @@ Until slice 2, `/` was the console. `firebase.json` gets `/officer` rewrites lik
 
 | Role | Size / line (px) | Used for |
 | --- | --- | --- |
-| Display small | 36/44 | Home headline (Headline large, 32/40, on phones); "Signal No. 3" |
-| Headline medium | 28/36 | Page titles: the greeting, "Saved alerts", "Ledger" |
+| Display small | 36/44 | Home headline (Headline large, 32/40, on phones); "Signal No. 3" (Headline medium, 28/36, on phones) |
+| Headline medium | 28/36 | Page titles: the greeting, "Saved alerts", "Ledger" (Headline small, 24/32, on phones) |
 | Headline small | 24/32 | Card titles: "Source information", "Draft by area and household", "Your household alert" |
-| Title large | 22/28 | The resident's alert text (at 22/32 for reading) |
+| Title large | 22/28 | The resident's alert text and an answer to a question (at 22/32 for reading; Body large on phones); the hotline number on phones |
 | Title medium | 16/24, 500 | List items, tabs, the step names in the drawer |
 | Body large | 16/24 | Body text and every input (16 px also stops iPhones zooming into fields) |
 | Body medium | 14/20 | Officer secondary text |

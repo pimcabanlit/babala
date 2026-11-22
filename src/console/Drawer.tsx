@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { PATHS } from '../route'
 import Icon, { type IconName } from '../ui/Icon'
 import type { StepState, Summary, Tone, View } from './workspace'
 
@@ -13,9 +14,10 @@ const DOT: Record<Tone, string> = {
 }
 
 /**
- * The workspace's navigation: the three steps of creating an alert, each done,
- * current or locked with the reason, then the saved alerts and the ledger,
- * and a summary of the system's state that opens the System status panel.
+ * The workspace's navigation: a way back to the home page, the three steps of
+ * creating an alert, each done, current or locked with the reason, then the
+ * saved alerts and the ledger, and a summary of the system's state that opens
+ * the System status panel.
  */
 export default function Drawer({
   view,
@@ -44,6 +46,11 @@ export default function Drawer({
   return (
     <nav aria-label="Workspace" className="flex min-h-full flex-col gap-6 p-3">
       <div>
+        {/* The logo goes home too, but a named item is easier to find. Leaving clears drafts not yet approved, as the logo does. */}
+        <a href={PATHS.home} className={`${ITEM} mb-1 text-on-surface-variant hover:bg-on-surface/8`}>
+          <NavIcon name="home" />
+          <span className="min-w-0 flex-1">Home page</span>
+        </a>
         <h2 className="px-4 pt-2 pb-1 text-title-sm text-on-surface-variant">Create an alert</h2>
         <ol>
           {STEPS.map((label, i) => {
@@ -137,6 +144,9 @@ function NavIcon({ name }: { name: IconName }) {
   return <Icon name={name} className="size-6" />
 }
 
+// 48 px, not M3's 56, so the Home page item fits with the status card on a 650 px tall laptop window.
+const ITEM = 'flex min-h-12 w-full items-center gap-3 rounded-full px-4 py-2 text-left text-title-sm'
+
 /** An M3 navigation drawer item: a full-width pill, filled while it is the current place. */
 function Item({
   active,
@@ -157,7 +167,7 @@ function Item({
       onClick={onClick}
       disabled={disabled}
       aria-current={active ? 'page' : undefined}
-      className={`flex min-h-14 w-full items-center gap-3 rounded-full px-4 py-2 text-left text-title-sm ${
+      className={`${ITEM} ${
         active ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:bg-on-surface/8'
       } disabled:cursor-not-allowed disabled:hover:bg-transparent`}
     >

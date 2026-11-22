@@ -55,7 +55,7 @@ export default function AppBar({
         {home ? (
           <div className="flex shrink-0 items-center gap-3">{brand}</div>
         ) : (
-          <a href={PATHS.home} className="flex shrink-0 items-center gap-3 rounded-sm focus-visible:outline-on-brand">
+          <a href={PATHS.home} title="Home page" className="flex shrink-0 items-center gap-3 rounded-sm focus-visible:outline-on-brand">
             {brand}
           </a>
         )}
