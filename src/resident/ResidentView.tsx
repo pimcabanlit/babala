@@ -248,7 +248,8 @@ function HeaderCard({
         <Icon name="warning" />
         {alert.stormName}
       </p>
-      <p className="mt-2 text-display-sm font-bold">Signal No. {alert.signal}</p>
+      {/* Phone sizes stay in proportion with other phone apps; the laptop's larger sizes start at 640 px. */}
+      <p className="mt-2 text-headline-md font-bold sm:text-display-sm">Signal No. {alert.signal}</p>
       <p className="mt-1 text-body-lg">
         {area} · {householdLabel(household)} households
       </p>
@@ -284,7 +285,7 @@ function AlertText({
         <h2 id="alert-title" className="text-title-md">
           Your alert
         </h2>
-        <p className="mt-2 rounded-lg border-l-4 border-error bg-error-container p-4 text-title-lg leading-8 text-on-surface lg:flex-1" lang={shown.language}>
+        <p className="mt-2 rounded-lg border-l-4 border-error bg-error-container p-4 text-body-lg text-on-surface sm:text-title-lg sm:leading-8 lg:flex-1" lang={shown.language}>
           {shown.text}
         </p>
         <p className="mt-3 text-body-md text-on-surface-variant">
@@ -306,7 +307,7 @@ function Hotline({ numbers, className = '' }: { numbers: string[]; className?: s
         Need help?
       </h2>
       {numbers.map((n) => (
-        <p key={n} className="mt-2 text-headline-sm font-medium tabular-nums">
+        <p key={n} className="mt-2 text-title-lg font-medium tabular-nums sm:text-headline-sm">
           {n}
         </p>
       ))}

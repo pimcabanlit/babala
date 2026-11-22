@@ -177,7 +177,7 @@ function Outcome({ question, outcome, shown, language }: { question: string; out
       </p>
       {outcome.kind === 'answer' && (
         <>
-          <p className="mt-2 text-title-lg" lang={language}>
+          <p className="mt-2 text-body-lg sm:text-title-lg" lang={language}>
             {outcome.answer}
           </p>
           <Quotes label="From your alert, word for word:" quotes={outcome.quotes} language={language} />
