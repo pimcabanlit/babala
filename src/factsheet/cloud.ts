@@ -31,7 +31,7 @@ export const READING_SCHEMA = {
   properties: {
     storm_name: {
       type: 'string',
-      description: 'The storm’s category and name, exactly as the bulletin writes them, e.g. "Typhoon Sample". Empty if the bulletin gives none.',
+      description: 'The storm’s category and name, exactly as the bulletin writes them, e.g. "Typhoon Katy". Empty if the bulletin gives none.',
     },
     signals: {
       type: 'array',
@@ -43,7 +43,7 @@ export const READING_SCHEMA = {
           areas: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Each area under this signal, exactly as the bulletin writes it, e.g. "Purok 1".',
+            description: 'Each area under this signal, exactly as the bulletin writes it, e.g. "Zone 1".',
           },
           quote: {
             type: 'string',
@@ -79,7 +79,7 @@ export const READING_SCHEMA = {
  */
 export function readingPrompt(bulletin: string): string {
   return [
-    'Read this typhoon bulletin and list the facts a barangay officer needs to warn residents.',
+    'Read this typhoon bulletin and list the facts a village officer needs to warn residents.',
     'Copy every name, number and quote exactly as the bulletin writes it. Do not reword, translate, correct or complete anything.',
     'If the bulletin does not give a fact, leave it empty. Never guess a likely value.',
     'Signals: only the wind signals now raised, each number with the areas under it. Leave out any signal the bulletin says is lifted.',
@@ -290,7 +290,7 @@ function readHotline(said: string, bulletin: string): string | undefined {
 
 /**
  * The fact sheet from the cloud's answer, keeping only what the bulletin's own
- * words hold. Puroks, barangays and other figures are read by plain code, as
+ * words hold. Zones, villages and other figures are read by plain code, as
  * for the demo format.
  */
 export function confirmReading(answer: ReadingAnswer, bulletin: string): CloudReading {

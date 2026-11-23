@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { checkDraft, type Issue } from '../checker'
 import { DAY1_CASES, DAY1_SHEET } from '../checker/fixtures/day1'
-import { GOOD_DRAFT, NANO_HINDI_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
+import { GOOD_DRAFT, NANO_HINDI_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/hillcrest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { around, editsFor, fixFor, landfallPhrase, whenText } from './fixes'
 
 const claimWords = [...CHECKER_CLAIM_WORDS]
 
-function edits(draft: string, sheet = SAMPLE_SHEET, area = 'Purok 1', required?: ('signal' | 'time' | 'place' | 'hotline')[]) {
+function edits(draft: string, sheet = SAMPLE_SHEET, area = 'Zone 1', required?: ('signal' | 'time' | 'place' | 'hotline')[]) {
   const { issues } = checkDraft(draft, sheet, { claimWords, area, ...(required ? { required } : {}) })
   return editsFor(issues, sheet, area, draft)
 }
@@ -15,42 +15,42 @@ function edits(draft: string, sheet = SAMPLE_SHEET, area = 'Purok 1', required?:
 describe('editsFor', () => {
   it('turns every problem into one concrete edit with the fact sheet value, in reading order', () => {
     const draft =
-      'Typhoon Sample is a severe storm! Signal No. 4 is up for Purok 9 and landfall is at 7 PM tonight. ⚠️ **Evacuate** to the municipal Barangay Hall or [Evacuation Centre] and call 0917 555 0199.'
+      'Typhoon Katy is a severe storm! Signal No. 4 is up for Zone 9 and landfall is at 7 PM tonight. ⚠️ **Evacuate** to the municipal Village Hall or [Evacuation Centre] and call 0917 555 0199.'
     expect(edits(draft)).toEqual([
       'Remove “severe”; the bulletin doesn’t say it.',
       'Change “Signal No. 4” to “Signal No. 3”.',
-      // The draft doesn't name Purok 1, so removing Purok 9 would leave it with no area.
-      'Change “Purok 9” to “Purok 1”.',
+      // The draft doesn't name Zone 1, so removing Zone 9 would leave it with no area.
+      'Change “Zone 9” to “Zone 1”.',
       'Change “7 PM” to “6:00 PM”.',
       'Remove “tonight”; the bulletin doesn’t say it.',
       'Remove the emoji “⚠️”.',
       'Write “Evacuate” as plain text, without * or # marks.',
-      'Change “municipal Barangay Hall” to “Barangay Hall”.',
-      'Replace “[Evacuation Centre]” with “Halimbawa Elementary School gym”.',
+      'Change “municipal Village Hall” to “Village Hall”.',
+      'Replace “[Evacuation Centre]” with “Hillcrest Elementary School gym”.',
       'Change “0917 555 0199” to “0917 555 0100”.',
     ])
   })
 
-  it('swaps another purok for the alert’s own, without also adding it', () => {
-    // GOOD_DRAFT is written for Purok Ilaya, which shares Signal No. 3 with Purok 1.
-    expect(edits(GOOD_DRAFT)).toEqual(['Change “Purok Ilaya” to “Purok 1”.'])
+  it('swaps another zone for the alert’s own, without also adding it', () => {
+    // GOOD_DRAFT is written for Zone 2, which shares Signal No. 3 with Zone 1.
+    expect(edits(GOOD_DRAFT)).toEqual(['Change “Zone 2” to “Zone 1”.'])
   })
 
   it('adds the area when the draft names none', () => {
-    expect(edits('Signal No. 3 is raised. Landfall at 6 PM on Nov 14. Go to Barangay Hall and call 0917 555 0100.')).toEqual([
-      'Add the area: “Purok 1”.',
+    expect(edits('Signal No. 3 is raised. Landfall at 6 PM on Nov 14. Go to Village Hall and call 0917 555 0100.')).toEqual([
+      'Add the area: “Zone 1”.',
     ])
   })
 
   it('changes another area’s signal number instead of adding a second one', () => {
-    expect(edits('Signal No. 2 for Purok 1, landfall at 6 PM on Nov 14. Go to Barangay Hall and call 0917 555 0100.')).toEqual([
+    expect(edits('Signal No. 2 for Zone 1, landfall at 6 PM on Nov 14. Go to Village Hall and call 0917 555 0100.')).toEqual([
       'Change “Signal No. 2” to “Signal No. 3”.',
     ])
   })
 
   it('leaves out a missing fact that another edit already puts back', () => {
     // "7 PM" → "6:00 PM" also fixes "missing the landfall time"; same for the signal and hotline.
-    expect(edits('Signal No. 5 for Purok 1. Landfall at 7 PM. Go to Barangay Hall and call 0917 555 0199.')).toEqual([
+    expect(edits('Signal No. 5 for Zone 1. Landfall at 7 PM. Go to Village Hall and call 0917 555 0199.')).toEqual([
       'Change “Signal No. 5” to “Signal No. 3”.',
       'Change “7 PM” to “6:00 PM”.',
       'Change “0917 555 0199” to “0917 555 0100”.',
@@ -58,11 +58,11 @@ describe('editsFor', () => {
   })
 
   it('adds missing facts at the end, after the in-text edits', () => {
-    expect(edits('Typhoon Sample is coming, so please leave tonight.')).toEqual([
+    expect(edits('Typhoon Katy is coming, so please leave tonight.')).toEqual([
       'Remove “tonight”; the bulletin doesn’t say it.',
-      'Add “Signal No. 3 in Purok 1”.',
+      'Add “Signal No. 3 in Zone 1”.',
       'Add when: “6:00 PM on Nov 14”.',
-      'Add where to go: “Halimbawa Elementary School gym” or “Barangay Hall”.',
+      'Add where to go: “Hillcrest Elementary School gym” or “Village Hall”.',
       'Add the hotline: “0917 555 0100”.',
     ])
   })
@@ -81,26 +81,26 @@ describe('editsFor', () => {
   })
 
   it('names a different centre for each place it replaces', () => {
-    expect(edits('Signal No. 3 for Purok 1, landfall at 6 PM. Go to the municipal gym or [Evacuation Centre]. Call 0917 555 0100.')).toEqual([
-      'Replace “municipal gym” with “Halimbawa Elementary School gym”.',
-      'Replace “[Evacuation Centre]” with “Barangay Hall”.',
+    expect(edits('Signal No. 3 for Zone 1, landfall at 6 PM. Go to the municipal gym or [Evacuation Centre]. Call 0917 555 0100.')).toEqual([
+      'Replace “municipal gym” with “Hillcrest Elementary School gym”.',
+      'Replace “[Evacuation Centre]” with “Village Hall”.',
     ])
   })
 
   it('quotes the words around a stray number, so the model removes that one and no other', () => {
-    expect(edits('Signal No. 3 is raised in Purok 1, and Typhoon Sample makes landfall at 6:00 PM on Nov 14. About 25 families must go to Barangay Hall. Call 0917 555 0100.')).toEqual([
+    expect(edits('Signal No. 3 is raised in Zone 1, and Typhoon Katy makes landfall at 6:00 PM on Nov 14. About 25 families must go to Village Hall. Call 0917 555 0100.')).toEqual([
       'Remove “25” from “About 25 families must”.',
     ])
   })
 
   it('asks for nothing when the draft passes', () => {
-    expect(edits(GOOD_DRAFT, SAMPLE_SHEET, 'Purok Ilaya')).toEqual([])
+    expect(edits(GOOD_DRAFT, SAMPLE_SHEET, 'Zone 2')).toEqual([])
   })
 
   it('shortens a long draft and strips Markdown', () => {
-    const long = 'Leave now. '.repeat(4) + 'Signal No. 3 for Purok 1, landfall at 6 PM on Nov 14; go to Barangay Hall or call 0917 555 0100.'
+    const long = 'Leave now. '.repeat(4) + 'Signal No. 3 for Zone 1, landfall at 6 PM on Nov 14; go to Village Hall or call 0917 555 0100.'
     expect(edits(long)).toEqual(['Use at most 3 sentences.'])
-    expect(edits('## Alert\nSignal No. 3 for Purok 1, landfall at 6 PM on Nov 14. Go to Barangay Hall. Call 0917 555 0100.')).toEqual([
+    expect(edits('## Alert\nSignal No. 3 for Zone 1, landfall at 6 PM on Nov 14. Go to Village Hall. Call 0917 555 0100.')).toEqual([
       'Remove “##” from the start of the line.',
     ])
   })
@@ -114,16 +114,16 @@ describe('fixFor', () => {
   const placeholder = (text: string): Issue => ({ rule: 'placeholders', message: '', span: { start: 0, end: text.length, text } })
 
   it('fills a placeholder with the fact its wording names, or removes it', () => {
-    expect(fixFor(placeholder('[Hotline Number]'), SAMPLE_SHEET, 'Purok 1')).toBe('Replace “[Hotline Number]” with “0917 555 0100”.')
-    expect(fixFor(placeholder('[Date]'), SAMPLE_SHEET, 'Purok 1')).toBe('Replace “[Date]” with “Nov 14”.')
-    expect(fixFor(placeholder('[Barangay]'), SAMPLE_SHEET, 'Purok 1')).toBe('Replace “[Barangay]” with “Purok 1, Barangay Halimbawa”.')
-    expect(fixFor(placeholder('TBD'), SAMPLE_SHEET, 'Purok 1')).toBe('Remove “TBD”.')
+    expect(fixFor(placeholder('[Hotline Number]'), SAMPLE_SHEET, 'Zone 1')).toBe('Replace “[Hotline Number]” with “0917 555 0100”.')
+    expect(fixFor(placeholder('[Date]'), SAMPLE_SHEET, 'Zone 1')).toBe('Replace “[Date]” with “Nov 14”.')
+    expect(fixFor(placeholder('[Village]'), SAMPLE_SHEET, 'Zone 1')).toBe('Replace “[Village]” with “Zone 1, Hillcrest Village”.')
+    expect(fixFor(placeholder('TBD'), SAMPLE_SHEET, 'Zone 1')).toBe('Remove “TBD”.')
   })
 
   it('removes a wrong date or phone number when the fact sheet has none', () => {
     const sheet = { ...SAMPLE_SHEET, hotline: '', landfallDate: undefined }
     const { issues } = checkDraft('Call 0917 555 0199 on Nov 15.', sheet, { claimWords, required: [] })
-    expect(issues.map((i) => fixFor(i, sheet, 'Purok 1'))).toEqual(['Remove “0917 555 0199”.', 'Remove “Nov 15”.'])
+    expect(issues.map((i) => fixFor(i, sheet, 'Zone 1'))).toEqual(['Remove “0917 555 0199”.', 'Remove “Nov 15”.'])
   })
 })
 
@@ -159,15 +159,15 @@ describe('landfallPhrase', () => {
   }
 
   it('quotes from the storm’s name to the time, in the same sentence', () => {
-    expect(at('Typhoon Sample has been declared at 6:00 PM on Nov 14.')).toBe('Typhoon Sample has been declared at 6:00 PM')
-    expect(at('Signal No. 3, and typhoon sample is predicted to reach the area at 6:00 PM.')).toBe(
-      'typhoon sample is predicted to reach the area at 6:00 PM',
+    expect(at('Typhoon Katy has been declared at 6:00 PM on Nov 14.')).toBe('Typhoon Katy has been declared at 6:00 PM')
+    expect(at('Signal No. 3, and typhoon katy is predicted to reach the area at 6:00 PM.')).toBe(
+      'typhoon katy is predicted to reach the area at 6:00 PM',
     )
   })
 
   it('gives nothing when the storm isn’t named just before the time', () => {
-    expect(at('Typhoon Sample is coming. Bring food by 6:00 PM.')).toBeUndefined()
-    expect(at('Typhoon Sample, which forecasters have been tracking closely for many days now, arrives at 6:00 PM.')).toBeUndefined()
+    expect(at('Typhoon Katy is coming. Bring food by 6:00 PM.')).toBeUndefined()
+    expect(at('Typhoon Katy, which forecasters have been tracking closely for many days now, arrives at 6:00 PM.')).toBeUndefined()
     expect(landfallPhrase('Leave at 6:00 PM.', { start: 9, end: 16 }, { ...SAMPLE_SHEET, stormName: '' })).toBeUndefined()
   })
 })

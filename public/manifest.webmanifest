@@ -1,7 +1,7 @@
 {
   "name": "Babala typhoon alerts (demo)",
   "short_name": "Babala",
-  "description": "Your barangay's checked typhoon alerts, saved on your phone so they open with no signal. Demo with a fictional storm and barangay.",
+  "description": "Your village's checked typhoon alerts, saved on your phone so they open with no signal. Demo with a fictional storm and village.",
   "start_url": "/resident",
   "scope": "/",
   "display": "standalone",

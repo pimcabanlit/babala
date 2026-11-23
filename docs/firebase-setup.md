@@ -4,6 +4,8 @@ How the Firebase side of Babala was set up, how to check it, and what went wrong
 
 No secrets go in this file: no web app config values, reCAPTCHA keys, App Check debug tokens, user IDs or emails. Use placeholders like `<site-key>`. Agents never deploy or change console settings (`CLAUDE.md`): Pim applies every step here.
 
+The checks logged here before Nov 23 used the old demo names: Typhoon Sample, Barangay Halimbawa, and Purok 1, Purok Ilaya and Purok 2, now Typhoon Katy, Hillcrest Village, and Zone 1, Zone 2 and Zone 3.
+
 ## Current state (Nov 13, 2026)
 
 | Item | Value | Notes |
@@ -248,12 +250,12 @@ On the laptop, in Chrome, at `https://babala-hybrid.web.app`:
 
 On a phone (Chrome on Android, or Safari on iPhone):
 
-1. Open `https://babala-hybrid.web.app/resident` with a signal. Pick a purok and household, and wait until the alert shows.
+1. Open `https://babala-hybrid.web.app/resident` with a signal. Pick a zone and household, and wait until the alert shows.
 2. Optional: install it (Chrome's *Install app*, or Safari's *Share* → *Add to Home Screen*).
 3. Turn on airplane mode (and Wi-Fi off). Close the tab or app completely, then open the page or app again. It opens and shows the saved alert, with the offline status line.
 4. Turn airplane mode off and reload: the status line says *Live*.
 
-**On iPhone, an app added to the Home Screen has its own storage**, separate from Safari's. Open it once from its icon with a signal and pick the purok and household again before it works offline. Opened offline before that, it shows the page with "no alerts are saved on this phone yet".
+**On iPhone, an app added to the Home Screen has its own storage**, separate from Safari's. Open it once from its icon with a signal and pick the zone and household again before it works offline. Opened offline before that, it shows the page with "no alerts are saved on this phone yet".
 
 **Checked Nov 13** (screenshots in the project's `hosting/` folder):
 

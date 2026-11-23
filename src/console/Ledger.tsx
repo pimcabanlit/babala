@@ -158,10 +158,11 @@ function KindIcon({ kind, size = 'size-10' }: { kind: LedgerEntry['kind']; size?
   )
 }
 
+/** The open entry is light grey, not blue, so the row doesn't compete with the entry it opens. */
 const ROW = {
-  open: 'border-transparent bg-primary-container text-on-primary-container',
+  open: 'border-outline-variant bg-surface-container-high text-on-surface',
   beside:
-    'border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low lg:border-transparent lg:bg-primary-container lg:text-on-primary-container lg:hover:bg-primary-container',
+    'border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low lg:bg-surface-container-high lg:text-on-surface lg:hover:bg-surface-container-high',
   none: 'border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low',
 }
 

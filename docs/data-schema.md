@@ -1,6 +1,6 @@
 # Data Schema v1
 
-The data contract for Babala: bulletin, fact sheet, draft, check result, saved alert, ledger, and answers to residents' questions. Every alert is checked against one fact sheet, which the officer confirms from the bulletin. All data is fictional: the storm, barangay, puroks, evacuation centres and hotline in the demo don't exist.
+The data contract for Babala: bulletin, fact sheet, draft, check result, saved alert, ledger, and answers to residents' questions. Every alert is checked against one fact sheet, which the officer confirms from the bulletin. All data is fictional: the storm, village, zones, evacuation centres and hotline in the demo don't exist. The demo uses plain English for judges: a *zone* is a Philippine *purok* and a *village* a *barangay*, and the parser and checker read both pairs of words. The fact sheet keeps the Philippine field names `puroks` and `barangays`, since saved alerts and the Firestore rules use them.
 
 ## Design principles
 
@@ -19,7 +19,7 @@ The data contract for Babala: bulletin, fact sheet, draft, check result, saved a
 | Date | As the bulletin writes it (`Nov 14`, `14 November`); compared as month and day (`11-14`) |
 | Phone | Compared by digits only. A 12-digit number starting `63` equals the same number with a leading `0` |
 | Area key | The area in lower case with accents dropped, and every other run of characters turned into one dash: `Purok Niño 2` becomes `purok-nino-2` |
-| Alert ID | `{household}__{areaKey}`, two underscores: `general__purok-ilaya` |
+| Alert ID | `{household}__{areaKey}`, two underscores: `general__zone-2` |
 | Ledger ID | A 20-character Firestore auto ID made on the laptop, so it works offline: `AbCdEfGhIjKlMnOpQrSt` |
 | Household IDs | `general`, `seniors`, `families`, `fishers` |
 | Source | Which model wrote the approved text: `on_device`, `in_cloud`, `none` (the officer typed it) or `unknown` (the SDK didn't say) |
@@ -32,25 +32,25 @@ The officer pastes the bulletin as text. `parseBulletin()` (`src/factsheet/parse
 | Fact | What the parser looks for |
 | --- | --- |
 | Storm name | "Typhoon", "Super Typhoon", "Tropical Storm", "Severe Tropical Storm" or "Tropical Depression", then a capitalised name |
-| Signal per area | A sentence with a signal number ("Signal No. 3", "TCWS No. 2") and "over", "for" or "in", then a list of areas. A trailing "of Barangay …" is dropped. A sentence that says the signal is lifted ("lifted", "lowered", "cancelled" and so on) is skipped |
+| Signal per area | A sentence with a signal number ("Signal No. 3", "TCWS No. 2") and "over", "for" or "in", then a list of areas. A trailing "of … Village" or "of Barangay …" is dropped. A sentence that says the signal is lifted ("lifted", "lowered", "cancelled" and so on) is skipped |
 | Landfall time and date | The first sentence that says "landfall" |
 | Evacuation centres | The first sentence with "evacuate to" (or "evacuation to"), split on commas, "and" and "or" |
-| Puroks | Every "Purok" plus a number or a capitalised name |
-| Barangays | Every "Barangay" or "Brgy." plus a capitalised name, except when it starts an evacuation centre's name ("Barangay Hall") |
+| Zones (`puroks`) | Every "Zone" or "Purok" plus a number or a capitalised name |
+| Villages (`barangays`) | Every capitalised word followed by "Village" ("Hillcrest Village", but not "The Village Hall"), and every "Barangay" or "Brgy." plus a capitalised name, except when it starts an evacuation centre's name ("Barangay Hall") |
 | Hotline | "hotline", then a phone number |
 | Other figures | Every other number outside those names, such as wind speed and surge height |
 
 The parser also returns `notFound`, which can list: storm name, signal numbers, landfall time, evacuation centres and hotline.
 
-The demo bulletin (`src/checker/fixtures/halimbawa.ts`):
+The demo bulletin (`src/checker/fixtures/hillcrest.ts`):
 
 ```text
-DEMO BULLETIN (fictional). Typhoon Sample.
-Tropical Cyclone Wind Signal No. 3 is raised over Purok 1 and Purok Ilaya of Barangay Halimbawa.
-Signal No. 2 is raised over Purok 2.
-Typhoon Sample is expected to make landfall at 6:00 PM on Nov 14 with maximum winds of 185 km/h.
-Strong winds and storm surge of up to 2 meters are possible in coastal puroks.
-Residents must evacuate to Halimbawa Elementary School gym or the Barangay Hall.
+DEMO BULLETIN (fictional). Typhoon Katy.
+Tropical Cyclone Wind Signal No. 3 is raised over Zone 1 and Zone 2 of Hillcrest Village.
+Signal No. 2 is raised over Zone 3.
+Typhoon Katy is expected to make landfall at 6:00 PM on Nov 14 with maximum winds of 185 km/h.
+Strong winds and storm surge of up to 2 meters are possible in coastal zones.
+Residents must evacuate to Hillcrest Elementary School gym or the Village Hall.
 Hotline: 0917 555 0100.
 ```
 
@@ -77,7 +77,7 @@ Hotline: 0917 555 0100.
 | Evacuation centres | Each appears in the bulletin | The bulletin's spelling |
 | Hotline | A phone number in the bulletin has the same digits, or a short number (under 7 digits) appears word for word | The bulletin's text of the number |
 
-Puroks, barangays and other figures are read by plain code (`namedFacts`), as for the demo format, using the confirmed centres. The result also has `notFound` (the facts the model left empty) and `unconfirmed`, one `{fact, message}` per fact the model gave that code couldn't confirm, such as "The cloud gave the hotline “0917 555 0101”, but the bulletin doesn't say it." The console names these and opens their fields. The long demo bulletin, `LONG_BULLETIN` in `src/factsheet/sample.ts`, is the fictional test case: plain code finds only the storm name and landfall in it, and its lifted "Wind Signal No. 1" over Purok Baybay must never be read as raised.
+Zones, villages and other figures are read by plain code (`namedFacts`), as for the demo format, using the confirmed centres. The result also has `notFound` (the facts the model left empty) and `unconfirmed`, one `{fact, message}` per fact the model gave that code couldn't confirm, such as "The cloud gave the hotline “0917 555 0101”, but the bulletin doesn't say it." The console names these and opens their fields. The long demo bulletin, `LONG_BULLETIN` in `src/factsheet/sample.ts`, is the fictional test case: plain code finds only the storm name and landfall in it, and its lifted "Wind Signal No. 1" over Zone 4 must never be read as raised.
 
 ## Fact sheet
 
@@ -85,21 +85,21 @@ The confirmed facts, as the officer approved them (`FactSheet` in `src/checker/t
 
 | Field | Type | Example | Notes |
 | --- | --- | --- | --- |
-| stormName | string | Typhoon Sample | |
-| signals | list of {area: string, signal: number} | [{area: Purok Ilaya, signal: 3}, …] | Signal number per area. The alert's area sets which signal is required |
+| stormName | string | Typhoon Katy | |
+| signals | list of {area: string, signal: number} | [{area: Zone 2, signal: 3}, …] | Signal number per area. The alert's area sets which signal is required |
 | landfallTime | string | 18:00 | 24-hour `HH:MM` |
 | landfallDate | string, optional | Nov 14 | As written |
-| evacuationCentres | list of string | [Halimbawa Elementary School gym, Barangay Hall] | Written as residents would read them |
-| puroks | list of string | [Purok 1, Purok Ilaya, Purok 2] | |
-| barangays | list of string | [Barangay Halimbawa] | |
+| evacuationCentres | list of string | [Hillcrest Elementary School gym, Village Hall] | Written as residents would read them |
+| puroks | list of string | [Zone 1, Zone 2, Zone 3] | |
+| barangays | list of string | [Hillcrest Village] | |
 | hotline | string | 0917 555 0100 | As written; may be empty |
 | otherFigures | list of number, optional | [185, 2] | Any other figure the bulletin states |
 | bulletinText | string | the bulletin | Claim words are allowed only if they appear here |
 
 **The officer's form** (`FactSheetForm` in `src/factsheet/form.ts`) has one text box per fact:
 
-- Signals are one `Area: number` per line (`Purok Ilaya: 3`).
-- Lists (centres, puroks, barangays) are one item per line.
+- Signals are one `Area: number` per line (`Zone 2: 3`).
+- Lists (centres, zones, villages) are one item per line.
 - The landfall time can be in any spelling the checker reads (`6:00 PM`, `18:00`).
 - Other figures are separated by commas.
 
@@ -185,8 +185,8 @@ Limits: at most 3 sentences, and 45 words in English or 70 in Filipino and Cebua
 No alert reaches a resident unless it passes every rule below and an officer approves it. The checker is plain TypeScript in `src/checker/`, with no Firebase, AI or UI imports. A model never decides a pass or a fail.
 
 1. **Figures match.** Every number, time, date and signal number in the draft appears in the fact sheet. Times are compared in a standard form, so "6 PM", "6:00 PM" and "18:00" all count as the same time. The landfall time may only appear in a sentence about landfall ("landfall", "makes land", "hit", "strike"). So "declared at 6:00 PM" or "bring food by 6:00 PM" fails: right figure, wrong fact. Added Nov 12 after three such answers passed on the laptop.
-2. **Places match.** Every evacuation centre, purok and barangay name matches the fact sheet's list. An alert names no purok but its own. Added Nov 15: Purok 1 and Purok Ilaya are both under Signal No. 3, so a draft written for Purok Ilaya passed every rule for Purok 1.
-3. **Nothing missing.** Each household type's alert includes its required facts: signal number, time, where to go and hotline. Every alert also names the purok it is for (added Nov 15).
+2. **Places match.** Every evacuation centre, zone and village name matches the fact sheet's list. An alert names no zone but its own. Added Nov 15: Zone 1 and Zone 2 are both under Signal No. 3, so a draft written for Zone 2 passed every rule for Zone 1.
+3. **Nothing missing.** Each household type's alert includes its required facts: signal number, time, where to go and hotline. Every alert also names the zone it is for (added Nov 15).
 4. **No placeholders.** Rejects brackets, "TBD", "XXX" and similar. It also rejects prompt wording copied into an alert ("Tell them to…", "Say that…").
 5. **No added claims.** Flags severity and safety words that aren't in the bulletin, such as "severe", "super typhoon", "safe" or "no threat".
 6. **Plain and short.** At most 3 sentences or 60 words, with no emojis, no Markdown, and only Latin letters and the digits 0 to 9. The script rule was added Nov 12 (PR #16) after Nano wrote the Hindi word "कृपया" into an English alert on the laptop and it passed. Filipino and Cebuano use Latin letters too, so translations are held to the same rule, with up to 90 words.
@@ -203,15 +203,15 @@ More detail on each rule:
   - phone numbers by their digits;
   - any other number, including "185km/h" and "1,000".
 
-  A short hotline such as "911" may also appear as a plain number. Numbers inside known place names ("Purok 2") and list markers at the start of a line ("1.") are not figures. A list marker is reported once, by rule 6, as formatting.
-- **Where to go:** a venue word ("gym", "school", "church", "hall" and so on, and in translations "paaralan", "eskwelahan", "simbahan", "bulwagan" and others) outside a known centre name is flagged. So is a known name with a word in front that changes it ("municipal school gym"). "Purok …" and "Barangay …" must be ones the fact sheet covers. "Barangay Captain" and other titles are people, not places; the claim-word list covers them.
+  A short hotline such as "911" may also appear as a plain number. Numbers inside known place names ("Zone 3") and list markers at the start of a line ("1.") are not figures. A list marker is reported once, by rule 6, as formatting.
+- **Where to go:** a venue word ("gym", "school", "church", "hall" and so on, and in translations "paaralan", "eskwelahan", "simbahan", "bulwagan" and others) outside a known centre name is flagged. So is a known name with a word in front that changes it ("municipal school gym"). "Zone …", "… Village", "Purok …" and "Barangay …" must be ones the fact sheet covers, so "Barangay Hillcrest" fails where the fact sheet says "Hillcrest Village". "The Village Hall" and "your village" name no village. "Barangay Captain" and other titles are people, not places; the claim-word list covers them.
 - **Added claims:** the word list is the Remote Config parameter `checker_claim_words`, a JSON array of strings. Its defaults are in `src/config/defaults.ts`, built from the Nov 12 drafts and grouped as severity, hazards, safety and reassurance, timing not stated as a time, and authority. A word is allowed when the bulletin itself uses it, and plurals match.
 - **Claims in translations (rule 7):** an English claim word from rule 5's list is allowed in a translation only when the English alert has it. Each Filipino or Cebuano claim word comes with the English words that back it: "mapanganib" (dangerous) needs "danger", "dangerous" or a word like them in the English alert; "ngayong gabi" and "karong gabii" (tonight) need "tonight"; "ligtas" and "luwas" (safe) need "safe". Each language has its own list, in the Remote Config parameter `checker_translation_claims` (defaults in `TRANSLATION_CLAIMS`, `src/config/defaults.ts`), grouped like rule 5's: severity, hazards, safety, timing and authority. A longer phrase is judged before a word inside it, so "walang panganib" (no danger) is a safety claim, not "panganib" (danger). The lists were written by hand for the demo and need a fluent speaker's review.
-- **Signal, area and hotline:** the household's area sets which signal number is required, and the area itself must be named, in any letter case; another purok from the fact sheet fails, and the barangay may be named too. On a retry, a wrong purok is changed to the right one rather than removed, so the alert isn't left with no area. A bulletin with no hotline doesn't require one.
+- **Signal, area and hotline:** the household's area sets which signal number is required, and the area itself must be named, in any letter case; another zone from the fact sheet fails, and the village may be named too. On a retry, a wrong zone is changed to the right one rather than removed, so the alert isn't left with no area. A bulletin with no hotline doesn't require one.
 - **Placeholders are reported once.** They aren't reported again as unknown places.
 - **Answers (rule 8).** The phone has no fact sheet, so the alert is the source of truth:
   - *Figures* are read by the same code as rule 1 and compared by value, so "6 PM" in an answer matches "6:00 PM" in the alert, and "alas-6 ng gabi" matches both.
-  - *Place names* are read by shape, the same way in the alert and the answer (`placeNames`): a run of capitalised words, numbers and venue words with only spaces between them, holding a venue word or "Purok" or "Barangay", with a leading "the", "sa" or "ang" dropped. The answer's names must each equal one of the alert's, so "the gym", "Halimbawa Municipal Gym" and "Purok 5" fail where the alert says "Halimbawa Elementary School gym" and "Purok Ilaya". "The evacuation centre" names no place.
+  - *Place names* are read by shape, the same way in the alert and the answer (`placeNames`): a run of capitalised words, numbers and venue words with only spaces between them, holding a venue word or an area word ("Zone", "Village", "Purok", "Barangay"), with a leading "the", "sa" or "ang" dropped. The answer's names must each equal one of the alert's, so "the gym", "Hillcrest Municipal Gym" and "Zone 5" fail where the alert says "Hillcrest Elementary School gym" and "Zone 2". "The evacuation centre" names no place.
   - *Claims*: rule 5's words and the "do less" phrases ("stay home", "no need", "not evacuate", "fake", "hindi kailangan", "pabilin sa balay", and so on, `ANSWER_CLAIM_WORDS`) need the same words in the alert. A Filipino or Cebuano claim word needs them in the alert the resident reads, or its English backing in the English alert, as in rule 7.
   - *Own words*: the alert's words, the storm and area names, and a short list of everyday words in the three languages (articles, pronouns, "can", "should", "saan", "asa"…) count as the alert's. "Yes", negations and instructions are not on the list, so a bare "Yes." fails, and so does "Cats are soft and warm."
 - **Known limits:**
@@ -219,7 +219,7 @@ More detail on each rule:
   - The landfall time's meaning (rule 1) is checked in English only. A translation must have the same time, but the checker doesn't read whether its sentence is about landfall.
   - Spelled-out numbers are read only for hours and signal numbers.
   - The only allowed time is the landfall time, so a bulletin with other times needs them added to the fact sheet first.
-  - Rule 8 can't read meaning either: an answer made only of the alert's own words, in a misleading order, could pass. That is why the alert sentences it rests on are quoted under every AI answer, below the alert itself, and the answer says the barangay didn't write it. The "do less" phrases are hand-written and need a fluent speaker's review, like rule 7's.
+  - Rule 8 can't read meaning either: an answer made only of the alert's own words, in a misleading order, could pass. That is why the alert sentences it rests on are quoted under every AI answer, below the alert itself, and the answer says the village officials didn't write it. The "do less" phrases are hand-written and need a fluent speaker's review, like rule 7's.
 
 ## Firestore
 
@@ -239,7 +239,7 @@ Each signed-in user may read only their own entry. Nobody writes the list from t
 | Field | Type | Limit or rule |
 | --- | --- | --- |
 | household | string | `general`, `seniors`, `families` or `fishers` |
-| area | string | 1 to 80 characters, e.g. `Purok Ilaya` |
+| area | string | 1 to 80 characters, e.g. `Zone 2` |
 | areaKey | string | 1 to 80 characters of a-z, 0-9 and single dashes. The document ID must equal `household + "__" + areaKey` |
 | signal | int | 1 to 5. `{area, signal}` must be in `factSheet.signals` |
 | text | string | 1 to 1,000 characters: the alert exactly as the checker passed it, trimmed |
@@ -321,7 +321,7 @@ The rules hold a copy equal to `residentCopy()` of its alert as it is after the 
 
 **Access:** anyone signed in, anonymous residents included, may read a copy or list at most 200 of them (4 households for each of up to 30 areas, fetched in one read). Only officers write, as above.
 
-**On the phone** the copies are read as `PackAlert` (`src/resident/pack.ts`) and the whole set is saved in local storage as the offline pack (`babala.pack.v1`), with the time it came from the server. The resident's purok, household and language are saved as `babala.choice.v1`, and the times of this phone's cloud answers in the last hour as `babala.ask.v1` (a JSON array of ms), for the hourly limit. Questions and answers are never stored. A copy the app can't read is left out and counted.
+**On the phone** the copies are read as `PackAlert` (`src/resident/pack.ts`) and the whole set is saved in local storage as the offline pack (`babala.pack.v1`), with the time it came from the server. The resident's zone, household and language are saved as `babala.choice.v1`, and the times of this phone's cloud answers in the last hour as `babala.ask.v1` (a JSON array of ms), for the hourly limit. Questions and answers are never stored. A copy the app can't read is left out and counted.
 
 **`ledger/{entryId}`.** A locked record of every change to a saved alert: an `approved` entry for each approval, a `withdrawn` entry for each withdrawal and a `translated` entry for each published translation. Written by `src/ledger/record.ts` (`approvalWrites()`, `withdrawalWrites()`) and `src/alerts/store.ts` (`saveApprovedAlert()`, `withdrawAlert()`). The limits are the same in `LEDGER_LIMITS` in `src/ledger/record.ts` and in the rules.
 
@@ -459,7 +459,7 @@ Both ask models answer in JSON that fits one schema (`ASK_SCHEMA` in `src/ask/pr
 
 `readAskAnswer()` keeps only sentence numbers the alert has, each once, in order, and refuses anything that isn't JSON of this shape. An answer is shown only if rule 8 passes it. Nothing about a question is saved, in Firestore or on the phone, except the time of each cloud call (`babala.ask.v1`).
 
-For the General alert in Purok Ilaya (`GOOD_DRAFT`), "Where do we go?" answered `{"in_alert": true, "sentences": [2], "answer": "Evacuate now to Halimbawa Elementary School gym."}` passes, and the phone quotes sentence 2 under it. "Evacuate now to the church." fails with “church” is not a place your alert names, and "The storm is weak and you can stay home." fails with “weak” and “stay home” not in the alert, and too many words that aren't in it.
+For the General alert in Zone 2 (`GOOD_DRAFT`), "Where do we go?" answered `{"in_alert": true, "sentences": [2], "answer": "Evacuate now to Hillcrest Elementary School gym."}` passes, and the phone quotes sentence 2 under it. "Evacuate now to the church." fails with “church” is not a place your alert names, and "The storm is weak and you can stay home." fails with “weak” and “stay home” not in the alert, and too many words that aren't in it.
 
 ## Worked example
 
@@ -467,36 +467,36 @@ From the demo bulletin above, `parseBulletin()` gives this fact sheet, with noth
 
 ```json
 {
-  "stormName": "Typhoon Sample",
+  "stormName": "Typhoon Katy",
   "signals": [
-    { "area": "Purok 1", "signal": 3 },
-    { "area": "Purok Ilaya", "signal": 3 },
-    { "area": "Purok 2", "signal": 2 }
+    { "area": "Zone 1", "signal": 3 },
+    { "area": "Zone 2", "signal": 3 },
+    { "area": "Zone 3", "signal": 2 }
   ],
   "landfallTime": "18:00",
   "landfallDate": "Nov 14",
-  "evacuationCentres": ["Halimbawa Elementary School gym", "Barangay Hall"],
-  "puroks": ["Purok 1", "Purok Ilaya", "Purok 2"],
-  "barangays": ["Barangay Halimbawa"],
+  "evacuationCentres": ["Hillcrest Elementary School gym", "Village Hall"],
+  "puroks": ["Zone 1", "Zone 2", "Zone 3"],
+  "barangays": ["Hillcrest Village"],
   "hotline": "0917 555 0100",
   "otherFigures": [185, 2],
-  "bulletinText": "DEMO BULLETIN (fictional). Typhoon Sample. …"
+  "bulletinText": "DEMO BULLETIN (fictional). Typhoon Katy. …"
 }
 ```
 
-The draft prompt for the General household in Purok Ilaya:
+The draft prompt for the General household in Zone 2:
 
 ```text
-Write a typhoon alert for all residents in Purok Ilaya, Barangay Halimbawa. Fill in each field with one sentence. You may reword these sentences a little, but keep every name, number and time exactly as written:
-signal_and_landfall: Signal No. 3 is raised in Purok Ilaya, and Typhoon Sample makes landfall at 6:00 PM on Nov 14.
-what_to_do_and_where_to_go: Leave now, and go to Halimbawa Elementary School gym or Barangay Hall.
+Write a typhoon alert for all residents in Zone 2, Hillcrest Village. Fill in each field with one sentence. You may reword these sentences a little, but keep every name, number and time exactly as written:
+signal_and_landfall: Signal No. 3 is raised in Zone 2, and Typhoon Katy makes landfall at 6:00 PM on Nov 14.
+what_to_do_and_where_to_go: Leave now, and go to Hillcrest Elementary School gym or Village Hall.
 hotline: Call the hotline, 0917 555 0100, for help.
 Do not add other numbers, places, times or dates, and do not describe how strong the storm is. No emojis, no Markdown, no brackets.
 ```
 
 A failing draft and what the checker says:
 
-> Signal No. 3 is raised over Purok Ilaya, and a severe typhoon makes landfall at 6 PM tonight. Evacuate to the [School Name] gym. Call 0917 555 0100.
+> Signal No. 3 is raised over Zone 2, and a severe typhoon makes landfall at 6 PM tonight. Evacuate to the [School Name] gym. Call 0917 555 0100.
 
 | Rule | Subject | Message |
 | --- | --- | --- |
@@ -506,21 +506,21 @@ A failing draft and what the checker says:
 | added-claims | — | “severe” is not in the bulletin. |
 | added-claims | — | “tonight” is not in the bulletin. |
 
-A missing fact makes the problem structural, so the retry gives the outline again with the remaining edits: "Remove “severe”; the bulletin doesn’t say it.", "Remove “tonight”; the bulletin doesn’t say it." and "Replace “[School Name]” with “Halimbawa Elementary School gym”."
+A missing fact makes the problem structural, so the retry gives the outline again with the remaining edits: "Remove “severe”; the bulletin doesn’t say it.", "Remove “tonight”; the bulletin doesn’t say it." and "Replace “[School Name]” with “Hillcrest Elementary School gym”."
 
 A draft that passes (`GOOD_DRAFT`):
 
-> Signal No. 3 is raised over Purok Ilaya. Landfall is expected at 6 PM on Nov 14, so evacuate now to Halimbawa Elementary School gym. For help, call 0917 555 0100.
+> Signal No. 3 is raised over Zone 2. Landfall is expected at 6 PM on Nov 14, so evacuate now to Hillcrest Elementary School gym. For help, call 0917 555 0100.
 
-Approved as written from an on-device draft, it is saved as `alerts/general__purok-ilaya`:
+Approved as written from an on-device draft, it is saved as `alerts/general__zone-2`:
 
 ```json
 {
   "household": "general",
-  "area": "Purok Ilaya",
-  "areaKey": "purok-ilaya",
+  "area": "Zone 2",
+  "areaKey": "zone-2",
   "signal": 3,
-  "text": "Signal No. 3 is raised over Purok Ilaya. Landfall is expected at 6 PM on Nov 14, so evacuate now to Halimbawa Elementary School gym. For help, call 0917 555 0100.",
+  "text": "Signal No. 3 is raised over Zone 2. Landfall is expected at 6 PM on Nov 14, so evacuate now to Hillcrest Elementary School gym. For help, call 0917 555 0100.",
   "factSheet": { "…": "the fact sheet above" },
   "source": "on_device",
   "edited": false,
@@ -535,7 +535,7 @@ In the same batch, its entry `ledger/<the entry's ID>` records the same fields, 
 ```json
 {
   "kind": "approved",
-  "alertId": "general__purok-ilaya",
+  "alertId": "general__zone-2",
   "…": "household, area, areaKey, signal, text, factSheet, source and edited, as in the alert",
   "cloudModel": "gemini-3.5-flash-lite",
   "claimWords": ["…the checker's word list…"],
@@ -544,10 +544,10 @@ In the same batch, its entry `ledger/<the entry's ID>` records the same fields, 
       "round": 1,
       "route": "prefer_on_device",
       "retry": false,
-      "area": "Purok Ilaya",
+      "area": "Zone 2",
       "source": "on_device",
-      "prompt": "Write a typhoon alert for all residents in Purok Ilaya, Barangay Halimbawa. …",
-      "text": "Signal No. 3 is raised over Purok Ilaya. …",
+      "prompt": "Write a typhoon alert for all residents in Zone 2, Hillcrest Village. …",
+      "text": "Signal No. 3 is raised over Zone 2. …",
       "outcome": "passed",
       "issues": [],
       "error": "",
@@ -564,22 +564,22 @@ In the same batch, its entry `ledger/<the entry's ID>` records the same fields, 
 
 Its Filipino translation (`GOOD_FILIPINO`) passes rule 7, because it keeps every figure and place name and adds no claim:
 
-> Nakataas ang Signal No. 3 sa Purok Ilaya. Inaasahang tatama ang bagyo sa alas-6 ng gabi sa Nov 14, kaya lumikas na sa Halimbawa Elementary School gym. Para sa tulong, tumawag sa 0917 555 0100.
+> Nakataas ang Signal No. 3 sa Zone 2. Inaasahang tatama ang bagyo sa alas-6 ng gabi sa Nov 14, kaya lumikas na sa Hillcrest Elementary School gym. Para sa tulong, tumawag sa 0917 555 0100.
 
 So does its Cebuano translation (`GOOD_CEBUANO`), checked on its own against the same English:
 
-> Gipataas ang Signal No. 3 sa Purok Ilaya. Gidahom nga motugpa ang bagyo sa alas-6 sa gabii sa Nov 14, busa bakwit na karon sa Halimbawa Elementary School gym. Para sa tabang, tawag sa 0917 555 0100.
+> Gipataas ang Signal No. 3 sa Zone 2. Gidahom nga motugpa ang bagyo sa alas-6 sa gabii sa Nov 14, busa bakwit na karon sa Hillcrest Elementary School gym. Para sa tabang, tawag sa 0917 555 0100.
 
 A Filipino translation that says "ang mapanganib na bagyo" at "alas-7 ng gabi" fails with three problems: “mapanganib” (“danger”) is not in the English alert; “alas-7 ng gabi” is in the translation but not in the English alert; the translation lost “6 PM” from the English alert.
 
-Once published, both are on the resident copy, `residentAlerts/general__purok-ilaya`:
+Once published, both are on the resident copy, `residentAlerts/general__zone-2`:
 
 ```json
 {
   "…": "household, area, areaKey, signal, stormName, text, status and updatedAt, as above",
   "translations": {
-    "fil": { "text": "Nakataas ang Signal No. 3 sa Purok Ilaya. …", "ledgerId": "<the Filipino entry's ID>" },
-    "ceb": { "text": "Gipataas ang Signal No. 3 sa Purok Ilaya. …", "ledgerId": "<the Cebuano entry's ID>" }
+    "fil": { "text": "Nakataas ang Signal No. 3 sa Zone 2. …", "ledgerId": "<the Filipino entry's ID>" },
+    "ceb": { "text": "Gipataas ang Signal No. 3 sa Zone 2. …", "ledgerId": "<the Cebuano entry's ID>" }
   }
 }
 ```

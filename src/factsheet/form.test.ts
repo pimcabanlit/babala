@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { SAMPLE_BULLETIN, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
+import { SAMPLE_BULLETIN, SAMPLE_SHEET } from '../checker/fixtures/hillcrest'
 import { fromForm, to12h, toForm } from './form'
 
 describe('fact sheet form', () => {
   it('round-trips the sample fact sheet', () => {
     const form = toForm(SAMPLE_SHEET)
-    expect(form.signals).toBe('Purok 1: 3\nPurok Ilaya: 3\nPurok 2: 2')
+    expect(form.signals).toBe('Zone 1: 3\nZone 2: 3\nZone 3: 2')
     expect(form.landfallTime).toBe('6:00 PM')
     expect(fromForm(form, SAMPLE_BULLETIN)).toEqual({ ok: true, sheet: SAMPLE_SHEET })
   })
 
   it('lists every problem instead of drafting from a broken fact sheet', () => {
-    const form = { ...toForm(SAMPLE_SHEET), signals: 'Purok 1 is 3', landfallTime: 'evening', evacuationCentres: ' ', otherFigures: '185, lots' }
+    const form = { ...toForm(SAMPLE_SHEET), signals: 'Zone 1 is 3', landfallTime: 'evening', evacuationCentres: ' ', otherFigures: '185, lots' }
     expect(fromForm(form, SAMPLE_BULLETIN)).toEqual({
       ok: false,
       problems: [
-        'Signal line “Purok 1 is 3” should look like “Purok 1: 3”.',
+        'Signal line “Zone 1 is 3” should look like “Zone 1: 3”.',
         'Landfall time should look like “6:00 PM” or “18:00”.',
         'Add at least one evacuation centre.',
         '“lots” in other figures is not a number.',

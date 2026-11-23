@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { approvedAlert, type SavedAlert } from '../alerts/record'
-import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
+import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/hillcrest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { HOUSEHOLDS } from '../drafting/households'
 import { LEDGER_LIMITS, approvalWrites, clip, readLedgerEntry, withdrawalWrites, type LedgerDraft, type Trail } from './record'
@@ -12,7 +12,7 @@ function approval() {
   const result = approvedAlert({
     text: GOOD_DRAFT,
     sheet: SAMPLE_SHEET,
-    area: 'Purok Ilaya',
+    area: 'Zone 2',
     household: general,
     claimWords: [...CHECKER_CLAIM_WORDS],
     source: 'on_device',
@@ -26,7 +26,7 @@ const nanoDraft: LedgerDraft = {
   round: 1,
   route: 'prefer_on_device',
   retry: false,
-  area: 'Purok Ilaya',
+  area: 'Zone 2',
   source: 'on_device',
   prompt: 'Write a typhoon alert…',
   text: GOOD_DRAFT,
@@ -45,8 +45,8 @@ describe('approvalWrites', () => {
     const writes = approvalWrites(approval(), LEDGER_ID, trail)
     expect(writes.copy).toEqual({
       household: 'general',
-      area: 'Purok Ilaya',
-      areaKey: 'purok-ilaya',
+      area: 'Zone 2',
+      areaKey: 'zone-2',
       signal: approval().record.signal,
       stormName: SAMPLE_SHEET.stormName,
       text: GOOD_DRAFT,
@@ -56,7 +56,7 @@ describe('approvalWrites', () => {
 
   it('points the alert at its ledger entry', () => {
     const writes = approvalWrites(approval(), LEDGER_ID, trail)
-    expect(writes.alertId).toBe('general__purok-ilaya')
+    expect(writes.alertId).toBe('general__zone-2')
     expect(writes.alert).toEqual({ ...approval().record, ledgerId: LEDGER_ID })
   })
 
@@ -64,7 +64,7 @@ describe('approvalWrites', () => {
     const { entry } = approvalWrites(approval(), LEDGER_ID, trail)
     expect(entry).toEqual({
       kind: 'approved',
-      alertId: 'general__purok-ilaya',
+      alertId: 'general__zone-2',
       ...approval().record,
       cloudModel: 'gemini-3.5-flash-lite',
       claimWords: [...CHECKER_CLAIM_WORDS],
@@ -119,9 +119,9 @@ describe('readLedgerEntry', () => {
     expect(readLedgerEntry(LEDGER_ID, data, at, true)).toEqual({
       id: LEDGER_ID,
       kind: 'approved',
-      alertId: 'general__purok-ilaya',
+      alertId: 'general__zone-2',
       household: 'general',
-      area: 'Purok Ilaya',
+      area: 'Zone 2',
       signal: 3,
       text: GOOD_DRAFT,
       source: 'on_device',
@@ -143,13 +143,13 @@ describe('readLedgerEntry', () => {
   it('reads a translation entry, without the word lists', () => {
     const translated = {
       kind: 'translated',
-      alertId: 'general__purok-ilaya',
+      alertId: 'general__zone-2',
       household: 'general',
-      area: 'Purok Ilaya',
+      area: 'Zone 2',
       lang: 'ceb',
       approvalId: LEDGER_ID,
       english: GOOD_DRAFT,
-      text: 'Gipataas ang Signal No. 3 sa Purok Ilaya.',
+      text: 'Gipataas ang Signal No. 3 sa Zone 2.',
       source: 'in_cloud',
       edited: true,
       cloudModel: 'gemini-3.5-flash-lite',
@@ -181,9 +181,9 @@ describe('readLedgerEntry', () => {
 describe('withdrawalWrites', () => {
   const WITHDRAWAL_ID = 'WithdrawWithdraw0001'
   const saved: SavedAlert = {
-    id: 'general__purok-ilaya',
+    id: 'general__zone-2',
     household: 'general',
-    area: 'Purok Ilaya',
+    area: 'Zone 2',
     text: GOOD_DRAFT,
     source: 'on_device',
     edited: false,
@@ -197,14 +197,14 @@ describe('withdrawalWrites', () => {
   it('points the alert at the withdrawal’s entry and nothing else', () => {
     const writes = withdrawalWrites(saved, WITHDRAWAL_ID, 'Wrong area.')
     if (!writes.ok) throw new Error(writes.reason)
-    expect(writes.alertId).toBe('general__purok-ilaya')
+    expect(writes.alertId).toBe('general__zone-2')
     expect(writes.withdrawal).toEqual({ ledgerId: WITHDRAWAL_ID })
   })
 
   it('gives residents a copy that says the alert is withdrawn, without its text', () => {
     const writes = withdrawalWrites(saved, WITHDRAWAL_ID, 'Wrong area.')
     if (!writes.ok) throw new Error(writes.reason)
-    expect(writes.copy).toEqual({ household: 'general', area: 'Purok Ilaya', areaKey: 'purok-ilaya', status: 'withdrawn' })
+    expect(writes.copy).toEqual({ household: 'general', area: 'Zone 2', areaKey: 'zone-2', status: 'withdrawn' })
   })
 
   it('records the withdrawn text, the approval it withdraws and the reason', () => {
@@ -213,9 +213,9 @@ describe('withdrawalWrites', () => {
     expect(writes.ledgerId).toBe(WITHDRAWAL_ID)
     expect(writes.entry).toEqual({
       kind: 'withdrawn',
-      alertId: 'general__purok-ilaya',
+      alertId: 'general__zone-2',
       household: 'general',
-      area: 'Purok Ilaya',
+      area: 'Zone 2',
       text: GOOD_DRAFT,
       approvalId: LEDGER_ID,
       reason: 'Wrong area.',
@@ -256,9 +256,9 @@ describe('withdrawalWrites', () => {
 describe('readLedgerEntry for a withdrawal', () => {
   const data = {
     kind: 'withdrawn',
-    alertId: 'general__purok-ilaya',
+    alertId: 'general__zone-2',
     household: 'general',
-    area: 'Purok Ilaya',
+    area: 'Zone 2',
     text: GOOD_DRAFT,
     approvalId: LEDGER_ID,
     reason: 'Wrong area.',
@@ -271,9 +271,9 @@ describe('readLedgerEntry for a withdrawal', () => {
     expect(readLedgerEntry('WithdrawWithdraw0001', data, at, false)).toEqual({
       id: 'WithdrawWithdraw0001',
       kind: 'withdrawn',
-      alertId: 'general__purok-ilaya',
+      alertId: 'general__zone-2',
       household: 'general',
-      area: 'Purok Ilaya',
+      area: 'Zone 2',
       text: GOOD_DRAFT,
       approvalId: LEDGER_ID,
       reason: 'Wrong area.',

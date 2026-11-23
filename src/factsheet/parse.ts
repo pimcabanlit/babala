@@ -3,7 +3,7 @@
  * The officer confirms every fact before drafting, so a fact this misses is
  * filled in by hand, never guessed by a model.
  */
-import { extractFigures } from '../checker'
+import { extractFigures, findVillageNames } from '../checker'
 import type { FactSheet, Span } from '../checker'
 
 export type ParsedBulletin = {
@@ -12,7 +12,7 @@ export type ParsedBulletin = {
   notFound: string[]
 }
 
-/** Splits into sentences without breaking "Signal No. 3" or "Brgy. Halimbawa". */
+/** Splits into sentences without breaking "Signal No. 3" or "Brgy. Uno". */
 export function sentences(text: string): string[] {
   return text
     .split(/\n+|(?<!\b(?:No|Nos|Brgy|St|Sto|Sta|Mt|Dr|[ap]\.m))[.!?]+\s+(?=\p{Lu})/u)
@@ -22,7 +22,7 @@ export function sentences(text: string): string[] {
 
 const unique = (items: string[]) => [...new Set(items)]
 
-/** "Purok 1, Purok 2 and Purok Ilaya" → three names. */
+/** "Zone 1, Zone 2 and Zone 3" → three names. */
 function splitList(text: string, joiners: RegExp): string[] {
   return text
     .split(joiners)
@@ -31,13 +31,15 @@ function splitList(text: string, joiners: RegExp): string[] {
 }
 
 const STORM = /\b((?:Super\s+)?Typhoon|(?:Severe\s+)?Tropical\s+Storm|Tropical\s+Depression)\s+(\p{Lu}[\p{L}-]+)/u
-const PUROK = /\bPurok\s+(?:\d+|\p{Lu}[\p{L}-]*)/gu
+/** A zone, or a purok as Philippine bulletins call it: "Zone 2", "Purok Ilaya". */
+const ZONE = /\b(?:Zone|Purok)\s+(?:\d+|\p{Lu}[\p{L}-]*)/gu
+/** A barangay, the Philippine word for a village: "Barangay Uno", "Brgy. Uno". Villages are read by findVillageNames. */
 const BARANGAY = /\b(?:Barangay|Brgy\.?)\s+\p{Lu}[\p{L}-]*/gu
 const HOTLINE = /\bhotline\b[^\d+]*(\+?\(?\d[\d\s().-]{5,}\d)/i
 
 /**
  * Words that end a signal instead of raising it: "Signal No. 1 has been
- * lifted over Purok Baybay" names an area that is no longer under a signal.
+ * lifted over Zone 4" names an area that is no longer under a signal.
  */
 export const LIFTED = /\b(?:lift(?:ed|s|ing)?|lowered|cancell?ed|discontinued|terminated|no\s+longer)\b/i
 
@@ -51,7 +53,9 @@ export function parseBulletin(text: string): ParsedBulletin {
     const signal = extractFigures(s).find((f) => f.kind === 'signal')
     const over = s.match(/\b(?:over|for|in)\s+(.+)$/i)
     if (!signal || !over || LIFTED.test(s)) continue
-    const areas = splitList(over[1].replace(/\s+of\s+(?:Barangay|Brgy\.?)\s+.*$/i, ''), /,\s*(?:and\s+)?|\s+and\s+/)
+    // "Zone 1 and Zone 2 of Hillcrest Village": the areas, not the village they're in.
+    const zones = over[1].replace(/\s+of\s+(?:Barangay\s|Brgy\.?\s|\S+\s+Village\b).*$/i, '')
+    const areas = splitList(zones, /,\s*(?:and\s+)?|\s+and\s+/)
     for (const area of areas) signals.push({ area, signal: Number(signal.value) })
   }
 
@@ -96,7 +100,7 @@ export function parseBulletin(text: string): ParsedBulletin {
 
 /**
  * The facts plain code reads the same way from any bulletin, once the signals
- * and evacuation centres are known: every purok and barangay it names, and
+ * and evacuation centres are known: every zone and village it names, and
  * every other number outside those names (wind speed, surge height), which
  * drafts may use. The cloud reading (cloud.ts) uses this too.
  */
@@ -106,10 +110,11 @@ export function namedFacts(
   evacuationCentres: string[],
 ): Pick<FactSheet, 'puroks' | 'barangays' | 'otherFigures'> {
   const puroks = unique([
-    ...signals.map((s) => s.area).filter((a) => /^Purok\s/.test(a)),
-    ...[...text.matchAll(PUROK)].map((m) => m[0].replace(/\s+/g, ' ')),
+    ...signals.map((s) => s.area).filter((a) => /^(?:Zone|Purok)\s/.test(a)),
+    ...[...text.matchAll(ZONE)].map((m) => m[0].replace(/\s+/g, ' ')),
   ])
-  const barangays = unique([...text.matchAll(BARANGAY)].map((m) => m[0].replace(/\s+/g, ' '))).filter(
+  const villages = [...[...text.matchAll(BARANGAY)].map((m) => ({ start: m.index, text: m[0] })), ...findVillageNames(text)]
+  const barangays = unique(villages.sort((a, b) => a.start - b.start).map((v) => v.text.replace(/\s+/g, ' '))).filter(
     // "Barangay Hall" is a centre, not a barangay.
     (b) => !evacuationCentres.some((c) => c.toLowerCase().startsWith(b.toLowerCase())),
   )

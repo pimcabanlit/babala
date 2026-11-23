@@ -147,7 +147,10 @@ function NavIcon({ name }: { name: IconName }) {
 // 48 px, not M3's 56, so the Home page item fits with the status card on a 650 px tall laptop window.
 const ITEM = 'flex min-h-12 w-full items-center gap-3 rounded-full px-4 py-2 text-left text-title-sm'
 
-/** An M3 navigation drawer item: a full-width pill, filled while it is the current place. */
+/**
+ * An M3 navigation drawer item: a full-width pill, filled light grey while it
+ * is the current place, so it doesn't compete with the page's own content.
+ */
 function Item({
   active,
   disabled = false,
@@ -168,7 +171,7 @@ function Item({
       disabled={disabled}
       aria-current={active ? 'page' : undefined}
       className={`${ITEM} ${
-        active ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:bg-on-surface/8'
+        active ? 'bg-surface-container-highest text-on-surface' : 'text-on-surface-variant hover:bg-on-surface/8'
       } disabled:cursor-not-allowed disabled:hover:bg-transparent`}
     >
       {icon}

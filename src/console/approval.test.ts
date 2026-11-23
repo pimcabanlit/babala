@@ -5,7 +5,7 @@ import type { Attempt, Draft } from './useDrafts'
 const attempt = (a: Partial<Attempt>): Attempt => ({
   id: 1,
   route: 'prefer_on_device',
-  area: 'Purok Ilaya',
+  area: 'Zone 2',
   retry: false,
   prompt: 'prompt',
   startedAt: 0,
@@ -62,7 +62,7 @@ describe('unrecordedDrafts', () => {
           round: 1,
           route: 'prefer_on_device',
           retry: false,
-          area: 'Purok Ilaya',
+          area: 'Zone 2',
           source: 'on_device',
           prompt: 'prompt',
           text: 'Leave tonight.',

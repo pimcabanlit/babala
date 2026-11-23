@@ -28,7 +28,7 @@ function placeholderValue(text: string, sheet: FactSheet, area: string, centre: 
   if (/phone|hotline|contact|number/i.test(text)) return sheet.hotline || undefined
   if (/date|day/i.test(text)) return sheet.landfallDate
   if (/time|hour/i.test(text)) return to12h(sheet.landfallTime)
-  if (/village|barangay|purok|town|area|community|location|place/i.test(text))
+  if (/village|barangay|zone|purok|town|area|community|location|place/i.test(text))
     return sheet.barangays[0] ? `${area}, ${sheet.barangays[0]}` : area
   return undefined
 }
@@ -87,7 +87,7 @@ export function fixFor(issue: Issue, sheet: FactSheet, area: string, centre = sh
 /**
  * The words around a span, within its line and sentence: "about 25 families".
  * A bare "Remove “1”" made the cloud take every 1 out of the alert on Nov 12,
- * including "Purok 1" and the hotline.
+ * including "Zone 1" and the hotline.
  */
 export function around(draft: string, span: { start: number; end: number }, words = 2): string {
   const before = draft.slice(0, span.start).split(/\n|[.!?;:]\s/).pop() ?? ''
@@ -101,7 +101,7 @@ export function around(draft: string, span: { start: number; end: number }, word
 
 /**
  * The words that put the landfall time on the wrong event, from the storm's
- * name to the time: “Typhoon Sample is predicted to reach the area at 6:00 PM”.
+ * name to the time: “Typhoon Katy is predicted to reach the area at 6:00 PM”.
  * Undefined when the storm isn't named just before the time in that sentence.
  * On Nov 12 Nano, given the whole outline again, sent back the same draft
  * word for word; a short "Change X to Y" is what it follows.
@@ -141,7 +141,7 @@ export function editsFor(issues: Issue[], sheet: FactSheet, area: string, draft:
   const rest = issues.filter((i) => !i.span && i.rule !== 'missing')
   // Two places to fix get two different centres, not "the gym or the gym".
   let centres = 0
-  // A draft that names another purok instead of its own: swap the first one, since removing it would leave no area.
+  // A draft that names another zone instead of its own: swap the first one, since removing it would leave no area.
   const swap = issues.some((i) => i.rule === 'missing' && i.subject === 'area')
     ? placed.find((i) => i.rule === 'places' && i.subject === 'area')
     : undefined
@@ -169,7 +169,7 @@ export function editsFor(issues: Issue[], sheet: FactSheet, area: string, draft:
             : undefined
     const values = issue.subject === 'place' ? sheet.evacuationCentres : value ? [value] : []
     if (values.some((v) => edits.some((e) => e.includes(`“${v}`)))) continue
-    // "Add “Signal No. 3 in Purok 1”" and "Change “Purok Ilaya” to “Purok 1”" already name the area.
+    // "Add “Signal No. 3 in Zone 1”" and "Change “Zone 2” to “Zone 1”" already name the area.
     if (issue.subject === 'area' && edits.some((e) => e.includes(`“${area}”`) || e.includes(` in ${area}”`))) continue
     // "Signal No. 2" for an area with Signal No. 3: change it rather than add a second one.
     const otherSignal = issue.subject === 'signal' ? extractFigures(draft).find((f) => f.kind === 'signal') : undefined

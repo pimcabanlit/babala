@@ -3,14 +3,14 @@ import type { SavedAlert } from '../alerts/record'
 import type { LedgerDraft, LedgerEntry } from '../ledger/record'
 import { approverLabel, draftLine, entryStatus, writerLabel } from './ledgerView'
 
-const approval = { id: 'entry-2', kind: 'approved', alertId: 'general__purok-ilaya' } as LedgerEntry
-const withdrawal = { id: 'entry-3', kind: 'withdrawn', alertId: 'general__purok-ilaya' } as LedgerEntry
+const approval = { id: 'entry-2', kind: 'approved', alertId: 'general__zone-2' } as LedgerEntry
+const withdrawal = { id: 'entry-3', kind: 'withdrawn', alertId: 'general__zone-2' } as LedgerEntry
 
 const alert: SavedAlert = {
-  id: 'general__purok-ilaya',
+  id: 'general__zone-2',
   household: 'general',
-  area: 'Purok Ilaya',
-  text: 'Signal No. 3 is up over Purok Ilaya.',
+  area: 'Zone 2',
+  text: 'Signal No. 3 is up over Zone 2.',
   source: 'on_device',
   edited: false,
   approvedAt: undefined,
@@ -26,8 +26,8 @@ function saved(a: SavedAlert): Map<string, SavedAlert> {
 
 const withdrawnByEntry3 = { ...alert, withdrawn: { ledgerId: 'entry-3', by: 'uid', at: undefined } }
 
-const translation = { id: 'entry-6', kind: 'translated', alertId: 'general__purok-ilaya', lang: 'fil', approvalId: 'entry-2' } as LedgerEntry
-const publishedAs = (ledgerId: string) => new Map([['general__purok-ilaya', { fil: { text: 'Nakataas ang Signal No. 3.', ledgerId, pending: false } }]])
+const translation = { id: 'entry-6', kind: 'translated', alertId: 'general__zone-2', lang: 'fil', approvalId: 'entry-2' } as LedgerEntry
+const publishedAs = (ledgerId: string) => new Map([['general__zone-2', { fil: { text: 'Nakataas ang Signal No. 3.', ledgerId, pending: false } }]])
 
 describe('entryStatus of a translation', () => {
   it('says current when residents get this translation', () => {
@@ -115,7 +115,7 @@ describe('draftLine', () => {
     round: 1,
     route: 'prefer_on_device',
     retry: false,
-    area: 'Purok Ilaya',
+    area: 'Zone 2',
     source: 'on_device',
     prompt: '',
     text: '',

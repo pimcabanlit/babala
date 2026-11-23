@@ -4,7 +4,7 @@ import { hotlineNumbers } from './hotline'
 describe('hotlineNumbers', () => {
   it('takes the hotline from the approved alert as written', () => {
     expect(
-      hotlineNumbers('Signal No. 3 is raised over Purok Ilaya. Evacuate now to Halimbawa Elementary School gym. For help, call 0917 555 0100.'),
+      hotlineNumbers('Signal No. 3 is raised over Zone 2. Evacuate now to Hillcrest Elementary School gym. For help, call 0917 555 0100.'),
     ).toEqual(['0917 555 0100'])
   })
 

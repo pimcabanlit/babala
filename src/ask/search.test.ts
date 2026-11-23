@@ -1,15 +1,15 @@
 /**
  * The no-AI route: text search of the alert saved on the phone, quoting it
- * word for word. Hand-written from the demo alerts (checker/fixtures/halimbawa.ts).
+ * word for word. Hand-written from the demo alerts (checker/fixtures/hillcrest.ts).
  */
 import { describe, expect, it } from 'vitest'
-import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO } from '../checker/fixtures/halimbawa'
+import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO } from '../checker/fixtures/hillcrest'
 import { questionTopics, searchAlert, sentenceTopics } from './search'
 
 const FISHERS =
-  'Signal No. 3 is raised in Purok 1, and Typhoon Sample makes landfall at 6:00 PM on Nov 14. Do not go out to sea, and tie up your boats. Call the hotline, 0917 555 0100, for help.'
+  'Signal No. 3 is raised in Zone 1, and Typhoon Katy makes landfall at 6:00 PM on Nov 14. Do not go out to sea, and tie up your boats. Call the hotline, 0917 555 0100, for help.'
 const SENIORS =
-  'Signal No. 3 is raised in Purok Ilaya, and Typhoon Sample makes landfall at 6:00 PM on Nov 14. Leave early, bring your medicines and ask a neighbour for help, and go to Halimbawa Elementary School gym or Barangay Hall. Call the hotline, 0917 555 0100, for help.'
+  'Signal No. 3 is raised in Zone 2, and Typhoon Katy makes landfall at 6:00 PM on Nov 14. Leave early, bring your medicines and ask a neighbour for help, and go to Hillcrest Elementary School gym or Village Hall. Call the hotline, 0917 555 0100, for help.'
 
 const quoted = (alert: string, question: string) => {
   const r = searchAlert(alert, question)
@@ -19,7 +19,7 @@ const quoted = (alert: string, question: string) => {
 describe('searchAlert', () => {
   it('quotes the sentence with the evacuation centre for "Where do we go?"', () => {
     expect(quoted(GOOD_DRAFT, 'Where do we go?')).toEqual([
-      'Landfall is expected at 6 PM on Nov 14, so evacuate now to Halimbawa Elementary School gym.',
+      'Landfall is expected at 6 PM on Nov 14, so evacuate now to Hillcrest Elementary School gym.',
     ])
   })
 
@@ -28,19 +28,19 @@ describe('searchAlert', () => {
   })
 
   it('quotes the sentence with the signal number for "What signal is it?"', () => {
-    expect(quoted(GOOD_DRAFT, 'What signal is it?')).toEqual(['Signal No. 3 is raised over Purok Ilaya.'])
+    expect(quoted(GOOD_DRAFT, 'What signal is it?')).toEqual(['Signal No. 3 is raised over Zone 2.'])
   })
 
   it('quotes two sentences for a question about two things, in the alert’s order', () => {
     expect(quoted(GOOD_DRAFT, 'Who do we call, and where do we go?')).toEqual([
-      'Landfall is expected at 6 PM on Nov 14, so evacuate now to Halimbawa Elementary School gym.',
+      'Landfall is expected at 6 PM on Nov 14, so evacuate now to Hillcrest Elementary School gym.',
       'For help, call 0917 555 0100.',
     ])
   })
 
   it('answers a Filipino question from the Filipino alert', () => {
     expect(quoted(GOOD_FILIPINO, 'Saan kami pupunta?')).toEqual([
-      'Inaasahang tatama ang bagyo sa alas-6 ng gabi sa Nov 14, kaya lumikas na sa Halimbawa Elementary School gym.',
+      'Inaasahang tatama ang bagyo sa alas-6 ng gabi sa Nov 14, kaya lumikas na sa Hillcrest Elementary School gym.',
     ])
   })
 
@@ -50,13 +50,13 @@ describe('searchAlert', () => {
 
   it('answers a Cebuano question from the English alert', () => {
     expect(quoted(GOOD_DRAFT, 'Asa mi moadto?')).toEqual([
-      'Landfall is expected at 6 PM on Nov 14, so evacuate now to Halimbawa Elementary School gym.',
+      'Landfall is expected at 6 PM on Nov 14, so evacuate now to Hillcrest Elementary School gym.',
     ])
   })
 
   it('quotes the advice for "What should I bring?"', () => {
     expect(quoted(SENIORS, 'What should I bring?')).toEqual([
-      'Leave early, bring your medicines and ask a neighbour for help, and go to Halimbawa Elementary School gym or Barangay Hall.',
+      'Leave early, bring your medicines and ask a neighbour for help, and go to Hillcrest Elementary School gym or Village Hall.',
     ])
   })
 
@@ -75,15 +75,23 @@ describe('searchAlert', () => {
 
 describe('sentenceTopics', () => {
   it('reads time and place from a sentence that has both', () => {
-    expect([...sentenceTopics('Landfall is expected at 6 PM on Nov 14, so evacuate now to Halimbawa Elementary School gym.')].sort()).toEqual([
+    expect([...sentenceTopics('Landfall is expected at 6 PM on Nov 14, so evacuate now to Hillcrest Elementary School gym.')].sort()).toEqual([
       'todo',
       'when',
       'where',
     ])
   })
 
-  it('does not count a purok as somewhere to go', () => {
-    expect([...sentenceTopics('Signal No. 3 is raised over Purok Ilaya.')]).toEqual(['signal'])
+  it('does not count a zone as somewhere to go', () => {
+    expect([...sentenceTopics('Signal No. 3 is raised over Zone 2.')]).toEqual(['signal'])
+  })
+
+  it('does not count a village as somewhere to go', () => {
+    expect([...sentenceTopics('Signal No. 3 is raised over Zone 2, Hillcrest Village.')]).toEqual(['signal'])
+  })
+
+  it('counts the Village Hall as somewhere to go', () => {
+    expect([...sentenceTopics('The Village Hall is open.')]).toEqual(['where'])
   })
 })
 

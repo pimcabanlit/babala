@@ -78,10 +78,10 @@ describe('extractFigures', () => {
     ])
   })
 
-  it('skips ignored spans such as a known "Purok 2"', () => {
-    const text = 'Residents of Purok 2 should leave by 5 PM.'
-    const start = text.indexOf('Purok 2')
-    expect(extractFigures(text, [{ start, end: start + 7, text: 'Purok 2' }]).map((f) => f.value)).toEqual(['17:00'])
+  it('skips ignored spans such as a known "Zone 3"', () => {
+    const text = 'Residents of Zone 3 should leave by 5 PM.'
+    const start = text.indexOf('Zone 3')
+    expect(extractFigures(text, [{ start, end: start + 7, text: 'Zone 3' }]).map((f) => f.value)).toEqual(['17:00'])
   })
 
   it('keeps offsets pointing at the original text', () => {
@@ -101,7 +101,7 @@ describe('extractFigures', () => {
   })
 
   it('reads numbers glued to units, thousands and decimals', () => {
-    expect(values('Winds of 200km/h, 1,000 families, 1.5 meters, Puroks 1,5')).toEqual([
+    expect(values('Winds of 200km/h, 1,000 families, 1.5 meters, Zones 1,5')).toEqual([
       'number:200',
       'number:1000',
       'number:1.5',

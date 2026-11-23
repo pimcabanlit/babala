@@ -1,7 +1,7 @@
 /**
  * The no-AI route: a plain text search of the alert saved on the phone. It
  * quotes the alert's own sentences, word for word, so it can't say anything
- * the barangay didn't approve. It runs offline, with no model, in English,
+ * the village didn't approve. It runs offline, with no model, in English,
  * Filipino or Cebuano.
  */
 import { LANDFALL_WORDS, extractFigures, isEverydayWord, phrasePattern, placeNames, sentences } from '../checker'
@@ -44,7 +44,9 @@ const GO_WORDS = /\b(?:evacuate|go to|lumikas|pumunta|bakwit|mobakwit|adto|moadt
 export function sentenceTopics(sentence: string): Set<Topic> {
   const topics = new Set<Topic>()
   const figures = extractFigures(sentence, placeNames(sentence))
-  const centre = placeNames(sentence).some((p) => !/^(?:purok|barangay|brgy)\b/i.test(p.text) || /\bhall\b/i.test(p.text))
+  // A zone or village is where the resident is, not where to go; its hall is a place to go.
+  const isArea = (name: string) => /^(?:zone|purok|barangay|brgy)\b/i.test(name) || /\bvillage$/i.test(name)
+  const centre = placeNames(sentence).some((p) => !isArea(p.text) || /\bhall\b/i.test(p.text))
   if (centre || GO_WORDS.test(sentence)) topics.add('where')
   if (figures.some((f) => f.kind === 'time' || f.kind === 'date') || LANDFALL_WORDS.test(sentence)) topics.add('when')
   if (figures.some((f) => f.kind === 'signal')) topics.add('signal')

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SavedAlert } from '../alerts/record'
-import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
+import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET } from '../checker/fixtures/hillcrest'
 import { CHECKER_CLAIM_WORDS, TRANSLATION_CLAIMS } from '../config/defaults'
 import { LEDGER_LIMITS, type LedgerDraft } from '../ledger/record'
 import { readPublishedTranslations, translationWrites, type TranslationInput } from './record'
@@ -9,9 +9,9 @@ const APPROVAL_ID = 'AbCdEfGhIjKlMnOpQrSt'
 const TRANSLATION_ID = 'TranslateTranslate01'
 
 const saved: SavedAlert = {
-  id: 'general__purok-ilaya',
+  id: 'general__zone-2',
   household: 'general',
-  area: 'Purok Ilaya',
+  area: 'Zone 2',
   text: GOOD_DRAFT,
   source: 'on_device',
   edited: false,
@@ -26,7 +26,7 @@ const cloudCall: LedgerDraft = {
   round: 1,
   route: 'only_in_cloud',
   retry: false,
-  area: 'Purok Ilaya',
+  area: 'Zone 2',
   source: 'in_cloud',
   prompt: 'Translate this typhoon alert…',
   text: GOOD_FILIPINO,
@@ -61,7 +61,7 @@ describe('translationWrites', () => {
   it('builds the resident’s translation and its entry against the saved English alert and approval', () => {
     const result = translationWrites(input, TRANSLATION_ID)
     expect(result.ok && [result.alertId, result.translation, result.entry.approvalId, result.entry.english, result.entry.text]).toEqual([
-      'general__purok-ilaya',
+      'general__zone-2',
       { text: GOOD_FILIPINO, ledgerId: TRANSLATION_ID },
       APPROVAL_ID,
       GOOD_DRAFT,

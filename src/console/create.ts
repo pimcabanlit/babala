@@ -25,7 +25,7 @@ export function greeting(hour: number, user: { name: string; method: SignInMetho
 export type StormSummary = { line: string; areas: { area: string; signal: number }[] }
 
 /**
- * The confirmed storm in one line, "Demo storm · Typhoon Sample · Landfall
+ * The confirmed storm in one line, "Demo storm · Typhoon Katy · Landfall
  * Nov 14, 6:00 PM", and each area's signal. Built only from the confirmed
  * fact sheet, so it never says more than the officer checked.
  */

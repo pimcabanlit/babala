@@ -4,13 +4,13 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { ANSWER_CLAIM_WORDS, CHECKER_CLAIM_WORDS, TRANSLATION_CLAIMS } from '../config/defaults'
-import { GOOD_DRAFT } from '../checker/fixtures/halimbawa'
+import { GOOD_DRAFT } from '../checker/fixtures/hillcrest'
 import type { AiRoute } from './route'
 import { answerQuestion, type AskDeps, type AskInput, type CheckWords } from './run'
 
 const INPUT: AskInput = {
   question: 'Where do we go?',
-  alert: { english: GOOD_DRAFT, shown: GOOD_DRAFT, names: ['Typhoon Sample', 'Purok Ilaya'] },
+  alert: { english: GOOD_DRAFT, shown: GOOD_DRAFT, names: ['Typhoon Katy', 'Zone 2'] },
   language: 'en',
 }
 const WORDS: CheckWords = {
@@ -18,7 +18,7 @@ const WORDS: CheckWords = {
   answerClaims: [...ANSWER_CLAIM_WORDS],
   translatedClaims: [...TRANSLATION_CLAIMS.fil, ...TRANSLATION_CLAIMS.ceb],
 }
-const CENTRE = 'Landfall is expected at 6 PM on Nov 14, so evacuate now to Halimbawa Elementary School gym.'
+const CENTRE = 'Landfall is expected at 6 PM on Nov 14, so evacuate now to Hillcrest Elementary School gym.'
 
 const json = (answer: string, sentences = [2], inAlert = true) => JSON.stringify({ in_alert: inAlert, sentences, answer })
 
@@ -38,13 +38,13 @@ function deps(replies: Partial<Record<AiRoute, string | Error | Promise<string>>
 
 describe('answerQuestion', () => {
   it('returns an on-device answer that passes the check, quoting the sentence it cites', async () => {
-    const d = deps({ on_device: json('Evacuate now to Halimbawa Elementary School gym.') })
+    const d = deps({ on_device: json('Evacuate now to Hillcrest Elementary School gym.') })
     const outcome = await answerQuestion(INPUT, { tries: ['on_device', 'cloud'] }, WORDS, d)
     expect(outcome).toEqual({
       kind: 'answer',
       route: 'on_device',
       source: 'on_device',
-      answer: 'Evacuate now to Halimbawa Elementary School gym.',
+      answer: 'Evacuate now to Hillcrest Elementary School gym.',
       quotes: [CENTRE],
       tries: [],
     })
@@ -53,8 +53,8 @@ describe('answerQuestion', () => {
 
   it('holds back an on-device answer with an added claim, and asks the cloud once', async () => {
     const d = deps({
-      on_device: json('Evacuate now to Halimbawa Elementary School gym, the storm is severe.'),
-      cloud: json('Evacuate now to Halimbawa Elementary School gym.'),
+      on_device: json('Evacuate now to Hillcrest Elementary School gym, the storm is severe.'),
+      cloud: json('Evacuate now to Hillcrest Elementary School gym.'),
     })
     const outcome = await answerQuestion(INPUT, { tries: ['on_device', 'cloud'] }, WORDS, d)
     expect(outcome.kind === 'answer' && outcome.route).toBe('cloud')
@@ -74,7 +74,7 @@ describe('answerQuestion', () => {
     vi.useFakeTimers()
     try {
       const never = new Promise<string>(() => undefined)
-      const d = deps({ on_device: never, cloud: json('Evacuate now to Halimbawa Elementary School gym.') }, { onDeviceBudgetMs: 30_000 })
+      const d = deps({ on_device: never, cloud: json('Evacuate now to Hillcrest Elementary School gym.') }, { onDeviceBudgetMs: 30_000 })
       const pending = answerQuestion(INPUT, { tries: ['on_device', 'cloud'] }, WORDS, d)
       await vi.advanceTimersByTimeAsync(30_000)
       const outcome = await pending
@@ -97,14 +97,14 @@ describe('answerQuestion', () => {
   })
 
   it('says the alert doesn’t answer when the model finds nothing, without asking another route', async () => {
-    const d = deps({ on_device: json('', [], false), cloud: json('Evacuate now to Halimbawa Elementary School gym.') })
+    const d = deps({ on_device: json('', [], false), cloud: json('Evacuate now to Hillcrest Elementary School gym.') })
     const outcome = await answerQuestion({ ...INPUT, question: 'Can I bring my dog?' }, { tries: ['on_device', 'cloud'] }, WORDS, d)
     expect(outcome).toEqual({ kind: 'not-in-alert', route: 'on_device', source: 'on_device', tries: [] })
     expect(d.call).toHaveBeenCalledTimes(1)
   })
 
   it('quotes the search’s sentences when a passing answer cites none', async () => {
-    const outcome = await answerQuestion(INPUT, { tries: ['cloud'] }, WORDS, deps({ cloud: json('Evacuate now to Halimbawa Elementary School gym.', []) }))
+    const outcome = await answerQuestion(INPUT, { tries: ['cloud'] }, WORDS, deps({ cloud: json('Evacuate now to Hillcrest Elementary School gym.', []) }))
     expect(outcome.kind === 'answer' && outcome.quotes).toEqual([CENTRE])
   })
 

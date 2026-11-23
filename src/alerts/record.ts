@@ -37,9 +37,9 @@ export const ALERT_SOURCES: readonly AlertSource[] = ['on_device', 'in_cloud', '
 /** What the app writes. store.ts adds approvedBy and approvedAt. */
 export type AlertRecord = {
   household: HouseholdId
-  /** The area as the fact sheet writes it, e.g. "Purok Ilaya". */
+  /** The area as the fact sheet writes it, e.g. "Zone 2". */
   area: string
-  /** The area in the document ID, e.g. "purok-ilaya". */
+  /** The area in the document ID, e.g. "zone-2". */
   areaKey: string
   /** The area's signal number from the fact sheet. */
   signal: number
@@ -146,8 +146,8 @@ function sizeProblem(r: AlertRecord): string | undefined {
     ['The list of signals', s.signals.length, LIMITS.signals],
     ['The landfall date', (s.landfallDate ?? '').length, LIMITS.landfallDate],
     ['The list of evacuation centres', s.evacuationCentres.length, LIMITS.evacuationCentres],
-    ['The list of puroks', s.puroks.length, LIMITS.puroks],
-    ['The list of barangays', s.barangays.length, LIMITS.barangays],
+    ['The list of zones', s.puroks.length, LIMITS.puroks],
+    ['The list of villages', s.barangays.length, LIMITS.barangays],
     ['The hotline', s.hotline.length, LIMITS.hotline],
     ['The list of other figures', (s.otherFigures ?? []).length, LIMITS.otherFigures],
     ['The bulletin', s.bulletinText.length, LIMITS.bulletinText],

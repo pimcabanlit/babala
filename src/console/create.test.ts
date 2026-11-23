@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { InferenceSource } from '../ai'
-import { SAMPLE_BULLETIN, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
+import { SAMPLE_BULLETIN, SAMPLE_SHEET } from '../checker/fixtures/hillcrest'
 import { checkDraft } from '../checker'
 import { parseBulletin } from '../factsheet/parse'
 import {
@@ -55,12 +55,12 @@ describe('greeting', () => {
 
 describe('stormSummary', () => {
   it('names the demo storm and its landfall date and time', () => {
-    expect(stormSummary(SAMPLE_SHEET).line).toBe('Demo storm · Typhoon Sample · Landfall Nov 14, 6:00 PM')
+    expect(stormSummary(SAMPLE_SHEET).line).toBe('Demo storm · Typhoon Katy · Landfall Nov 14, 6:00 PM')
   })
 
   it('gives the landfall time alone when the bulletin has no date', () => {
     const { landfallDate: _, ...sheet } = SAMPLE_SHEET
-    expect(stormSummary(sheet).line).toBe('Demo storm · Typhoon Sample · Landfall 6:00 PM')
+    expect(stormSummary(sheet).line).toBe('Demo storm · Typhoon Katy · Landfall 6:00 PM')
   })
 
   it('leaves out a storm name the officer left empty', () => {
@@ -69,9 +69,9 @@ describe('stormSummary', () => {
 
   it('lists each area with its signal, in the fact sheet’s order', () => {
     expect(stormSummary(SAMPLE_SHEET).areas).toEqual([
-      { area: 'Purok 1', signal: 3 },
-      { area: 'Purok Ilaya', signal: 3 },
-      { area: 'Purok 2', signal: 2 },
+      { area: 'Zone 1', signal: 3 },
+      { area: 'Zone 2', signal: 3 },
+      { area: 'Zone 3', signal: 2 },
     ])
   })
 })
@@ -82,7 +82,7 @@ describe('openFactFields', () => {
   })
 
   it('opens the fields for the facts the bulletin didn’t give', () => {
-    const bulletin = 'Typhoon Sample. Signal No. 3 is raised over Purok 1. Landfall at 6:00 PM.'
+    const bulletin = 'Typhoon Katy. Signal No. 3 is raised over Zone 1. Landfall at 6:00 PM.'
     expect(openFactFields(parseBulletin(bulletin).notFound)).toEqual(['evacuationCentres', 'hotline'])
   })
 
@@ -145,9 +145,9 @@ describe('tabStatus', () => {
 
 describe('DRAFT_CHECKS', () => {
   it('names every rule the checker applies to a draft', () => {
-    const bad = checkDraft('[Name] Signal No. 4 at 9 PM in Purok 9, a severe typhoon. 🌀', SAMPLE_SHEET, {
+    const bad = checkDraft('[Name] Signal No. 4 at 9 PM in Zone 9, a severe typhoon. 🌀', SAMPLE_SHEET, {
       claimWords: ['severe'],
-      area: 'Purok Ilaya',
+      area: 'Zone 2',
     })
     const rules = new Set(bad.issues.map((i) => i.rule))
     expect([...rules].every((r) => DRAFT_CHECKS.some((c) => c.rule === r))).toBe(true)
@@ -180,7 +180,7 @@ describe('attemptError', () => {
 })
 
 function attempt(over: Partial<Attempt>): Attempt {
-  return { id: 1, route: 'prefer_on_device', area: 'Purok Ilaya', retry: false, prompt: '', startedAt: 0, text: '', ...over }
+  return { id: 1, route: 'prefer_on_device', area: 'Zone 2', retry: false, prompt: '', startedAt: 0, text: '', ...over }
 }
 
 describe('progressText', () => {

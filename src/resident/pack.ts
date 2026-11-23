@@ -1,5 +1,5 @@
 /**
- * The offline pack: every resident copy of the barangay's alerts
+ * The offline pack: every resident copy of the village's alerts
  * (src/alerts/residentCopy.ts), saved on the phone so the resident view opens
  * with no signal. Pure code: reading copies, saving and loading the pack, and
  * picking the resident's alert and language.
@@ -22,7 +22,7 @@ type Place = {
   household: HouseholdId
   area: string
   areaKey: string
-  /** When the barangay approved or withdrew it (server time, ms since 1970); null if unknown. */
+  /** When the village approved or withdrew it (server time, ms since 1970); null if unknown. */
   updatedAtMs: number | null
 }
 
@@ -115,7 +115,7 @@ export function packFromJson(json: string | null): Pack | undefined {
   return { savedAtMs: raw.savedAtMs, alerts }
 }
 
-/** The areas in the pack, each once, in a natural order ("Purok 2" before "Purok 10"). */
+/** The areas in the pack, each once, in a natural order ("Zone 3" before "Zone 10"). */
 export function packAreas(pack: Pack | undefined): { areaKey: string; area: string }[] {
   const byKey = new Map<string, string>()
   for (const a of pack?.alerts ?? []) if (!byKey.has(a.areaKey)) byKey.set(a.areaKey, a.area)

@@ -15,7 +15,7 @@ const PLACEHOLDER_PATTERNS: RegExp[] = [
   /\blorem ipsum\b/gi,
   // Prompt wording copied into the alert (seen from the cloud model on Nov 12).
   /\b(?:tell|ask|remind) them\b|\bsay that\b/gi,
-  /\((?:name|address|location|date|time|number|barangay|purok|school|phone|hotline)[^)]*\)/gi,
+  /\((?:name|address|location|date|time|number|village|barangay|zone|purok|school|phone|hotline)[^)]*\)/gi,
 ]
 
 export function checkPlaceholders(text: string): Issue[] {

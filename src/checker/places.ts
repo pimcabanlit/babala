@@ -1,6 +1,8 @@
 /**
  * Rule 2 (places match): every place the draft names must be a known
- * evacuation centre, purok or barangay from the fact sheet, word for word.
+ * evacuation centre, zone or village from the fact sheet, word for word.
+ * Philippine bulletins call a zone a "purok" and a village a "barangay", so
+ * both pairs of words are read.
  */
 import { findAll, inside, phrasePattern } from './text'
 import type { FactSheet, Issue, Span } from './types'
@@ -9,7 +11,7 @@ import type { FactSheet, Issue, Span } from './types'
 export const VENUE_WORDS: readonly string[] = [
   'gym', 'gymnasium', 'school', 'elementary', 'hall', 'church', 'chapel', 'cathedral', 'mosque',
   'center', 'centre', 'court', 'plaza', 'stadium', 'arena', 'auditorium', 'covered court',
-  'multi-purpose', 'multipurpose', 'barangay hall', 'municipal hall', 'town hall', 'capitol',
+  'multi-purpose', 'multipurpose', 'barangay hall', 'village hall', 'municipal hall', 'town hall', 'capitol',
   // Filipino and Cebuano, for translations: a centre's name stays as the fact
   // sheet writes it, so "paaralan" (school) outside a known name is another place.
   'paaralan', 'paaralang', 'eskwelahan', 'eskuwelahan', 'iskwelahan', 'tunghaan', 'simbahan', 'kapilya',
@@ -27,6 +29,19 @@ const PLACE_MODIFIERS = [
 
 /** Titles that follow "Barangay" without naming a place. */
 const BARANGAY_ROLES = /\s(?:captain|chair(?:man|person|woman)?|council|councilors?|kagawads?|officials?|tanods?|health|secretary|treasurer)$/i
+
+/** Words in front of "Village" that don't name one: "The Village Hall", "Our Village". */
+const NOT_A_VILLAGE_NAME = new Set(['the', 'this', 'that', 'our', 'your', 'their', 'each', 'every', 'whole', 'entire', 'a', 'an'])
+
+/**
+ * Village names: one capitalised word, then "Village" ("Hillcrest Village").
+ * The parser reads a bulletin's villages with this too, so both read alike.
+ */
+export function findVillageNames(text: string): Span[] {
+  return findAll(text, /(?<![\p{L}\p{N}])\p{Lu}[\p{L}-]*\s+Village(?![\p{L}\p{N}])/gu).filter(
+    (s) => !NOT_A_VILLAGE_NAME.has(s.text.split(/\s/)[0].toLowerCase()),
+  )
+}
 
 export function knownPlaces(sheet: FactSheet): string[] {
   return [...sheet.evacuationCentres, ...sheet.puroks, ...sheet.barangays].filter((p) => p.trim() !== '')
@@ -82,13 +97,16 @@ export function checkPlaces(text: string, sheet: FactSheet): Issue[] {
       span: venue,
     })
 
-  // "Purok …" and "Barangay …" must be ones the fact sheet covers.
-  for (const m of text.matchAll(/\b(?:[Pp]urok|PUROK|[Bb]arangay|BARANGAY|[Bb]rgy\.?)\s+(?:\d+|\p{Lu}[\p{L}-]*)/gu)) {
-    const span = { start: m.index, end: m.index + m[0].length, text: m[0] }
+  // "Zone …", "… Village", "Purok …" and "Barangay …" must be ones the fact sheet covers.
+  const areas = [
+    ...findAll(text, /\b(?:[Zz]one|ZONE|[Pp]urok|PUROK|[Bb]arangay|BARANGAY|[Bb]rgy\.?)\s+(?:\d+|\p{Lu}[\p{L}-]*)/gu),
+    ...findVillageNames(text),
+  ].sort((a, b) => a.start - b.start)
+  for (const span of areas) {
     // "Barangay Captain" is a person, not a place (the claim-word list covers it).
-    if (BARANGAY_ROLES.test(m[0])) continue
+    if (BARANGAY_ROLES.test(span.text)) continue
     if (known.some((k) => inside(span, k)) || reported.some((r) => inside(r, span))) continue
-    issues.push({ rule: 'places', subject: 'area', message: `“${m[0]}” is not a purok or barangay in the fact sheet.`, span })
+    issues.push({ rule: 'places', subject: 'area', message: `“${span.text}” is not a zone or village in the fact sheet.`, span })
   }
 
   // A modifier in front of a known name changes the place.
