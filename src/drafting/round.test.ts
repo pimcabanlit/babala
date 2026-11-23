@@ -4,8 +4,8 @@ import type { Issue } from '../checker'
 import { nextStep } from './route'
 import { runRound, type AttemptEnd, type RoundDeps } from './round'
 
-const PASSING = 'Signal No. 3 is raised in Purok 1. Go to Halimbawa Elementary School gym. Call 0917 000 0000.'
-const FAILING = 'Signal No. 3 is raised in Purok 1 tonight.'
+const PASSING = 'Signal No. 3 is raised in Zone 1. Go to Hillcrest Elementary School gym. Call 0917 000 0000.'
+const FAILING = 'Signal No. 3 is raised in Zone 1 tonight.'
 const TONIGHT: Issue = { rule: 'added-claims', message: '“tonight” is not in the bulletin.' }
 
 type Call = { route: Route; prompt: string; retry: boolean }
