@@ -87,5 +87,5 @@ Not asked for, but they make the alerts trustworthy, which is the point of the a
 | Retries that give the model one concrete edit per problem, built from the fact sheet | **Beyond the brief** | `src/drafting/fixes.ts` |
 | Test log of every prompt, answer and problem, so real on-device drafts become test cases | **Beyond the brief** | Officer console, *Copy test log*; `src/checker/fixtures/` |
 | A locked ledger: each approval is saved with the drafts and checks behind it, and each withdrawal with its reason, in the same batch, and the rules refuse an alert change without its entry; entries can't be changed or deleted | **Beyond the brief** | `src/ledger/`; `firestore.rules`; officer console, *Saved alerts* and *Ledger* |
-| Firestore rules tested on the emulator in CI (176 cases), and 465 Vitest tests | **Beyond the brief** | `tests/rules/`; `.github/workflows/ci.yml` |
+| Firestore rules tested on the emulator in CI (176 cases), and 659 Vitest tests | **Beyond the brief** | `tests/rules/`; `.github/workflows/ci.yml` |
 | Review process: risk tiers, a reviewer checklist, and Pim merges every PR | **Beyond the brief** | `REVIEW.md`; `CLAUDE.md`, *How changes land* |
