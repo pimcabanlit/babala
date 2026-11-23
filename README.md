@@ -94,6 +94,23 @@ Lighthouse scores accessibility 100 on the home page, the resident view and the 
 on a phone and a desktop, and axe finds no WCAG 2.2 AA problems on any view of the officer
 workspace ([docs/build-plan.md](docs/build-plan.md), *Phase 4*).
 
+## How it was built
+
+Babala was built from scratch during #BuildHybridAI 2026. The first commit is from Nov 12, 2026
+(Manila time), after the contest opened, and no code from earlier projects is reused. Libraries
+come from npm (`package.json`), and the fonts and icons are listed under *Credits*.
+
+**Firebase AI Logic** is imported and called in one file, [`src/ai/index.ts`](src/ai/index.ts):
+`getAI` with limited-use App Check tokens, `getGenerativeModel` with the hybrid inference modes,
+and `generateContentStream` and `generateContent`. The routing on top of it, which also moves a
+draft to the cloud when Nano's draft fails the checker twice or runs past the time budget, is in [`src/drafting/route.ts`](src/drafting/route.ts),
+and the checker is in [`src/checker/`](src/checker/).
+
+**AI coding tools.** Babala was written with [Claude Code](https://claude.com/claude-code) as the
+coding assistant, using Firebase's official agent skills, vendored in
+[`.claude/skills/`](.claude/skills/README.md). Claude Code's cloud sessions can't run Gemini Nano,
+so every on-device change was tested by hand on Pim's laptop.
+
 ## Credits
 
 - **Google Sans**, by Google, under the SIL Open Font License 1.1. The font files are served from
