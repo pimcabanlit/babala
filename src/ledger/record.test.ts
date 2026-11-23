@@ -168,6 +168,11 @@ describe('readLedgerEntry', () => {
     expect(readLedgerEntry(LEDGER_ID, translated, at, false)).toBeUndefined()
   })
 
+  it('reads an entry with a draft the officer cancelled', () => {
+    const entry = readLedgerEntry(LEDGER_ID, { ...data, drafts: [{ ...nanoDraft, outcome: 'cancelled' }] }, at, false)
+    expect(entry?.kind === 'approved' && entry.drafts[0]?.outcome).toBe('cancelled')
+  })
+
   it('ignores an entry with a draft it can’t read', () => {
     expect(readLedgerEntry(LEDGER_ID, { ...data, drafts: [{ ...nanoDraft, outcome: 'maybe' }] }, at, false)).toBeUndefined()
   })

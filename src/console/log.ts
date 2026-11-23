@@ -27,7 +27,7 @@ export function attemptLog(households: Household[], drafts: Record<string, Draft
     draft.attempts.forEach((a, i) => {
       const source = a.source ?? 'unknown source'
       const time = a.endedMs === undefined ? 'running' : `${(a.endedMs / 1000).toFixed(1)} s`
-      const outcome = a.abandoned ? 'stopped waiting' : a.error ? `error: ${a.error}` : a.passed ? 'passed' : 'failed'
+      const outcome = a.cancelled ? 'cancelled' : a.abandoned ? 'stopped waiting' : a.error ? `error: ${a.error}` : a.passed ? 'passed' : 'failed'
       lines.push(
         '',
         `${i + 1}. ${a.route} → ${source} · ${a.retry ? 'retry' : 'draft'} · ${time} · ${outcome}`,

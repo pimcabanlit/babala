@@ -9,7 +9,7 @@ import type { Attempt, Draft } from './useDrafts'
  * text. "none" when no model did, i.e. the officer typed the alert.
  */
 export function writtenBy(draft: Draft): AlertSource {
-  const last = draft.attempts.findLast((a) => a.endedMs !== undefined && !a.error && !a.abandoned && a.text.trim() !== '')
+  const last = draft.attempts.findLast((a) => a.endedMs !== undefined && !a.error && !a.abandoned && !a.cancelled && a.text.trim() !== '')
   if (!last) return 'none'
   return modelSource(last.source)
 }
@@ -61,6 +61,7 @@ function ledgerDraft(a: Attempt, round: number): LedgerDraft {
 }
 
 function outcomeOf(a: Attempt): DraftOutcome {
+  if (a.cancelled) return 'cancelled'
   if (a.abandoned) return 'stopped'
   if (a.error) return 'error'
   return a.passed ? 'passed' : 'failed'

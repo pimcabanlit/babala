@@ -369,6 +369,7 @@ const OUTCOME_ICON: Record<LedgerDraft['outcome'], { icon: IconName; color: stri
   failed: { icon: 'error', color: 'text-error' },
   error: { icon: 'error', color: 'text-error' },
   stopped: { icon: 'warning', color: 'text-warning' },
+  cancelled: { icon: 'block', color: 'text-on-surface-variant' },
 }
 
 /** Each model call behind an entry: how it went, its text, the checker's problems and the prompt. */

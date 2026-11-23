@@ -37,6 +37,11 @@ describe('writtenBy', () => {
     expect(writtenBy(draft([attempt({}), attempt({ id: 2, source: 'in_cloud', abandoned: true, text: '' })]))).toBe('on_device')
   })
 
+  it('skips a cancelled attempt and its half-written words', () => {
+    const cancelled = attempt({ id: 2, route: 'only_in_cloud', source: 'in_cloud', cancelled: true, text: 'Signal No. 3' })
+    expect(writtenBy(draft([attempt({}), cancelled]))).toBe('on_device')
+  })
+
   it('skips an attempt that ended in an error', () => {
     expect(writtenBy(draft([attempt({ source: 'in_cloud' }), attempt({ id: 2, error: 'quota', text: '' })]))).toBe('in_cloud')
   })
@@ -102,6 +107,11 @@ describe('unrecordedDrafts', () => {
       ['stopped', '', 'on_device'],
       ['error', 'quota exceeded', 'unknown'],
     ])
+  })
+
+  it('records a call the officer cancelled, with the words it had written', () => {
+    const cancelled = attempt({ id: 1, cancelled: true, text: 'Signal No. 3 is raised' })
+    expect(unrecordedDrafts(draft([cancelled])).drafts.map((d) => [d.outcome, d.text])).toEqual([['cancelled', 'Signal No. 3 is raised']])
   })
 
   it('lists the checker’s problems in reading order, without their spans', () => {

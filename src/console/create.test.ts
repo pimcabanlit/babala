@@ -117,7 +117,13 @@ describe('draftBlockReason', () => {
   })
 
   it('says one alert drafts at a time while another drafts', () => {
-    expect(draftBlockReason({ ...ready, busy: true })).toBe('One alert drafts at a time. Wait for the one in progress.')
+    expect(draftBlockReason({ ...ready, busy: true })).toBe('One alert drafts at a time. Wait for the one in progress, or cancel it.')
+  })
+
+  it('says a cancel stops the rest of "Draft all four" while it runs', () => {
+    expect(draftBlockReason({ ...ready, busy: true, batch: true })).toBe(
+      'Drafting all four, one at a time. Cancel stops the alert in progress and the ones after it.',
+    )
   })
 })
 
@@ -217,6 +223,10 @@ describe('attemptText', () => {
     expect(attemptText(attempt({ endedMs: 31_000, abandoned: true }), undefined)).toBe('Draft · stopped waiting after 31.0 s')
   })
 
+  it('says when the officer cancelled the draft', () => {
+    expect(attemptText(attempt({ endedMs: 4_200, cancelled: true }), undefined)).toBe('Draft · cancelled after 4.2 s')
+  })
+
   it('says the cloud is busy for a quota error', () => {
     expect(attemptText(attempt({ route: 'only_in_cloud', endedMs: 800, error: '429 Too Many Requests' }), undefined)).toBe(
       'Draft · error after 0.8 s: The cloud is busy right now. Try again shortly.',
@@ -237,6 +247,11 @@ describe('historySummary', () => {
   it('names a stop, an error and a draft still running', () => {
     const tries = [attempt({ endedMs: 1, abandoned: true }), attempt({ id: 2, endedMs: 1, error: 'x' }), attempt({ id: 3 })]
     expect(historySummary(tries)).toBe('3 tries: stopped waiting, then error, then drafting')
+  })
+
+  it('names a cancelled try', () => {
+    const tries = [attempt({ endedMs: 1, passed: false }), attempt({ id: 2, endedMs: 1, cancelled: true })]
+    expect(historySummary(tries)).toBe('2 tries: failed, then cancelled')
   })
 })
 

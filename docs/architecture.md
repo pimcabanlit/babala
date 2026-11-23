@@ -171,6 +171,7 @@ What the SDK does (`firebase` 13.3.0), confirmed on day 1 with the hello-hybrid 
   - When the shape is wrong (too long, a fact missing, the time on the wrong event), the model gets the outline again instead.
   - When the landfall time sits on the wrong event, the edit is word-level: "Change “Typhoon Katy is predicted to reach the area at 6:00 PM” to “Typhoon Katy makes landfall at 6:00 PM”".
   - After an error or an abandoned call, the next attempt starts from the plain prompt.
+- **Cancel.** While an alert drafts, a Cancel button sits under its progress bar, away from Draft again, so a click as the draft ends never starts a new one. Cancelling ends the round at once (`runRound` in `round.ts`): no retry or cloud call follows, and "Draft all four" stops before the next household. A cloud call is aborted through its `AbortSignal`; the SDK can't stop an on-device one, so its answer is ignored, and the next on-device draft replaces its session. The card keeps the last full draft of the round for hand editing, or is empty if there was none. The cancelled call stays in the history and goes into the next approval's ledger entry with outcome `cancelled`.
 - **Budget.** If an on-device draft runs past `ondevice_budget_seconds`, the card offers "Use the cloud instead" while online. Offline it keeps waiting.
 - **Test log.** "Copy test log" copies every prompt, raw answer, time and problem, so real on-device drafts can become test cases. It holds no secrets.
 

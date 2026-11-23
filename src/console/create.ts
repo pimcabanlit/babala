@@ -106,11 +106,19 @@ export function cloudReadError(err: unknown): string {
  * Why the draft buttons are off, or undefined when drafting can start. The
  * officer can still write and check an alert by hand in every case.
  */
-export function draftBlockReason(s: { modelsReady: boolean; online: boolean; device: DeviceStatus; busy: boolean }): string | undefined {
+export function draftBlockReason(s: {
+  modelsReady: boolean
+  online: boolean
+  device: DeviceStatus
+  busy: boolean
+  /** "Draft all four" is running. */
+  batch?: boolean
+}): string | undefined {
   if (!s.online && s.device !== 'available')
     return 'Offline, and this laptop has no on-device model, so drafting waits for the connection. You can still write an alert by hand.'
   if (!s.modelsReady) return 'Loading the model settings…'
-  if (s.busy) return 'One alert drafts at a time. Wait for the one in progress.'
+  if (s.busy && s.batch) return 'Drafting all four, one at a time. Cancel stops the alert in progress and the ones after it.'
+  if (s.busy) return 'One alert drafts at a time. Wait for the one in progress, or cancel it.'
   return undefined
 }
 
@@ -174,6 +182,7 @@ export function attemptText(a: Attempt, runningMs: number | undefined): string {
   const kind = a.retry ? 'Retry with an edit per problem' : 'Draft'
   if (a.endedMs === undefined) return `${kind} · ${((runningMs ?? 0) / 1000).toFixed(0)} s`
   const time = `${(a.endedMs / 1000).toFixed(1)} s`
+  if (a.cancelled) return `${kind} · cancelled after ${time}`
   if (a.abandoned) return `${kind} · stopped waiting after ${time}`
   if (a.error) return `${kind} · error after ${time}: ${attemptError(a.error)}`
   if (a.passed === undefined) return `${kind} · ${time}`
@@ -185,6 +194,7 @@ export function attemptText(a: Attempt, runningMs: number | undefined): string {
 export function historySummary(attempts: Attempt[]): string {
   const ends = attempts.map((a) => {
     if (a.endedMs === undefined) return 'drafting'
+    if (a.cancelled) return 'cancelled'
     if (a.abandoned) return 'stopped waiting'
     if (a.error) return 'error'
     return a.passed ? 'passed' : 'failed'

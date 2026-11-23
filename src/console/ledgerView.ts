@@ -75,6 +75,8 @@ export function draftLine(d: LedgerDraft, cloudModel: string): string {
         ? `failed the checker (${d.issues.length} problem${d.issues.length === 1 ? '' : 's'})`
         : d.outcome === 'error'
           ? `error: ${d.error}`
-          : 'stopped waiting, moved to the cloud'
+          : d.outcome === 'cancelled'
+            ? 'cancelled by the officer'
+            : 'stopped waiting, moved to the cloud'
   return `Round ${d.round} · ${kind} · ${model} · ${time} · ${outcome}`
 }
