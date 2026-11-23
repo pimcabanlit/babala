@@ -6,7 +6,8 @@ import { checkFor } from '../drafting/check'
 import { HOUSEHOLDS, type Household, type HouseholdId } from '../drafting/households'
 import { buildDraftPrompt, buildRetryPrompt } from '../drafting/prompt'
 import { previewFromPartialJson, readAnswer } from '../drafting/structured'
-import { nextStep, type AttemptOutcome } from '../drafting/route'
+import { nextStep } from '../drafting/route'
+import { runRound, whenAborted } from '../drafting/round'
 
 export type Attempt = {
   /** Unique in the console, and increasing: a later attempt has a higher id. */
@@ -32,6 +33,8 @@ export type Attempt = {
   error?: string
   /** The officer moved on to the cloud after the on-device budget. */
   abandoned?: boolean
+  /** The officer cancelled the round while this attempt ran. */
+  cancelled?: boolean
 }
 
 export type Draft = {
@@ -41,6 +44,8 @@ export type Draft = {
   running: boolean
   /** Why drafting stopped without a passing alert. */
   note?: string
+  /** The officer cancelled this round. */
+  cancelled?: boolean
   approved: boolean
   /** The officer changed the model's text. */
   edited?: boolean
@@ -72,6 +77,10 @@ export function useDrafts(ctx: Context) {
   const [drafts, setDrafts] = useState<DraftMap>(emptyDrafts)
   const nextId = useRef(1)
   const abandoners = useRef<Partial<Record<HouseholdId, () => void>>>({})
+  /** Cancels the round in progress for each household: aborts its signal. */
+  const cancellers = useRef<Partial<Record<HouseholdId, AbortController>>>({})
+  /** "Draft all four" is running, so a cancel also stops the households after this one. */
+  const [batch, setBatch] = useState(false)
   const ctxRef = useRef(ctx)
   useEffect(() => {
     ctxRef.current = ctx
@@ -91,9 +100,13 @@ export function useDrafts(ctx: Context) {
     [update],
   )
 
-  /** One model call, streamed into the card. Resolves early if the officer abandons it. */
+  /**
+   * One model call, streamed into the card. Resolves early if the officer
+   * abandons it for the cloud or cancels the round. A cancel aborts a cloud
+   * call; the SDK can't stop an on-device one, so its answer is ignored.
+   */
   const runAttempt = useCallback(
-    async (h: Household, models: DraftModels, route: Route, prompt: string, retry: boolean, area: string) => {
+    async (h: Household, models: DraftModels, route: Route, prompt: string, retry: boolean, area: string, signal: AbortSignal) => {
       const attemptId = nextId.current++
       const startedAt = Date.now()
       let live = true
@@ -105,22 +118,36 @@ export function useDrafts(ctx: Context) {
           resolve({ text: '', abandoned: true })
         }
       })
-      const streamed = streamDraft(models, route, prompt, {
-        onText: (raw, source) => {
-          if (!live) return
-          // The answer streams in as JSON; the officer watches the sentences.
-          const text = raw.trimStart().startsWith('{') ? previewFromPartialJson(raw) : raw
-          patchAttempt(h.id, attemptId, (a) => ({ text, source, firstTextMs: a.firstTextMs ?? Date.now() - startedAt }), text)
+      const cancelled = whenAborted(signal).then(() => ({ text: '', cancelled: true as const }))
+      const streamed = streamDraft(
+        models,
+        route,
+        prompt,
+        {
+          onText: (raw, source) => {
+            if (!live) return
+            // The answer streams in as JSON; the officer watches the sentences.
+            const text = raw.trimStart().startsWith('{') ? previewFromPartialJson(raw) : raw
+            patchAttempt(h.id, attemptId, (a) => ({ text, source, firstTextMs: a.firstTextMs ?? Date.now() - startedAt }), text)
+          },
         },
-      }).then(
+        signal,
+      ).then(
         // readAnswer also trims: Nano leaves blank lines at the end.
         (r) => ({ text: readAnswer(r.text), raw: r.text, source: r.source }),
-        (err: unknown) => ({ text: '', error: err instanceof Error ? err.message : String(err) }),
+        // The SDK rejects an aborted cloud call; that is the officer's cancel, not an error.
+        (err: unknown) =>
+          signal.aborted ? { text: '', cancelled: true as const } : { text: '', error: err instanceof Error ? err.message : String(err) },
       )
-      const outcome: { text: string; raw?: string; source?: Source; error?: string; abandoned?: true } = await Promise.race([streamed, abandoned])
+      const outcome: { text: string; raw?: string; source?: Source; error?: string; abandoned?: true; cancelled?: true } = await Promise.race([
+        streamed,
+        abandoned,
+        cancelled,
+      ])
       live = false
       delete abandoners.current[h.id]
       const endedMs = Date.now() - startedAt
+      const stopped = outcome.abandoned || outcome.cancelled
       patchAttempt(
         h.id,
         attemptId,
@@ -129,20 +156,24 @@ export function useDrafts(ctx: Context) {
           ...(outcome.source ? { source: outcome.source } : {}),
           ...(outcome.error ? { error: outcome.error } : {}),
           ...(outcome.abandoned ? { abandoned: true } : {}),
-          ...(outcome.abandoned || outcome.error ? {} : { text: outcome.text, raw: outcome.raw }),
+          ...(outcome.cancelled ? { cancelled: true } : {}),
+          // A stopped attempt keeps the words it had streamed, for the history and the ledger.
+          ...(stopped || outcome.error ? {} : { text: outcome.text, raw: outcome.raw }),
         }),
-        outcome.abandoned || outcome.error ? undefined : outcome.text,
+        stopped || outcome.error ? undefined : outcome.text,
       )
       return { attemptId, ...outcome }
     },
     [update, patchAttempt],
   )
 
-  /** Drafts one household's alert, following the routing rules. */
+  /** Drafts one household's alert, following the routing rules. Says whether the officer cancelled it. */
   const draft = useCallback(
-    async (h: Household) => {
+    async (h: Household): Promise<{ cancelled: boolean }> => {
       const { sheet, area, claimWords, models, deviceRef, warmPromise } = ctxRef.current
-      if (!sheet || !models) return
+      if (!sheet || !models) return { cancelled: false }
+      const controller = new AbortController()
+      cancellers.current[h.id] = controller
       // A new round: the last one moves to the history, which the ledger entry keeps.
       update(h.id, (d) => ({
         ...emptyDraft,
@@ -150,51 +181,49 @@ export function useDrafts(ctx: Context) {
         history: d.attempts.length > 0 ? [...d.history, d.attempts] : d.history,
         recordedThrough: d.recordedThrough,
       }))
-      // Only wait for the warm-up here; a failed warm-up is already shown in the Models panel (useHybrid).
-      await warmPromise.current.catch(() => undefined)
-
-      const base = buildDraftPrompt(sheet, area, h)
-      const outcomes: AttemptOutcome[] = []
-      let last: { text: string; issues: Issue[] } | undefined
-      // The last draft a model wrote, kept for hand editing even when a later attempt errs or is abandoned.
-      let lastDrafted = ''
-      for (;;) {
-        const step = nextStep(outcomes, { online: navigator.onLine, onDeviceReady: deviceRef.current === 'available' })
-        if (step.kind === 'done') break
-        if (step.kind === 'manual') {
-          update(h.id, (d) => ({ ...d, note: step.reason }))
-          break
-        }
-        // After an error or an abandoned attempt there is no draft to quote, so start fresh.
-        const quoted = step.retry && last && last.text.trim() !== '' ? last : undefined
-        const withReasons = quoted !== undefined
-        const prompt = quoted ? buildRetryPrompt(quoted.text, quoted.issues, sheet, area, h) : base
-        const attempt = await runAttempt(h, models, step.route, prompt, withReasons, area)
-        const ok = !attempt.error && !attempt.abandoned
-        const result = ok ? checkFor(attempt.text, sheet, area, h, claimWords) : undefined
-        last = ok ? { text: attempt.text, issues: result!.issues } : undefined
-        if (ok && attempt.text.trim() !== '') lastDrafted = attempt.text
-        const passed = result?.pass ?? false
-        patchAttempt(h.id, attempt.attemptId, () => ({ passed, ...(result ? { issues: result.issues } : {}) }))
-        outcomes.push({ route: step.route, passed, ...(attempt.abandoned ? { abandoned: true } : {}) })
-      }
-      // Show the last real draft for hand editing, not the empty text of an abandoned or failed call.
-      update(h.id, (d) => ({ ...d, running: false, text: d.text || lastDrafted }))
+      const end = await runRound({
+        warmUp: () => warmPromise.current,
+        next: (outcomes) => nextStep(outcomes, { online: navigator.onLine, onDeviceReady: deviceRef.current === 'available' }),
+        prompt: () => buildDraftPrompt(sheet, area, h),
+        retryPrompt: (text, issues) => buildRetryPrompt(text, issues, sheet, area, h),
+        attempt: (route, prompt, retry) => runAttempt(h, models, route, prompt, retry, area, controller.signal),
+        check: (text) => checkFor(text, sheet, area, h, claimWords),
+        onChecked: (attemptId, passed, issues) => patchAttempt(h.id, attemptId, () => ({ passed, ...(issues ? { issues } : {}) })),
+        onManual: (reason) => update(h.id, (d) => ({ ...d, note: reason })),
+        signal: controller.signal,
+      })
+      if (cancellers.current[h.id] === controller) delete cancellers.current[h.id]
+      // Show the last real draft for hand editing, not the empty text of an abandoned, failed or cancelled call.
+      update(h.id, (d) =>
+        end.cancelled
+          ? { ...d, running: false, cancelled: true, text: end.lastDrafted }
+          : { ...d, running: false, text: d.text || end.lastDrafted },
+      )
+      return end
     },
     [update, runAttempt, patchAttempt],
   )
 
   const draftAll = useCallback(async () => {
-    for (const h of HOUSEHOLDS) await draft(h)
+    setBatch(true)
+    try {
+      for (const h of HOUSEHOLDS) if ((await draft(h)).cancelled) break
+    } finally {
+      setBatch(false)
+    }
   }, [draft])
 
   return {
     drafts,
     draft,
     draftAll,
+    /** "Draft all four" is running. */
+    batch,
+    /** Stops this household's round, and with it the rest of "Draft all four". */
+    cancel: (id: HouseholdId) => cancellers.current[id]?.abort(),
     /** Stops waiting for a slow on-device draft; the routing then tries the cloud. */
     abandon: (id: HouseholdId) => abandoners.current[id]?.(),
-    edit: (id: HouseholdId, text: string) => update(id, (d) => ({ ...d, text, approved: false, edited: true })),
+    edit: (id: HouseholdId, text: string) => update(id, (d) => ({ ...d, text, approved: false, edited: true, cancelled: false })),
     setApproved: (id: HouseholdId, approved: boolean) => update(id, (d) => ({ ...d, approved })),
     /** Marks the attempts up to this id as kept in a ledger entry, or undoes that when a save fails. */
     setRecordedThrough: (id: HouseholdId, through: number) => update(id, (d) => ({ ...d, recordedThrough: through })),

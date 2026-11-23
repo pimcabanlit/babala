@@ -38,8 +38,11 @@ export const LEDGER_LIMITS = {
   translatedClaims: 100,
 } as const
 
-/** How a model call ended: the checker passed or failed its text, it threw, or the officer stopped waiting. */
-export type DraftOutcome = 'passed' | 'failed' | 'error' | 'stopped'
+/**
+ * How a model call ended: the checker passed or failed its text, it threw, the
+ * officer stopped waiting for the laptop, or the officer cancelled the draft.
+ */
+export type DraftOutcome = 'passed' | 'failed' | 'error' | 'stopped' | 'cancelled'
 
 /** Which model answered, as the SDK reported it. */
 export type DraftSource = Exclude<AlertSource, 'none'>
@@ -303,7 +306,7 @@ export function readLedgerEntry(
   return { ...common, kind, signal, source: source as AlertSource, edited, factSheet, cloudModel, drafts, draftsOmitted }
 }
 
-const OUTCOMES: readonly string[] = ['passed', 'failed', 'error', 'stopped'] satisfies DraftOutcome[]
+const OUTCOMES: readonly string[] = ['passed', 'failed', 'error', 'stopped', 'cancelled'] satisfies DraftOutcome[]
 const ROUTES: readonly string[] = ['prefer_on_device', 'only_in_cloud'] satisfies Route[]
 const DRAFT_SOURCES: readonly string[] = ['on_device', 'in_cloud', 'unknown'] satisfies DraftSource[]
 

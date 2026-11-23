@@ -141,4 +141,10 @@ describe('draftLine', () => {
   it('says when the officer stopped waiting for the laptop', () => {
     expect(draftLine({ ...d, outcome: 'stopped', issues: [] }, 'm')).toContain('stopped waiting, moved to the cloud')
   })
+
+  it('says when the officer cancelled the draft', () => {
+    expect(draftLine({ ...d, outcome: 'cancelled', issues: [] }, 'm')).toBe(
+      'Round 1 · draft · Gemini Nano on the laptop · 15.2 s · cancelled by the officer',
+    )
+  })
 })
