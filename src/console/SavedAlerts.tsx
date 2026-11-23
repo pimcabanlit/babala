@@ -111,8 +111,8 @@ function Filters({ saved, filter, onFilter }: { saved: SavedAlert[]; filter: Sav
   return (
     <div role="group" aria-label="Filter saved alerts" className="flex flex-wrap items-center gap-2">
       {(['all', 'active', 'withdrawn'] as const).map((status) => (
-        <FilterChip key={status} selected={filter.status === status} onClick={() => onFilter({ ...filter, status })}>
-          {STATUS_LABEL[status]} <span className="tabular-nums opacity-80">{counts.status[status]}</span>
+        <FilterChip key={status} selected={filter.status === status} count={counts.status[status]} onClick={() => onFilter({ ...filter, status })}>
+          {STATUS_LABEL[status]}
         </FilterChip>
       ))}
       {counts.areas.length > 1 && (
@@ -122,10 +122,11 @@ function Filters({ saved, filter, onFilter }: { saved: SavedAlert[]; filter: Sav
             <FilterChip
               key={area}
               selected={filter.area === area}
+              count={count}
               // A second click on the picked area shows every area again.
               onClick={() => onFilter({ ...filter, area: filter.area === area ? undefined : area })}
             >
-              {area} <span className="tabular-nums opacity-80">{count}</span>
+              {area}
             </FilterChip>
           ))}
         </>
@@ -188,7 +189,7 @@ function List({
                     onClick={() => onChoose(alert.id)}
                     className={`w-full rounded-md border p-3 text-left transition-colors ${
                       current
-                        ? 'border-outline-variant bg-surface-container-high text-on-surface'
+                        ? 'border-transparent bg-primary-container text-on-primary-container'
                         : 'border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low'
                     }`}
                   >
