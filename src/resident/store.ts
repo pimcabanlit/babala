@@ -1,6 +1,6 @@
 /**
  * Residents' side of Firestore: anonymous sign-in, and watching the resident
- * copies of the barangay's alerts (`residentAlerts`). Residents never read
+ * copies of the village's alerts (`residentAlerts`). Residents never read
  * `alerts` or the ledger; firestore.rules refuses them.
  */
 import { signInAnonymously, type Auth } from 'firebase/auth'

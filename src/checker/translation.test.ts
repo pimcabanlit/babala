@@ -1,11 +1,11 @@
 /**
  * Rule 7: each translation is checked on its own against the approved English
- * alert and the fact sheet. Hand-written from the demo bulletin (fixtures/halimbawa.ts).
+ * alert and the fact sheet. Hand-written from the demo bulletin (fixtures/hillcrest.ts).
  */
 import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS, TRANSLATION_CLAIMS } from '../config/defaults'
 import { checkTranslation, keptFacts } from './check'
-import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET } from './fixtures/halimbawa'
+import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET } from './fixtures/hillcrest'
 import type { TranslationOptions } from './types'
 
 const FILIPINO: TranslationOptions = { claimWords: [...CHECKER_CLAIM_WORDS], translatedClaims: [...TRANSLATION_CLAIMS.fil] }
@@ -20,8 +20,8 @@ describe('checkTranslation: places', () => {
   })
 
   it('flags a known place that the English alert does not name', () => {
-    const translation = GOOD_FILIPINO.replace('School gym.', 'School gym o sa Barangay Hall.')
-    expect(messages(GOOD_DRAFT, translation, FILIPINO)).toEqual(['“Barangay Hall” is in the translation but not in the English alert.'])
+    const translation = GOOD_FILIPINO.replace('School gym.', 'School gym o sa Village Hall.')
+    expect(messages(GOOD_DRAFT, translation, FILIPINO)).toEqual(['“Village Hall” is in the translation but not in the English alert.'])
   })
 
   it('flags a Filipino word for a venue outside the fact sheet’s names', () => {
@@ -29,15 +29,15 @@ describe('checkTranslation: places', () => {
     expect(messages(GOOD_DRAFT, translation, FILIPINO)).toEqual(['“o sa simbahan” is not an evacuation centre in the fact sheet.'])
   })
 
-  it('flags a purok that is not in the fact sheet, once', () => {
-    const translation = GOOD_FILIPINO.replace('sa Purok Ilaya', 'sa Purok Ilaya at Purok 5')
-    expect(messages(GOOD_DRAFT, translation, FILIPINO)).toEqual(['“Purok 5” is not a purok or barangay in the fact sheet.'])
+  it('flags a zone that is not in the fact sheet, once', () => {
+    const translation = GOOD_FILIPINO.replace('sa Zone 2', 'sa Zone 2 at Zone 5')
+    expect(messages(GOOD_DRAFT, translation, FILIPINO)).toEqual(['“Zone 5” is not a zone or village in the fact sheet.'])
   })
 
   it('reports a lost place once, though the English alert names it twice', () => {
-    const english = GOOD_DRAFT.replace('For help,', 'Purok Ilaya residents, for help,')
-    const translation = GOOD_FILIPINO.replace('sa Purok Ilaya', 'sa inyong purok')
-    expect(messages(english, translation, FILIPINO)).toEqual(['The translation must keep the place name “Purok Ilaya” exactly.'])
+    const english = GOOD_DRAFT.replace('For help,', 'Zone 2 residents, for help,')
+    const translation = GOOD_FILIPINO.replace('sa Zone 2', 'sa inyong sona')
+    expect(messages(english, translation, FILIPINO)).toEqual(['The translation must keep the place name “Zone 2” exactly.'])
   })
 })
 
@@ -48,8 +48,8 @@ describe('checkTranslation: claims', () => {
   })
 
   it('allows a Filipino claim that the English alert makes', () => {
-    const english = GOOD_DRAFT.replace('Signal No. 3 is raised over Purok Ilaya.', 'Signal No. 3 is raised over Purok Ilaya, with storm surge possible.')
-    const translation = GOOD_FILIPINO.replace('sa Purok Ilaya.', 'sa Purok Ilaya, at posible ang daluyong.')
+    const english = GOOD_DRAFT.replace('Signal No. 3 is raised over Zone 2.', 'Signal No. 3 is raised over Zone 2, with storm surge possible.')
+    const translation = GOOD_FILIPINO.replace('sa Zone 2.', 'sa Zone 2, at posible ang daluyong.')
     expect(checkTranslation(english, translation, SAMPLE_SHEET, FILIPINO)).toEqual({ pass: true, issues: [] })
   })
 
@@ -99,7 +99,7 @@ describe('keptFacts', () => {
   it('lists the English alert’s figures and place names as written there', () => {
     expect(keptFacts(GOOD_DRAFT, SAMPLE_SHEET)).toEqual({
       figures: ['Signal No. 3', '6 PM', 'Nov 14', '0917 555 0100'],
-      places: ['Purok Ilaya', 'Halimbawa Elementary School gym'],
+      places: ['Zone 2', 'Hillcrest Elementary School gym'],
     })
   })
 })

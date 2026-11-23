@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
-import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
+import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/hillcrest'
 import { HOUSEHOLDS } from '../drafting/households'
 import { LIMITS, alertDocId, approvedAlert, areaKey, readSavedAlert, type ApprovalInput } from './record'
 
 const general = HOUSEHOLDS.find((h) => h.id === 'general')!
 
-/** GOOD_DRAFT for the general household in Purok Ilaya, written on the laptop. */
+/** GOOD_DRAFT for the general household in Zone 2, written on the laptop. */
 const input: ApprovalInput = {
   text: GOOD_DRAFT,
   sheet: SAMPLE_SHEET,
-  area: 'Purok Ilaya',
+  area: 'Zone 2',
   household: general,
   claimWords: [...CHECKER_CLAIM_WORDS],
   source: 'on_device',
@@ -18,8 +18,8 @@ const input: ApprovalInput = {
 }
 
 describe('areaKey', () => {
-  it('turns a purok name into lower case words joined by dashes', () => {
-    expect(areaKey('Purok Ilaya')).toBe('purok-ilaya')
+  it('turns a zone name into lower case words joined by dashes', () => {
+    expect(areaKey('Zone 2')).toBe('zone-2')
   })
 
   it('drops accents, so “Purok Niño” and “Purok Nino” share a key', () => {
@@ -27,7 +27,7 @@ describe('areaKey', () => {
   })
 
   it('turns any run of spaces and punctuation into one dash, with none at the ends', () => {
-    expect(areaKey('  Purok 1 / Sitio  Baybay. ')).toBe('purok-1-sitio-baybay')
+    expect(areaKey('  Zone 1 / Sitio  Baybay. ')).toBe('zone-1-sitio-baybay')
   })
 
   it('has no key for a name with no letters or numbers', () => {
@@ -37,7 +37,7 @@ describe('areaKey', () => {
 
 describe('alertDocId', () => {
   it('joins the household and the area key with two underscores', () => {
-    expect(alertDocId('fishers', 'purok-ilaya')).toBe('fishers__purok-ilaya')
+    expect(alertDocId('fishers', 'zone-2')).toBe('fishers__zone-2')
   })
 })
 
@@ -46,11 +46,11 @@ describe('approvedAlert', () => {
     const approval = approvedAlert(input)
     expect(approval).toEqual({
       ok: true,
-      id: 'general__purok-ilaya',
+      id: 'general__zone-2',
       record: {
         household: 'general',
-        area: 'Purok Ilaya',
-        areaKey: 'purok-ilaya',
+        area: 'Zone 2',
+        areaKey: 'zone-2',
         signal: 3,
         text: GOOD_DRAFT,
         factSheet: SAMPLE_SHEET,
@@ -72,7 +72,7 @@ describe('approvedAlert', () => {
   })
 
   it('refuses an area that is not in the fact sheet', () => {
-    expect(approvedAlert({ ...input, area: 'Purok 9' })).toEqual({ ok: false, reason: '“Purok 9” is not an area in the fact sheet.' })
+    expect(approvedAlert({ ...input, area: 'Zone 9' })).toEqual({ ok: false, reason: '“Zone 9” is not an area in the fact sheet.' })
   })
 
   it('refuses to save before the checker’s claim words have loaded', () => {
@@ -100,14 +100,14 @@ describe('approvedAlert', () => {
 })
 
 describe('readSavedAlert', () => {
-  const data = { household: 'fishers', area: 'Purok 2', text: 'Alert text.', source: 'in_cloud', edited: true }
+  const data = { household: 'fishers', area: 'Zone 3', text: 'Alert text.', source: 'in_cloud', edited: true }
   const at = new Date('2026-11-14T08:00:00Z')
 
   it('reads a saved alert with its time and upload state', () => {
-    expect(readSavedAlert('fishers__purok-2', data, at, true)).toEqual({
-      id: 'fishers__purok-2',
+    expect(readSavedAlert('fishers__zone-3', data, at, true)).toEqual({
+      id: 'fishers__zone-3',
       household: 'fishers',
-      area: 'Purok 2',
+      area: 'Zone 3',
       text: 'Alert text.',
       source: 'in_cloud',
       edited: true,
@@ -121,7 +121,7 @@ describe('readSavedAlert', () => {
   })
 
   it('reads an alert whose fact sheet it can’t read, without one', () => {
-    const saved = readSavedAlert('x', { ...data, factSheet: { stormName: 'Typhoon Sample' } }, at, false)
+    const saved = readSavedAlert('x', { ...data, factSheet: { stormName: 'Typhoon Katy' } }, at, false)
     expect([saved?.text, saved?.factSheet]).toEqual(['Alert text.', undefined])
   })
 

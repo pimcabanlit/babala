@@ -88,7 +88,7 @@ function checkMissing(text: string, figures: Figure[], sheet: FactSheet, options
             : 'Missing the signal number.',
       })
   }
-  // Every alert for a purok names it, so a resident shown the text alone knows whose alert it is.
+  // Every alert for a zone names it, so a resident shown the text alone knows whose alert it is.
   const area = options.area
   if (area !== undefined && areaKeys(sheet).has(areaKey(area)) && !findKnownPlaces(text, sheet).some((s) => areaKey(s.text) === areaKey(area)))
     issues.push({ rule: 'missing', subject: 'area', message: `Missing the area this alert is for (${area}).` })
@@ -107,14 +107,14 @@ function checkMissing(text: string, figures: Figure[], sheet: FactSheet, options
 
 const areaKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase()
 
-/** The puroks an alert can be for, compared without letter case or extra spaces. */
+/** The zones an alert can be for, compared without letter case or extra spaces. */
 const areaKeys = (sheet: FactSheet) => new Set([...sheet.puroks, ...sheet.signals.map((s) => s.area)].map(areaKey))
 
 /**
- * Rule 2, the alert's own area: a household's alert is for one purok, so it
- * may not name another. Purok 1 and Purok Ilaya are both under Signal No. 3,
- * so a draft written for Purok Ilaya passed every rule for Purok 1 (found Nov 15).
- * The barangay is the whole place, so naming it stays fine.
+ * Rule 2, the alert's own area: a household's alert is for one zone, so it
+ * may not name another. Zone 1 and Zone 2 are both under Signal No. 3, so a
+ * draft written for Zone 2 passed every rule for Zone 1 (found Nov 15).
+ * The village is the whole place, so naming it stays fine.
  */
 function checkOtherAreas(text: string, sheet: FactSheet, area: string | undefined): Issue[] {
   const areas = areaKeys(sheet)
@@ -131,16 +131,16 @@ function checkOtherAreas(text: string, sheet: FactSheet, area: string | undefine
 
 /**
  * Spans whose digits name a place, not a figure: known names and any
- * "Purok 5" (an unknown purok is reported once, by the places rule).
+ * "Zone 5" or "Purok 5" (an unknown zone is reported once, by the places rule).
  */
 function placeNumberSpans(text: string, sheet: FactSheet): Span[] {
-  return [...findKnownPlaces(text, sheet), ...findAll(text, /\b[Pp]urok\s+\d+\b/g)]
+  return [...findKnownPlaces(text, sheet), ...findAll(text, /\b(?:[Zz]one|[Pp]urok)\s+\d+\b/g)]
 }
 
 /**
  * "1." at the start of a line is a list marker, reported once by the plain
  * rule as formatting. On Nov 12 it was also reported as the number “1”, and
- * the retry's "Remove “1”" took the 1 out of "Purok 1" and the hotline.
+ * the retry's "Remove “1”" took the 1 out of the area's name and the hotline.
  */
 const LIST_MARKERS = /^\s*\d+\.(?=\s)/gm
 
@@ -190,7 +190,7 @@ function compareFigures(english: string, translation: string, sheet: FactSheet):
   return issues
 }
 
-/** A place name in one form, so "Barangay  hall" and "Barangay Hall" compare equal. */
+/** A place name in one form, so "Village  hall" and "Village Hall" compare equal. */
 const placeKey = (text: string) => text.toLowerCase().replace(/\s+/g, ' ')
 
 /** Rule 7, places: the same known place names as the English alert, written exactly as the fact sheet does. */

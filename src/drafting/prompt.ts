@@ -57,7 +57,7 @@ export function buildDraftPrompt(sheet: FactSheet, area: string, household: Hous
 /**
  * Problems a word-level edit can't fix: the shape, a missing fact, or the
  * landfall time on the wrong event when there are no words to swap ("bring
- * food by 6:00 PM"). "Typhoon Sample is predicted to reach the area at
+ * food by 6:00 PM"). "Typhoon Katy is predicted to reach the area at
  * 6:00 PM" gets a word-level edit instead.
  */
 const isStructural = (i: Issue, draft: string, sheet: FactSheet) =>

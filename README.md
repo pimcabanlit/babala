@@ -1,7 +1,7 @@
 # babala
 Typhoon alerts that still work when the signal drops. Built with Firebase AI Logic hybrid inference
 
-> Work in progress for #BuildHybridAI 2026. Demo only, not official guidance: the storm and barangay are fictional.
+> Work in progress for #BuildHybridAI 2026. Demo only, not official guidance: the storm and village are fictional.
 
 ## Run locally
 

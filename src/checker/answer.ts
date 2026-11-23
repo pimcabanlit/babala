@@ -77,8 +77,8 @@ const words = (text: string): Span[] => findAll(text, WORD)
 const wordKey = (w: string) => w.toLowerCase().replace(/’/g, "'")
 
 /** Single venue words ("gym", "paaralan"), plus the markers of an area name. */
-const VENUE_TOKENS = new Set([...VENUE_WORDS.flatMap((w) => w.split(/[\s-]+/)), 'purok', 'barangay', 'brgy'])
-/** Words that start a sentence or a phrase in front of a name: "The Barangay Hall", "Sa Purok 1". */
+const VENUE_TOKENS = new Set([...VENUE_WORDS.flatMap((w) => w.split(/[\s-]+/)), 'zone', 'village', 'purok', 'barangay', 'brgy'])
+/** Words that start a sentence or a phrase in front of a name: "The Village Hall", "Sa Zone 1". */
 const LEAD_WORDS = new Set(['the', 'a', 'an', 'to', 'at', 'in', 'go', 'sa', 'ang', 'mga', 'si', 'ni', 'og', 'ug'])
 
 const isVenue = (token: string) => {
@@ -89,8 +89,9 @@ const isVenue = (token: string) => {
 /**
  * Place names in the text, by shape: a run of capitalised words, numbers and
  * venue words with only spaces between them, holding at least one venue word
- * or "Purok" or "Barangay": "Halimbawa Elementary School gym", "Purok 2",
- * "Barangay Hall", or just "gym". A word in front such as "The" is dropped.
+ * or an area word ("Zone", "Village", "Purok", "Barangay"): "Hillcrest
+ * Elementary School gym", "Zone 3", "Hillcrest Village", "Village Hall", or
+ * just "gym". A word in front such as "The" is dropped.
  * The same code reads the alert and the answer, so they compare like for like.
  */
 export function placeNames(text: string): Span[] {
@@ -129,7 +130,7 @@ const nameKey = (name: string) => name.toLowerCase().replace(/[\s-]+/g, ' ')
 
 const LIST_MARKERS = /^\s*\d+\.(?=\s)/gm
 
-/** Spans whose digits name a place, not a figure: "Purok 2", or a centre with a number in its name. */
+/** Spans whose digits name a place, not a figure: "Zone 3", or a centre with a number in its name. */
 function placeDigits(text: string): Span[] {
   return [...placeNames(text), ...findAll(text, LIST_MARKERS)]
 }

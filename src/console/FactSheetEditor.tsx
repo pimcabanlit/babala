@@ -3,12 +3,12 @@ import type { FactSheetForm } from '../factsheet/form'
 const FIELDS: { key: keyof FactSheetForm; label: string; hint?: string; rows?: number }[] = [
   { key: 'stormName', label: 'Storm name' },
   { key: 'landfallTime', label: 'Landfall time' },
-  { key: 'signals', label: 'Signals', hint: 'One per line: “Purok 1: 3”', rows: 3 },
+  { key: 'signals', label: 'Signals', hint: 'One per line: “Zone 1: 3”', rows: 3 },
   { key: 'landfallDate', label: 'Landfall date', hint: 'Optional' },
   { key: 'evacuationCentres', label: 'Evacuation centres', hint: 'One per line', rows: 2 },
   { key: 'hotline', label: 'Hotline', hint: 'Optional' },
-  { key: 'puroks', label: 'Puroks', hint: 'One per line', rows: 3 },
-  { key: 'barangays', label: 'Barangays', hint: 'One per line', rows: 1 },
+  { key: 'puroks', label: 'Zones', hint: 'One per line', rows: 3 },
+  { key: 'barangays', label: 'Villages', hint: 'One per line', rows: 1 },
   { key: 'otherFigures', label: 'Other figures', hint: 'Numbers drafts may use, e.g. “185, 2”' },
 ]
 

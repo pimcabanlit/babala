@@ -45,7 +45,7 @@ function householdLabel(id: HouseholdId): string {
 }
 
 /**
- * The resident's page, for any phone browser: pick your purok and household
+ * The resident's page, for any phone browser: pick your zone and household
  * once, and read your alert. It opens from the pack saved on the phone first,
  * so it works with no signal.
  */
@@ -89,7 +89,7 @@ export default function ResidentView() {
           ) : areas.length > 0 ? (
             <section aria-labelledby="choose-title" className="rounded-xl border border-outline-variant bg-surface-container-lowest p-5">
               <h2 id="choose-title" className="text-title-lg">
-                Choose your purok and household
+                Choose your zone and household
               </h2>
               <p className="mt-1 text-body-lg text-on-surface-variant">This phone remembers them.</p>
               <ChoiceForm
@@ -102,8 +102,8 @@ export default function ResidentView() {
             </section>
           ) : (
             <section className="rounded-xl bg-surface-container-high p-5">
-              <p className="text-title-lg">No alerts from your barangay yet.</p>
-              <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your barangay officials.</p>
+              <p className="text-title-lg">No alerts from your village yet.</p>
+              <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your village officials.</p>
             </section>
           )}
 
@@ -113,7 +113,7 @@ export default function ResidentView() {
             </Notice>
             {sync.unreadable > 0 && (
               <Notice tone="warning">
-                {sync.unreadable} alert{sync.unreadable === 1 ? '' : 's'} from the barangay couldn’t be read by this version of the
+                {sync.unreadable} alert{sync.unreadable === 1 ? '' : 's'} from the village couldn’t be read by this version of the
                 app. Reload the page to get the latest version.
               </Notice>
             )}
@@ -122,7 +122,7 @@ export default function ResidentView() {
           {areaKey && (
             <div className="flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container-lowest py-2 pr-2 pl-4 lg:col-start-2 lg:row-start-1">
               <div className="min-w-0 flex-1">
-                <p className="text-body-md text-on-surface-variant">Your purok and household</p>
+                <p className="text-body-md text-on-surface-variant">Your zone and household</p>
                 <p className="text-title-md">
                   {area} · {householdLabel(household)}
                 </p>
@@ -157,7 +157,7 @@ export default function ResidentView() {
         </div>
       </main>
 
-      <Dialog open={changing} onClose={() => setChanging(false)} title="Your purok and household" side="bottom">
+      <Dialog open={changing} onClose={() => setChanging(false)} title="Your zone and household" side="bottom">
         {/* Mounted fresh each time it opens, so it starts from what the phone remembers. */}
         {changing && (
           <ChoiceForm
@@ -225,7 +225,7 @@ function HeaderCard({
     return (
       <section className={`rounded-xl bg-surface-container-high p-5 ${className}`}>
         <p className="text-title-lg">No alert for {who} right now.</p>
-        <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your barangay officials.</p>
+        <p className="mt-1 text-body-lg text-on-surface-variant">Check again later, and listen to your village officials.</p>
       </section>
     )
   }
@@ -236,8 +236,8 @@ function HeaderCard({
           <Icon name="block" className="size-6" />
           Alert withdrawn
         </p>
-        <p className="mt-2 text-body-lg">The barangay withdrew the alert for {who}.</p>
-        <p className="mt-1 text-body-lg">Don’t follow it. Wait for a new alert, and listen to your barangay officials.</p>
+        <p className="mt-2 text-body-lg">Your village officials withdrew the alert for {who}.</p>
+        <p className="mt-1 text-body-lg">Don’t follow it. Wait for a new alert, and listen to your village officials.</p>
         {alert.updatedAtMs !== null && <p className="mt-2 text-body-md text-on-surface-variant">Withdrawn {at(alert.updatedAtMs)}</p>}
       </section>
     )
@@ -290,7 +290,7 @@ function AlertText({
         </p>
         <p className="mt-3 text-body-md text-on-surface-variant">
           {alert.updatedAtMs !== null && <>Last updated {at(alert.updatedAtMs)} · </>}
-          Approved by a barangay officer after a code check against the storm bulletin.
+          Approved by a village officer after a code check against the storm bulletin.
         </p>
       </section>
     </>
@@ -320,7 +320,7 @@ function Hotline({ numbers, className = '' }: { numbers: string[]; className?: s
 }
 
 /**
- * Purok and household as two lists, first as a card on the first visit and
+ * Zone and household as two lists, first as a card on the first visit and
  * then in the "Change" sheet. Nothing changes until the resident confirms.
  */
 function ChoiceForm({
@@ -338,22 +338,22 @@ function ChoiceForm({
   onSubmit: (choice: { areaKey: string; household: HouseholdId }) => void
   onCancel?: () => void
 }) {
-  // With one purok in the pack there is nothing to choose.
-  const [purok, setPurok] = useState(areaKey ?? (areas.length === 1 ? areas[0].areaKey : undefined))
+  // With one zone in the pack there is nothing to choose.
+  const [zone, setZone] = useState(areaKey ?? (areas.length === 1 ? areas[0].areaKey : undefined))
   const [who, setWho] = useState(household)
   const id = useId()
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (purok) onSubmit({ areaKey: purok, household: who })
+    if (zone) onSubmit({ areaKey: zone, household: who })
   }
   return (
     <form onSubmit={submit} className="mt-4 space-y-5">
       <ChoiceList
-        legend="Your purok"
-        name={`${id}-purok`}
+        legend="Your zone"
+        name={`${id}-zone`}
         options={areas.map((a) => ({ value: a.areaKey, label: a.area }))}
-        value={purok}
-        onChange={setPurok}
+        value={zone}
+        onChange={setZone}
       />
       <ChoiceList
         legend="Your household"
@@ -363,7 +363,7 @@ function ChoiceForm({
         onChange={setWho}
       />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="filled" size="lg" disabled={!purok}>
+        <Button type="submit" variant="filled" size="lg" disabled={!zone}>
           {submitLabel}
         </Button>
         {onCancel && (
@@ -417,11 +417,11 @@ type InstallPrompt = Event & { prompt: () => Promise<void> }
 function offlineAppText(app: OfflineApp): string {
   switch (app.state) {
     case 'ready':
-      return 'This page and your barangay’s alerts are saved on this phone, so they open with no signal.'
+      return 'This page and your village’s alerts are saved on this phone, so they open with no signal.'
     case 'starting':
       return 'Saving this page on the phone for offline use…'
     case 'unavailable':
-      return `Your barangay’s alerts are saved on this phone, but this page itself isn’t, so opening it needs a signal. ${app.reason}`
+      return `Your village’s alerts are saved on this phone, but this page itself isn’t, so opening it needs a signal. ${app.reason}`
   }
 }
 
@@ -466,7 +466,7 @@ function InstallCard({ className = '' }: { className?: string }) {
       {MODE === 'ios' && (
         <p className="mt-2">
           To add it to your home screen, tap Share <Icon name="ios_share" className="inline size-4 align-text-bottom" />, then
-          Add to Home Screen. The Home Screen app keeps its own storage: open it once with a signal and choose your purok and
+          Add to Home Screen. The Home Screen app keeps its own storage: open it once with a signal and choose your zone and
           household again before it works offline.
         </p>
       )}

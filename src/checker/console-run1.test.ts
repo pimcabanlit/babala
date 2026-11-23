@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { checkDraft } from './check'
 import { CONSOLE_RUN1, CONSOLE_RUN2, CONSOLE_RUN3, CONSOLE_RUN4, CONSOLE_RUN5 } from './fixtures/console-run1'
-import { SAMPLE_SHEET } from './fixtures/halimbawa'
+import { SAMPLE_SHEET } from './fixtures/hillcrest'
 import type { RequiredFact } from './types'
 
 const required: Record<string, RequiredFact[]> = {
@@ -31,7 +31,7 @@ describe('console run 1 (Nov 12, laptop): real Nano and cloud answers', () => {
   it.each(CONSOLE_RUN1)('$name', ({ name, household, text }) => {
     const { issues } = checkDraft(text, SAMPLE_SHEET, {
       claimWords: [...CHECKER_CLAIM_WORDS],
-      area: 'Purok 1',
+      area: 'Zone 1',
       required: required[household],
     })
     expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected[name]].sort())
@@ -55,7 +55,7 @@ describe('console run 2 (Nov 12, laptop, outline prompts): real Nano and cloud a
   it.each(CONSOLE_RUN2)('$name', ({ name, household, text }) => {
     const { issues } = checkDraft(text, SAMPLE_SHEET, {
       claimWords: [...CHECKER_CLAIM_WORDS],
-      area: 'Purok 1',
+      area: 'Zone 1',
       required: required[household],
     })
     expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected2[name]].sort())
@@ -81,7 +81,7 @@ describe('console run 3 (Nov 12, laptop, outline as the alert): real Nano and cl
   it.each(CONSOLE_RUN3)('$name', ({ name, household, text }) => {
     const { issues } = checkDraft(text, SAMPLE_SHEET, {
       claimWords: [...CHECKER_CLAIM_WORDS],
-      area: 'Purok 1',
+      area: 'Zone 1',
       required: required[household],
     })
     expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected3[name]].sort())
@@ -101,7 +101,7 @@ describe('console run 4 (Nov 12, laptop, JSON fields): real Nano and cloud answe
   it.each(CONSOLE_RUN4)('$name', ({ name, household, text }) => {
     const { issues } = checkDraft(text, SAMPLE_SHEET, {
       claimWords: [...CHECKER_CLAIM_WORDS],
-      area: 'Purok 1',
+      area: 'Zone 1',
       required: required[household],
     })
     expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected4[name]].sort())
@@ -121,7 +121,7 @@ describe('console run 5 (Nov 12, laptop): every alert written on the device', ()
   it.each(CONSOLE_RUN5)('$name', ({ name, household, text }) => {
     const { issues } = checkDraft(text, SAMPLE_SHEET, {
       claimWords: [...CHECKER_CLAIM_WORDS],
-      area: 'Purok 1',
+      area: 'Zone 1',
       required: required[household],
     })
     expect(issues.map((i) => `${i.rule}:${i.subject}`).sort()).toEqual([...expected5[name]].sort())

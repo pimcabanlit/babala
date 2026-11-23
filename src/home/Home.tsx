@@ -62,7 +62,7 @@ export default function Home() {
               <ViewCard
                 icon="smartphone"
                 title="I’m a resident"
-                text="See your purok’s typhoon alert in plain words. It’s saved on your phone, so it opens with no signal."
+                text="See your zone’s typhoon alert in plain words. It’s saved on your phone, so it opens with no signal."
                 note="No sign-in. Works in any phone browser."
               >
                 <ButtonLink variant="tonal" href={PATHS.resident}>
@@ -71,7 +71,7 @@ export default function Home() {
               </ViewCard>
               <ViewCard
                 icon="computer"
-                title="I’m a barangay officer"
+                title="I’m a village officer"
                 text="Turn a storm bulletin into alerts for each household, then check and approve them."
                 note="Judges: sign in with the test officer account from the testing instructions."
               >
@@ -109,7 +109,7 @@ export default function Home() {
 
       <footer className="border-t border-outline-variant">
         <div className={`mx-auto flex ${WIDTH.home} flex-wrap items-center gap-x-6 gap-y-2 px-4 py-6 text-body-md text-on-surface-variant`}>
-          <p>Demo, not official guidance. The storm and barangay are fictional.</p>
+          <p>Demo, not official guidance. The storm and village are fictional.</p>
           <a className="font-medium text-primary underline underline-offset-2" href={REPO}>
             Source code on GitHub
           </a>

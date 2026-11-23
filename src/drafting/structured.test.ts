@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { ALERT_SCHEMA, alertFromJson, previewFromPartialJson, readAnswer } from './structured'
 
 const answer = JSON.stringify({
-  signal_and_landfall: 'Signal No. 3 is raised in Purok 1, and Typhoon Sample makes landfall at 6:00 PM on Nov 14',
-  what_to_do_and_where_to_go: '  Leave now, and go to Barangay Hall. ',
+  signal_and_landfall: 'Signal No. 3 is raised in Zone 1, and Typhoon Katy makes landfall at 6:00 PM on Nov 14',
+  what_to_do_and_where_to_go: '  Leave now, and go to Village Hall. ',
   hotline: 'Call the hotline, 0917 555 0100, for help.',
 })
 
 describe('alertFromJson', () => {
   it('joins the fields in order, one sentence each, adding a missing full stop', () => {
     expect(alertFromJson(answer)).toBe(
-      'Signal No. 3 is raised in Purok 1, and Typhoon Sample makes landfall at 6:00 PM on Nov 14. Leave now, and go to Barangay Hall. Call the hotline, 0917 555 0100, for help.',
+      'Signal No. 3 is raised in Zone 1, and Typhoon Katy makes landfall at 6:00 PM on Nov 14. Leave now, and go to Village Hall. Call the hotline, 0917 555 0100, for help.',
     )
   })
 

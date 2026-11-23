@@ -14,7 +14,11 @@ export type FactSheet = {
   landfallDate?: string
   /** Evacuation centre names, written as residents would read them. */
   evacuationCentres: string[]
-  /** Puroks (e.g. "Purok 2", "Purok Ilaya") and barangays covered. */
+  /**
+   * The zones (e.g. "Zone 3"; "Purok Ilaya" in Philippine bulletins) and the
+   * villages ("Hillcrest Village", or a barangay) covered. The field names
+   * keep the Philippine words, since saved alerts and the rules use them.
+   */
   puroks: string[]
   barangays: string[]
   /** The hotline as written in the bulletin. */

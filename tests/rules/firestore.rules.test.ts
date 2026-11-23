@@ -33,7 +33,7 @@ import { RESIDENT_ALERTS } from '../../src/alerts/residentCopy'
 import { PACK_LIMIT } from '../../src/resident/store'
 import { LEDGER, LEDGER_LIMITS, approvalWrites, withdrawalWrites, type Trail } from '../../src/ledger/record'
 import { LEDGER_PAGE } from '../../src/ledger/store'
-import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET } from '../../src/checker/fixtures/halimbawa'
+import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO, SAMPLE_SHEET } from '../../src/checker/fixtures/hillcrest'
 import { CHECKER_CLAIM_WORDS, TRANSLATION_CLAIMS } from '../../src/config/defaults'
 import type { LanguageCode } from '../../src/translation/languages'
 import { TRANSLATION_TEXT_LIMIT, translationWrites, type TranslationTrail } from '../../src/translation/record'
@@ -89,12 +89,12 @@ const phoneUserDb = () => env.authenticatedContext(PHONE_USER, phone).firestore(
 const visitorDb = () => env.unauthenticatedContext().firestore()
 type TestDb = ReturnType<typeof officerDb>
 
-/** The general household's alert for Purok Ilaya, as the console builds it. */
+/** The general household's alert for Zone 2, as the console builds it. */
 function approval() {
   const result = approvedAlert({
     text: GOOD_DRAFT,
     sheet: SAMPLE_SHEET,
-    area: 'Purok Ilaya',
+    area: 'Zone 2',
     household: HOUSEHOLDS.find((h) => h.id === 'general')!,
     claimWords: [...CHECKER_CLAIM_WORDS],
     source: 'on_device',
@@ -104,7 +104,7 @@ function approval() {
   return result
 }
 
-const ALERT_ID = 'general__purok-ilaya'
+const ALERT_ID = 'general__zone-2'
 const LEDGER_ID = 'AbCdEfGhIjKlMnOpQrSt'
 const OLD_LEDGER_ID = 'OldEntryOldEntry0001'
 
@@ -115,9 +115,9 @@ const TRAIL: Trail = {
       round: 1,
       route: 'prefer_on_device',
       retry: false,
-      area: 'Purok Ilaya',
+      area: 'Zone 2',
       source: 'on_device',
-      prompt: 'Write a typhoon alert for all residents in Purok Ilaya…',
+      prompt: 'Write a typhoon alert for all residents in Zone 2…',
       text: GOOD_DRAFT,
       outcome: 'passed',
       issues: [],
@@ -254,12 +254,12 @@ describe('saving an alert with its ledger entry', () => {
 
   it('stops an alert saved under another household’s or area’s ID', async () => {
     const { alert, entry } = pair()
-    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'fishers__purok-ilaya' } }, { alertId: 'fishers__purok-ilaya' }))
+    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'fishers__zone-2' } }, { alertId: 'fishers__zone-2' }))
   })
 
   it('stops an unknown household', async () => {
     const { alert, entry } = pair(OFFICER, { household: 'tourists' })
-    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'tourists__purok-ilaya' } }, { alertId: 'tourists__purok-ilaya' }))
+    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'tourists__zone-2' } }, { alertId: 'tourists__zone-2' }))
   })
 
   it('stops a signal number that is not the area’s signal in the fact sheet', async () => {
@@ -267,13 +267,13 @@ describe('saving an alert with its ledger entry', () => {
   })
 
   it('stops an area that is not in the fact sheet', async () => {
-    const { alert, entry } = pair(OFFICER, { area: 'Purok 9', areaKey: 'purok-9' })
-    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'general__purok-9' } }, { alertId: 'general__purok-9' }))
+    const { alert, entry } = pair(OFFICER, { area: 'Zone 9', areaKey: 'zone-9' })
+    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'general__zone-9' } }, { alertId: 'general__zone-9' }))
   })
 
   it('stops an area key that is not lower-case words joined by dashes', async () => {
-    const { alert, entry } = pair(OFFICER, { areaKey: 'Purok Ilaya' })
-    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'general__Purok Ilaya' } }, { alertId: 'general__Purok Ilaya' }))
+    const { alert, entry } = pair(OFFICER, { areaKey: 'Zone 2' })
+    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'general__Zone 2' } }, { alertId: 'general__Zone 2' }))
   })
 
   it('stops alert text longer than the limit', async () => {
@@ -371,7 +371,7 @@ describe('the ledger entry that goes with each alert', () => {
 
   it('stops an entry recording a different alert', async () => {
     const { alert, entry } = pair()
-    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'seniors__purok-ilaya' } }))
+    await assertFails(save(officerDb(), { alert, entry: { ...entry, alertId: 'seniors__zone-2' } }))
   })
 
   it('stops an entry stamped with the laptop clock', async () => {
@@ -493,7 +493,7 @@ function withdrawalPair(
 
 /** The withdrawn resident copy for the seeded alert, stamped like the withdrawal. */
 function withdrawnCopyOf(withdrawal: Doc): Doc {
-  return { household: 'general', area: 'Purok Ilaya', areaKey: 'purok-ilaya', status: 'withdrawn', updatedAt: withdrawal.at }
+  return { household: 'general', area: 'Zone 2', areaKey: 'zone-2', status: 'withdrawn', updatedAt: withdrawal.at }
 }
 
 /**
@@ -628,10 +628,10 @@ describe('withdrawing a saved alert with its ledger entry', () => {
   it('stops one entry recording the withdrawal of two alerts', async () => {
     await seedApproval()
     // A second alert that matches the entry in all but its ID, as a hand edit could make.
-    const twinId = 'general__purok-ilaya-2'
+    const twinId = 'general__zone-2-2'
     await env.withSecurityRulesDisabled(async (ctx) => {
       const { alert } = pair(OFFICER, {}, OLD_LEDGER_ID)
-      await setDoc(doc(ctx.firestore(), ALERTS, twinId), { ...alert, areaKey: 'purok-ilaya-2', approvedAt: Timestamp.now() })
+      await setDoc(doc(ctx.firestore(), ALERTS, twinId), { ...alert, areaKey: 'zone-2-2', approvedAt: Timestamp.now() })
     })
     const { withdrawal, entry } = withdrawalPair()
     const db = officerDb()
@@ -640,7 +640,7 @@ describe('withdrawing a saved alert with its ledger entry', () => {
     batch.update(doc(db, ALERTS, twinId), { withdrawal })
     batch.set(doc(db, LEDGER, WITHDRAWAL_ID), entry)
     batch.set(doc(db, RESIDENT_ALERTS, ALERT_ID), withdrawnCopyOf(withdrawal))
-    batch.set(doc(db, RESIDENT_ALERTS, twinId), { ...withdrawnCopyOf(withdrawal), areaKey: 'purok-ilaya-2' })
+    batch.set(doc(db, RESIDENT_ALERTS, twinId), { ...withdrawnCopyOf(withdrawal), areaKey: 'zone-2-2' })
     await assertFails(batch.commit())
   })
 
@@ -690,12 +690,12 @@ describe('withdrawing a saved alert with its ledger entry', () => {
   it('stops an entry naming a different household or area from the alert’s', async () => {
     await seedApproval()
     await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { household: 'fishers' } })))
-    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { area: 'Purok 2' } })))
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { area: 'Zone 3' } })))
   })
 
   it('stops an entry recording a different alert', async () => {
     await seedApproval()
-    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { alertId: 'fishers__purok-ilaya' } })))
+    await assertFails(withdraw(officerDb(), withdrawalPair(OFFICER, { entry: { alertId: 'fishers__zone-2' } })))
   })
 
   it('stops an entry naming an approval other than the alert’s', async () => {
@@ -1012,7 +1012,7 @@ function translationTrail(lang: LanguageCode, text: string): TranslationTrail {
         round: 1,
         route: 'only_in_cloud',
         retry: false,
-        area: 'Purok Ilaya',
+        area: 'Zone 2',
         source: 'in_cloud',
         prompt: 'Translate this typhoon alert from English into…',
         text,
@@ -1151,7 +1151,7 @@ describe('publishing a translation with its ledger entry', () => {
   it('stops an entry naming a different household or area from the alert’s', async () => {
     await seedApproval()
     await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { household: 'fishers' } })))
-    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { area: 'Purok 2' } })))
+    await assertFails(publish(officerDb(), translationPair(OFFICER, { entry: { area: 'Zone 3' } })))
   })
 
   it('stops translating a withdrawn alert', async () => {

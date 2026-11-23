@@ -1,14 +1,14 @@
 /**
  * Rule 8: an AI answer to a resident's question is checked against the
  * approved alert on the phone. Hand-written from the demo alert
- * (fixtures/halimbawa.ts): GOOD_DRAFT and its Filipino and Cebuano translations.
+ * (fixtures/hillcrest.ts): GOOD_DRAFT and its Filipino and Cebuano translations.
  */
 import { describe, expect, it } from 'vitest'
 import { ANSWER_CLAIM_WORDS, CHECKER_CLAIM_WORDS, TRANSLATION_CLAIMS } from '../config/defaults'
 import { checkAnswer, placeNames, type AnswerAlert, type AnswerOptions } from './answer'
-import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO } from './fixtures/halimbawa'
+import { GOOD_CEBUANO, GOOD_DRAFT, GOOD_FILIPINO } from './fixtures/hillcrest'
 
-const NAMES = ['Typhoon Sample', 'Purok Ilaya']
+const NAMES = ['Typhoon Katy', 'Zone 2']
 const ENGLISH: AnswerAlert = { english: GOOD_DRAFT, shown: GOOD_DRAFT, names: NAMES }
 const FILIPINO: AnswerAlert = { english: GOOD_DRAFT, shown: GOOD_FILIPINO, names: NAMES }
 const CEBUANO: AnswerAlert = { english: GOOD_DRAFT, shown: GOOD_CEBUANO, names: NAMES }
@@ -25,11 +25,11 @@ const messages = (answer: string, alert = ENGLISH, language = 'en') =>
 
 describe('checkAnswer: answers that pass', () => {
   it('passes an answer copied from the alert', () => {
-    expect(checkAnswer('Evacuate now to Halimbawa Elementary School gym.', ENGLISH, options('en'))).toEqual({ pass: true, issues: [] })
+    expect(checkAnswer('Evacuate now to Hillcrest Elementary School gym.', ENGLISH, options('en'))).toEqual({ pass: true, issues: [] })
   })
 
   it('passes the landfall time said about landfall, with a word or two of its own', () => {
-    expect(messages('Typhoon Sample makes landfall at 6 PM on Nov 14.')).toEqual([])
+    expect(messages('Typhoon Katy makes landfall at 6 PM on Nov 14.')).toEqual([])
   })
 
   it('passes the hotline written another way', () => {
@@ -37,31 +37,31 @@ describe('checkAnswer: answers that pass', () => {
   })
 
   it('passes a Filipino answer in the words of the published Filipino alert', () => {
-    expect(messages('Lumikas na sa Halimbawa Elementary School gym.', FILIPINO, 'fil')).toEqual([])
+    expect(messages('Lumikas na sa Hillcrest Elementary School gym.', FILIPINO, 'fil')).toEqual([])
   })
 
   it('passes a Cebuano answer in the words of the published Cebuano alert', () => {
-    expect(messages('Bakwit na karon sa Halimbawa Elementary School gym.', CEBUANO, 'ceb')).toEqual([])
+    expect(messages('Bakwit na karon sa Hillcrest Elementary School gym.', CEBUANO, 'ceb')).toEqual([])
   })
 
   it('passes "the" in front of a place name', () => {
-    expect(messages('Go to the Halimbawa Elementary School gym now.')).toEqual([])
+    expect(messages('Go to the Hillcrest Elementary School gym now.')).toEqual([])
   })
 })
 
 describe('checkAnswer: figures', () => {
   it('flags a time the alert does not have', () => {
-    expect(messages('Typhoon Sample makes landfall at 9 PM on Nov 14.')).toEqual(['“9 PM” is not in your alert.'])
+    expect(messages('Typhoon Katy makes landfall at 9 PM on Nov 14.')).toEqual(['“9 PM” is not in your alert.'])
   })
 
   it('flags the landfall time moved to another event in an English answer', () => {
-    expect(messages('Evacuate now, by 6 PM, to Halimbawa Elementary School gym.')).toEqual([
+    expect(messages('Evacuate now, by 6 PM, to Hillcrest Elementary School gym.')).toEqual([
       '“6 PM” is when the storm makes landfall; the answer uses it for something else.',
     ])
   })
 
   it('flags a signal number the alert does not have', () => {
-    expect(messages('Signal No. 4 is raised over Purok Ilaya.')).toEqual(['“Signal No. 4” is not in your alert.'])
+    expect(messages('Signal No. 4 is raised over Zone 2.')).toEqual(['“Signal No. 4” is not in your alert.'])
   })
 
   it('flags a Filipino time that differs from the alert', () => {
@@ -79,11 +79,15 @@ describe('checkAnswer: places', () => {
   })
 
   it('flags a known kind of place with another name in front', () => {
-    expect(messages('Evacuate now to Halimbawa Municipal Gym.')).toEqual(['“Halimbawa Municipal Gym” is not a place your alert names.'])
+    expect(messages('Evacuate now to Hillcrest Municipal Gym.')).toEqual(['“Hillcrest Municipal Gym” is not a place your alert names.'])
   })
 
-  it('flags a purok the alert does not name', () => {
-    expect(messages('Signal No. 3 is raised over Purok 5.')).toEqual(['“Purok 5” is not a place your alert names.'])
+  it('flags a zone the alert does not name', () => {
+    expect(messages('Signal No. 3 is raised over Zone 5.')).toEqual(['“Zone 5” is not a place your alert names.'])
+  })
+
+  it('flags a village the alert does not name', () => {
+    expect(messages('Signal No. 3 is raised over Zone 2 and Maple Village.')).toEqual(['“Maple Village” is not a place your alert names.'])
   })
 
   it('flags a Filipino word for a place outside the alert’s names', () => {
@@ -93,13 +97,13 @@ describe('checkAnswer: places', () => {
 
 describe('checkAnswer: claims', () => {
   it('flags a severity word the alert does not say', () => {
-    expect(messages('Evacuate now to Halimbawa Elementary School gym, because the storm is severe.')).toContain(
+    expect(messages('Evacuate now to Hillcrest Elementary School gym, because the storm is severe.')).toContain(
       '“severe” is not in your alert.',
     )
   })
 
   it('flags "safe" when the alert does not say it', () => {
-    expect(messages('Halimbawa Elementary School gym is safe.')).toContain('“safe” is not in your alert.')
+    expect(messages('Hillcrest Elementary School gym is safe.')).toContain('“safe” is not in your alert.')
   })
 
   it('flags an answer that tells the resident to stay home', () => {
@@ -144,7 +148,7 @@ describe('checkAnswer: grounded in the alert', () => {
 
 describe('checkAnswer: plain and short', () => {
   it('flags another script, as Nano wrote on Nov 12', () => {
-    expect(messages('कृपया evacuate now to Halimbawa Elementary School gym.')).toContain(
+    expect(messages('कृपया evacuate now to Hillcrest Elementary School gym.')).toContain(
       '“कृपया” is in another script; alerts use Latin letters and the digits 0 to 9.',
     )
   })
@@ -159,12 +163,12 @@ describe('checkAnswer: plain and short', () => {
 })
 
 describe('placeNames', () => {
-  it('reads a centre, a purok and the Barangay Hall as names', () => {
-    const text = 'Signal No. 3 is raised over Purok Ilaya, so go to Halimbawa Elementary School gym or the Barangay Hall.'
-    expect(placeNames(text).map((s) => s.text)).toEqual(['Purok Ilaya', 'Halimbawa Elementary School gym', 'Barangay Hall'])
+  it('reads a centre, a zone and the Village Hall as names', () => {
+    const text = 'Signal No. 3 is raised over Zone 2, so go to Hillcrest Elementary School gym or the Village Hall.'
+    expect(placeNames(text).map((s) => s.text)).toEqual(['Zone 2', 'Hillcrest Elementary School gym', 'Village Hall'])
   })
 
   it('does not read "the evacuation centre" as a place', () => {
-    expect(placeNames('Go to the evacuation centre at Barangay Hall.').map((s) => s.text)).toEqual(['Barangay Hall'])
+    expect(placeNames('Go to the evacuation centre at Village Hall.').map((s) => s.text)).toEqual(['Village Hall'])
   })
 })

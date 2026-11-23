@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { checkDraft } from '../checker'
-import { SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
+import { SAMPLE_SHEET } from '../checker/fixtures/hillcrest'
 import { CHECKER_CLAIM_WORDS } from '../config/defaults'
 import { segments } from './segments'
 

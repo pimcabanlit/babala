@@ -35,6 +35,7 @@ export function AssistChip({ className = '', type = 'button', ...rest }: ButtonH
 /**
  * An M3 filter chip: a toggle that narrows a list. A tick marks it as picked,
  * so the choice never rests on colour alone; screen readers hear "pressed".
+ * Picked is light grey, not blue, so the list it filters is what stands out.
  */
 export function FilterChip({
   selected,
@@ -52,7 +53,7 @@ export function FilterChip({
       onClick={onClick}
       className={`relative inline-flex h-8 items-center gap-1.5 rounded-sm border text-label-lg before:absolute before:inset-x-0 before:top-1/2 before:h-12 before:-translate-y-1/2 ${
         selected
-          ? 'border-transparent bg-primary-container pr-4 pl-2 text-on-primary-container'
+          ? 'border-transparent bg-surface-container-highest pr-4 pl-2 text-on-surface'
           : 'border-outline bg-surface-container-lowest px-4 text-on-surface-variant hover:bg-surface-container-low'
       }`}
     >

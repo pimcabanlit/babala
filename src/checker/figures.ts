@@ -165,7 +165,7 @@ const MATCHERS: Matcher[] = [
 
 /**
  * Every figure in the text. Spans in `ignore` (known place names such as
- * "Purok 2") are skipped, so their numbers don't count as figures.
+ * "Zone 3") are skipped, so their numbers don't count as figures.
  */
 export function extractFigures(text: string, ignore: Span[] = []): Figure[] {
   let rest = mask(text, ignore)

@@ -188,7 +188,7 @@ function List({
                     onClick={() => onChoose(alert.id)}
                     className={`w-full rounded-md border p-3 text-left transition-colors ${
                       current
-                        ? 'border-transparent bg-primary-container text-on-primary-container'
+                        ? 'border-outline-variant bg-surface-container-high text-on-surface'
                         : 'border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low'
                     }`}
                   >

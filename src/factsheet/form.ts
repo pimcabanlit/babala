@@ -7,7 +7,7 @@ import type { FactSheet } from '../checker'
 
 export type FactSheetForm = {
   stormName: string
-  /** One "Area: signal" per line, e.g. "Purok Ilaya: 3". */
+  /** One "Area: signal" per line, e.g. "Zone 2: 3". */
   signals: string
   /** Any time spelling: "6:00 PM", "18:00". */
   landfallTime: string
@@ -50,9 +50,9 @@ export function fromForm(form: FactSheetForm, bulletinText: string): FormResult 
   for (const line of lines(form.signals)) {
     const m = line.match(/^(.+?)\s*:\s*(\d{1,2})$/)
     if (m) signals.push({ area: m[1].trim(), signal: Number(m[2]) })
-    else problems.push(`Signal line “${line}” should look like “Purok 1: 3”.`)
+    else problems.push(`Signal line “${line}” should look like “Zone 1: 3”.`)
   }
-  if (lines(form.signals).length === 0) problems.push('Add at least one signal, like “Purok 1: 3”.')
+  if (lines(form.signals).length === 0) problems.push('Add at least one signal, like “Zone 1: 3”.')
 
   const landfallTime = normalizeTime(form.landfallTime.trim()) ?? ''
   if (!landfallTime) problems.push('Landfall time should look like “6:00 PM” or “18:00”.')

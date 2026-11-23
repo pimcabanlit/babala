@@ -62,7 +62,7 @@ function SignInScreen({ officer, checks }: { officer: ReturnType<typeof useOffic
           {status.kind === 'signed-out' && (
             <>
               <p className="mt-2 text-body-lg text-on-surface-variant">
-                Barangay officers sign in with Google to draft, check and approve alerts.
+                Village officers sign in with Google to draft, check and approve alerts.
               </p>
               <GoogleButton busy={busy} onClick={() => void signIn()} />
               <TestOfficerSignIn busy={busy} onSignIn={signInAsTestOfficer} />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/halimbawa'
+import { GOOD_DRAFT, SAMPLE_SHEET } from '../checker/fixtures/hillcrest'
 import { LANGUAGES } from './languages'
 import { readTranslation, translationPrompt } from './prompt'
 
@@ -12,7 +12,7 @@ describe('translationPrompt', () => {
 
   it('lists every place name and figure the checker will compare, as the English writes them', () => {
     expect(translationPrompt(GOOD_DRAFT, SAMPLE_SHEET, cebuano)).toContain(
-      'Keep these exactly as the English writes them, without translating them: "Purok Ilaya", "Halimbawa Elementary School gym", "Signal No. 3", "6 PM", "Nov 14", "0917 555 0100".',
+      'Keep these exactly as the English writes them, without translating them: "Zone 2", "Hillcrest Elementary School gym", "Signal No. 3", "6 PM", "Nov 14", "0917 555 0100".',
     )
   })
 

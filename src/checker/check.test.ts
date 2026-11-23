@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { CHECKER_CLAIM_WORDS, TRANSLATION_CLAIMS } from '../config/defaults'
 import { checkDraft, checkTranslation } from './check'
 import { DAY1_CASES, DAY1_SHEET } from './fixtures/day1'
-import { GOOD_DRAFT, GOOD_FILIPINO, NANO_HINDI_DRAFT, SAMPLE_SHEET } from './fixtures/halimbawa'
+import { GOOD_DRAFT, GOOD_FILIPINO, NANO_HINDI_DRAFT, SAMPLE_SHEET } from './fixtures/hillcrest'
 import type { CheckOptions, Issue, Rule, TranslationOptions } from './types'
 
-const OPTIONS: CheckOptions = { claimWords: [...CHECKER_CLAIM_WORDS], area: 'Purok Ilaya' }
+const OPTIONS: CheckOptions = { claimWords: [...CHECKER_CLAIM_WORDS], area: 'Zone 2' }
 const FILIPINO: TranslationOptions = { claimWords: [...CHECKER_CLAIM_WORDS], translatedClaims: [...TRANSLATION_CLAIMS.fil] }
 
 /** The flagged text per rule, for compact expectations. */
@@ -67,7 +67,7 @@ describe('checkDraft on the fictional bulletin', () => {
 
   it('accepts the same facts in other spellings', () => {
     const draft =
-      'Signal #3 is up over Purok Ilaya. Landfall is expected at 18:00 on November 14; go to the Barangay Hall. Call +63 917-555-0100.'
+      'Signal #3 is up over Zone 2. Landfall is expected at 18:00 on November 14; go to the Village Hall. Call +63 917-555-0100.'
     expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
   })
 
@@ -88,66 +88,86 @@ describe('checkDraft on the fictional bulletin', () => {
   })
 
   it('allows numbers the bulletin states', () => {
-    const draft = 'Signal No. 3 for Purok Ilaya: landfall at 6 PM, winds of 185 km/h. Go to the Barangay Hall. Call 0917 555 0100.'
+    const draft = 'Signal No. 3 for Zone 2: landfall at 6 PM, winds of 185 km/h. Go to the Village Hall. Call 0917 555 0100.'
     expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
   })
 
   it('requires the signal number of the alert’s own area', () => {
-    // Purok 2 is under Signal No. 2; Signal No. 3 is a real figure, but the wrong one for this area.
-    const result = checkDraft(GOOD_DRAFT.replace('Purok Ilaya', 'Purok 2'), SAMPLE_SHEET, { ...OPTIONS, area: 'Purok 2' })
-    expect(flagged(result.issues)).toEqual({ missing: ['Missing the signal number for Purok 2 (Signal No. 2).'] })
+    // Zone 3 is under Signal No. 2; Signal No. 3 is a real figure, but the wrong one for this area.
+    const result = checkDraft(GOOD_DRAFT.replace('Zone 2', 'Zone 3'), SAMPLE_SHEET, { ...OPTIONS, area: 'Zone 3' })
+    expect(flagged(result.issues)).toEqual({ missing: ['Missing the signal number for Zone 3 (Signal No. 2).'] })
   })
 
-  it('rejects a draft that names another purok, even one under the same signal', () => {
-    // GOOD_DRAFT is for Purok Ilaya; Purok 1 is under Signal No. 3 too, so only the place gives it away.
-    const result = checkDraft(GOOD_DRAFT, SAMPLE_SHEET, { ...OPTIONS, area: 'Purok 1' })
+  it('rejects a draft that names another zone, even one under the same signal', () => {
+    // GOOD_DRAFT is for Zone 2; Zone 1 is under Signal No. 3 too, so only the place gives it away.
+    const result = checkDraft(GOOD_DRAFT, SAMPLE_SHEET, { ...OPTIONS, area: 'Zone 1' })
     expect(result.pass).toBe(false)
     expect(result.issues).toEqual([
       {
         rule: 'places',
         subject: 'area',
-        message: '“Purok Ilaya” is another area; this alert is for Purok 1.',
-        span: { start: 28, end: 39, text: 'Purok Ilaya' },
+        message: '“Zone 2” is another area; this alert is for Zone 1.',
+        span: { start: 28, end: 34, text: 'Zone 2' },
       },
-      { rule: 'missing', subject: 'area', message: 'Missing the area this alert is for (Purok 1).' },
+      { rule: 'missing', subject: 'area', message: 'Missing the area this alert is for (Zone 1).' },
     ])
   })
 
-  it('rejects another purok named beside the alert’s own', () => {
-    const draft = GOOD_DRAFT.replace('over Purok Ilaya', 'over Purok Ilaya and Purok 1')
-    expect(flagged(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ places: ['Purok 1'] })
+  it('rejects another zone named beside the alert’s own', () => {
+    const draft = GOOD_DRAFT.replace('over Zone 2', 'over Zone 2 and Zone 1')
+    expect(flagged(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ places: ['Zone 1'] })
   })
 
-  it('allows the alert’s own purok and its barangay, in any letter case', () => {
-    const draft = GOOD_DRAFT.replace('over Purok Ilaya', 'over purok ilaya, Barangay Halimbawa')
+  it('allows the alert’s own zone and its village, in any letter case', () => {
+    const draft = GOOD_DRAFT.replace('over Zone 2', 'over zone 2, hillcrest village')
     expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
   })
 
   it('doesn’t judge areas when the alert has no area', () => {
-    const draft = GOOD_DRAFT.replace('over Purok Ilaya', 'over Purok Ilaya and Purok 1')
+    const draft = GOOD_DRAFT.replace('over Zone 2', 'over Zone 2 and Zone 1')
     expect(checkDraft(draft, SAMPLE_SHEET, { ...OPTIONS, area: undefined }).issues).toEqual([])
   })
 
-  it('reports an unknown purok once, as a place, not also as a number', () => {
-    const result = checkDraft(GOOD_DRAFT.replace('Purok Ilaya', 'Purok 5'), SAMPLE_SHEET, { ...OPTIONS, area: undefined })
+  it('reports an unknown zone once, as a place, not also as a number', () => {
+    const result = checkDraft(GOOD_DRAFT.replace('Zone 2', 'Zone 5'), SAMPLE_SHEET, { ...OPTIONS, area: undefined })
+    expect(flagged(result.issues)).toEqual({ places: ['Zone 5'] })
+  })
+
+  it('reports an unknown purok, the Philippine word for a zone, once', () => {
+    const result = checkDraft(GOOD_DRAFT.replace('Zone 2', 'Purok 5'), SAMPLE_SHEET, { ...OPTIONS, area: undefined })
     expect(flagged(result.issues)).toEqual({ places: ['Purok 5'] })
   })
 
-  it('rejects an unknown barangay and an evacuation centre not in the fact sheet', () => {
-    const draft = 'Signal No. 3 over Barangay Bago. Landfall at 6 PM; go to the parish church. Call 0917 555 0100.'
+  it('rejects an unknown village and an evacuation centre not in the fact sheet', () => {
+    const draft = 'Signal No. 3 over Maple Village. Landfall at 6 PM; go to the parish church. Call 0917 555 0100.'
     expect(flagged(checkDraft(draft, SAMPLE_SHEET, { ...OPTIONS, area: undefined }).issues)).toEqual({
-      places: ['church', 'Barangay Bago'],
+      places: ['church', 'Maple Village'],
       missing: ['Missing where to go: name an evacuation centre from the fact sheet.'],
     })
   })
 
+  it('rejects an unknown barangay, the Philippine word for a village', () => {
+    const draft = GOOD_DRAFT.replace('over Zone 2', 'over Zone 2, Barangay Bago')
+    expect(flagged(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ places: ['Barangay Bago'] })
+  })
+
+  it('rejects the village named the Philippine way, since names must match word for word', () => {
+    const draft = GOOD_DRAFT.replace('over Zone 2', 'over Zone 2, Barangay Hillcrest')
+    expect(flagged(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ places: ['Barangay Hillcrest'] })
+  })
+
+  it('does not read "The Village Hall" or "your village" as a village name', () => {
+    const draft = GOOD_DRAFT.replace('evacuate now to Hillcrest Elementary School gym', 'your village asks you to go to The Village Hall')
+    expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
+  })
+
   it('accepts a known name in any letter case', () => {
-    const draft = GOOD_DRAFT.replace('Halimbawa Elementary School gym', 'the barangay hall')
+    const draft = GOOD_DRAFT.replace('Hillcrest Elementary School gym', 'the village hall')
     expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
   })
 
   it('allows hazard words the bulletin itself uses', () => {
-    const draft = 'Signal No. 3 over Purok Ilaya: strong winds and storm surge are possible. Landfall at 6 PM; go to the Barangay Hall. Call 0917 555 0100.'
+    const draft = 'Signal No. 3 over Zone 2: strong winds and storm surge are possible. Landfall at 6 PM; go to the Village Hall. Call 0917 555 0100.'
     expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
   })
 
@@ -157,29 +177,29 @@ describe('checkDraft on the fictional bulletin', () => {
   })
 
   it('lets a household type skip facts it does not need', () => {
-    const fishers = 'Signal No. 3 is raised over Purok Ilaya. Do not go to sea; landfall is at 6 PM. Call 0917 555 0100.'
+    const fishers = 'Signal No. 3 is raised over Zone 2. Do not go to sea; landfall is at 6 PM. Call 0917 555 0100.'
     expect(checkDraft(fishers, SAMPLE_SHEET, { ...OPTIONS, required: ['signal', 'time', 'hotline'] }).issues).toEqual([])
   })
 
   it('counts sentences without splitting on "No." or "p.m."', () => {
-    const draft = 'Signal No. 3 over Purok Ilaya. Landfall at 6 p.m. on Nov 14; go to the Barangay Hall. Call 0917 555 0100.'
+    const draft = 'Signal No. 3 over Zone 2. Landfall at 6 p.m. on Nov 14; go to the Village Hall. Call 0917 555 0100.'
     expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
     const four = draft + ' Stay calm.'
     expect(flagged(checkDraft(four, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ plain: ['4 sentences; the limit is 3.'] })
   })
 
   it('accepts "evacuation centre" as a common noun next to a known name', () => {
-    const draft = GOOD_DRAFT.replace('evacuate now to Halimbawa', 'go now to the evacuation centre at Halimbawa')
+    const draft = GOOD_DRAFT.replace('evacuate now to Hillcrest', 'go now to the evacuation centre at Hillcrest')
     expect(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues).toEqual([])
     // It still names no centre on its own.
-    const vague = GOOD_DRAFT.replace('evacuate now to Halimbawa Elementary School gym', 'go to the nearest evacuation center')
+    const vague = GOOD_DRAFT.replace('evacuate now to Hillcrest Elementary School gym', 'go to the nearest evacuation center')
     expect(flagged(checkDraft(vague, SAMPLE_SHEET, OPTIONS).issues)).toEqual({
       missing: ['Missing where to go: name an evacuation centre from the fact sheet.'],
     })
   })
 
   it('reports "municipal school gym" once, as one place', () => {
-    const draft = GOOD_DRAFT.replace('Halimbawa Elementary School gym', 'the municipal school gym')
+    const draft = GOOD_DRAFT.replace('Hillcrest Elementary School gym', 'the municipal school gym')
     const places = checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues.filter((i) => i.rule === 'places')
     expect(places.map((i) => [i.span?.text, i.message])).toEqual([
       ['school gym', '“the municipal school gym” is not an evacuation centre in the fact sheet.'],
@@ -187,7 +207,7 @@ describe('checkDraft on the fictional bulletin', () => {
   })
 
   it('ends a sentence at "p.m." when a new sentence follows', () => {
-    const draft = 'Signal No. 3 over Purok Ilaya. Landfall at 6 p.m. Go to the Barangay Hall. Call 0917 555 0100.'
+    const draft = 'Signal No. 3 over Zone 2. Landfall at 6 p.m. Go to the Village Hall. Call 0917 555 0100.'
     expect(flagged(checkDraft(draft, SAMPLE_SHEET, OPTIONS).issues)).toEqual({ plain: ['4 sentences; the limit is 3.'] })
   })
 
@@ -235,15 +255,15 @@ describe('checkDraft on the fictional bulletin', () => {
 })
 
 describe('plain: other scripts', () => {
-  const purok1 = { ...OPTIONS, area: 'Purok 1' }
+  const zone1 = { ...OPTIONS, area: 'Zone 1' }
 
-  it('flags the Hindi word Nano wrote into the Purok 1 alert', () => {
-    const { issues } = checkDraft(NANO_HINDI_DRAFT, SAMPLE_SHEET, purok1)
+  it('flags the Hindi word Nano wrote into the Zone 1 alert', () => {
+    const { issues } = checkDraft(NANO_HINDI_DRAFT, SAMPLE_SHEET, zone1)
     expect(issues.map((i) => [i.rule, i.subject, i.span?.text])).toEqual([['plain', 'script', 'कृपया']])
   })
 
   it('passes the same alert once the word is removed', () => {
-    expect(checkDraft(NANO_HINDI_DRAFT.replace('कृपया ', ''), SAMPLE_SHEET, purok1).issues).toEqual([])
+    expect(checkDraft(NANO_HINDI_DRAFT.replace('कृपया ', ''), SAMPLE_SHEET, zone1).issues).toEqual([])
   })
 
   it('flags a Cyrillic letter that looks like a Latin one', () => {
@@ -298,12 +318,12 @@ describe('checkTranslation', () => {
   it('rejects a translated place name', () => {
     const result = checkTranslation(
       GOOD_DRAFT,
-      GOOD_FILIPINO.replace('Halimbawa Elementary School gym', 'gym ng paaralan'),
+      GOOD_FILIPINO.replace('Hillcrest Elementary School gym', 'gym ng paaralan'),
       SAMPLE_SHEET,
       FILIPINO,
     )
     expect(result.issues.map((i) => i.message)).toEqual([
-      'The translation must keep the place name “Halimbawa Elementary School gym” exactly.',
+      'The translation must keep the place name “Hillcrest Elementary School gym” exactly.',
       // Since the translation check also runs rule 2, the venue words are flagged too.
       '“na sa gym” is not an evacuation centre in the fact sheet.',
       '“gym ng paaralan” is not an evacuation centre in the fact sheet.',

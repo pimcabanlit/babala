@@ -182,14 +182,14 @@ function Outcome({ question, outcome, shown, language }: { question: string; out
           </p>
           <Quotes label="From your alert, word for word:" quotes={outcome.quotes} language={language} />
           <p className="mt-3 text-body-md text-on-surface-variant">
-            Written by AI and checked by code against your alert: same figures and places, nothing added. The barangay didn’t
-            write this answer; follow the alert itself.
+            Written by AI and checked by code against your alert: same figures and places, nothing added. Your village officials
+            didn’t write this answer; follow the alert itself.
           </p>
         </>
       )}
       {outcome.kind === 'not-in-alert' && (
         <>
-          <p className="mt-2">Your alert doesn’t answer that. For anything it doesn’t cover, ask your barangay.</p>
+          <p className="mt-2">Your alert doesn’t answer that. For anything it doesn’t cover, ask your village officials.</p>
           {hotline.found && <Quotes label="From your alert:" quotes={hotline.sentences} language={language} />}
         </>
       )}
@@ -198,7 +198,7 @@ function Outcome({ question, outcome, shown, language }: { question: string; out
           <Quotes label="The part of your alert that matches, word for word:" quotes={outcome.result.sentences} language={language} />
         ) : (
           <>
-            <p className="mt-2">Nothing in your alert matches that question. Read the whole alert above, or ask your barangay.</p>
+            <p className="mt-2">Nothing in your alert matches that question. Read the whole alert above, or ask your village officials.</p>
             {hotline.found && <Quotes label="From your alert:" quotes={hotline.sentences} language={language} />}
           </>
         ))}
