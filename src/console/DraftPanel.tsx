@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { InferenceSource } from '../ai'
 import type { SavedAlert } from '../alerts/record'
 import type { CheckResult as Checked } from '../checker'
@@ -27,6 +28,8 @@ type Props = {
   blockReasonId: string | undefined
   onDraft: () => void
   onAbandon: () => void
+  /** Stops the draft in progress, and the rest of "Draft all four". */
+  onCancel: () => void
   onEdit: (text: string) => void
   /** The alert saved for this household and area, if any. */
   saved: SavedAlert | undefined
@@ -54,8 +57,22 @@ export default function DraftPanel(props: Props) {
   const status = tabStatus({ running: draft.running, approved, passed: result?.pass })
   const lastError = draft.running ? undefined : draft.attempts.at(-1)?.error
   // Every call in this round erred or was stopped, so there are no words to fix and the routing's note would mislead.
-  const nothingWritten = !draft.running && draft.attempts.length > 0 && draft.attempts.every((a) => a.error || a.abandoned || !a.text.trim())
+  const nothingWritten =
+    !draft.running && draft.attempts.length > 0 && draft.attempts.every((a) => a.error || a.abandoned || a.cancelled || !a.text.trim())
   const helpId = `text-help-${household.id}`
+  const focusDraft = useRef(false)
+
+  // The Cancel button goes away with the draft, so focus moves to Draft again rather than to the page.
+  useEffect(() => {
+    if (draft.running || !focusDraft.current) return
+    focusDraft.current = false
+    document.getElementById(`draft-${household.id}`)?.focus()
+  }, [draft.running, household.id])
+
+  function cancel() {
+    focusDraft.current = true
+    props.onCancel()
+  }
 
   return (
     <div className="space-y-4">
@@ -73,15 +90,29 @@ export default function DraftPanel(props: Props) {
       {current && (
         <div>
           <Progress label={`Drafting the ${household.label} alert`} />
-          <p className="mt-2 text-body-md text-on-surface-variant">
-            <span role="status">{progressText(current)}</span> · {Math.floor(elapsed / 1000)} s
-          </p>
+          {/* Cancel sits here, not in the place of Draft again, so a click as the draft ends never starts a new one. */}
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4">
+            <p className="text-body-md text-on-surface-variant">
+              <span role="status">{progressText(current)}</span> · {Math.floor(elapsed / 1000)} s
+            </p>
+            <Button variant="text" onClick={cancel}>
+              <Icon name="close" className="size-[18px]" />
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
       {overBudget && (
         <Notice tone="warning">
           The laptop has taken over {budgetSeconds} s.{' '}
           {online ? <LinkButton onClick={props.onAbandon}>Use the cloud instead</LinkButton> : 'Offline, so it keeps waiting for the laptop.'}
+        </Notice>
+      )}
+      {draft.cancelled && !draft.running && (
+        <Notice tone="neutral" role="status">
+          {draft.text.trim()
+            ? 'Drafting cancelled. The last full draft is below: fix it by hand, or draft again.'
+            : 'Drafting cancelled. Draft again, or write the alert by hand.'}
         </Notice>
       )}
       {draft.note && (
@@ -117,7 +148,7 @@ export default function DraftPanel(props: Props) {
       {props.saveError && <Notice tone="error">{props.saveError}</Notice>}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <Button variant="outlined" onClick={props.onDraft} disabled={!props.canDraft} aria-describedby={props.blockReasonId}>
+        <Button id={`draft-${household.id}`} variant="outlined" onClick={props.onDraft} disabled={!props.canDraft} aria-describedby={props.blockReasonId}>
           {draft.attempts.length ? 'Draft again' : 'Draft'}
         </Button>
         <Button variant="filled" onClick={props.onApprove} disabled={draft.running || approved || !result?.pass}>

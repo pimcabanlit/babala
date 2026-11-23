@@ -356,7 +356,7 @@ Each item of `drafts` is one model call (`LedgerDraft`). Rules can't look inside
 | source | string | `on_device`, `in_cloud` or `unknown`, as the SDK reported it |
 | prompt | string | The exact prompt, cut at 6,000 characters |
 | text | string | The answer's fields joined into the alert, as the checker saw it, cut at 2,000 |
-| outcome | string | `passed` or `failed` (the checker's verdict), `error`, or `stopped` (the officer moved to the cloud after the budget) |
+| outcome | string | `passed` or `failed` (the checker's verdict), `error`, `stopped` (the officer moved to the cloud after the budget), or `cancelled` (the officer cancelled the draft) |
 | issues | list of {rule, message} | The checker's problems in reading order, at most 30 |
 | error | string | The error when the call threw, otherwise empty. Cut at 500 |
 | startedAtMs | number | When the call started, by the laptop's clock |
@@ -439,7 +439,7 @@ Each model call in the console is an attempt (`Attempt` in `src/console/useDraft
 - the joined text and the raw answer;
 - the source the SDK reported;
 - pass or fail, with the checker's issues;
-- an error, or whether the officer abandoned it for the cloud.
+- an error, whether the officer abandoned it for the cloud, or whether the officer cancelled it.
 
 Each attempt also records the area it was drafted for. "Copy test log" turns them into plain text. When the officer approves, the attempts on that card since its last approval are saved in the ledger entry (`drafts`, above), without the raw JSON.
 

@@ -248,7 +248,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
     : reading
       ? // Its answer replaces the facts and clears the drafts, so a draft started now would be lost.
         'The cloud is reading the bulletin. Drafting waits for the new facts.'
-      : draftBlockReason({ modelsReady: hybrid.models !== undefined, online: hybrid.online, device: hybrid.device, busy })
+      : draftBlockReason({ modelsReady: hybrid.models !== undefined, online: hybrid.online, device: hybrid.device, busy, batch: drafts.batch })
 
   const steps = stepStates({
     bulletinRead: form !== undefined,
@@ -583,6 +583,7 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                     onDraft={(h) => void drafts.draft(h)}
                     onDraftAll={() => void drafts.draftAll()}
                     onAbandon={drafts.abandon}
+                    onCancel={drafts.cancel}
                     onEdit={drafts.edit}
                     saved={savedAlerts.saved?.byId}
                     saveErrors={saveErrors}

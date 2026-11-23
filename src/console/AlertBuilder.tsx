@@ -26,6 +26,7 @@ type Props = {
   onDraft: (h: Household) => void
   onDraftAll: () => void
   onAbandon: (id: HouseholdId) => void
+  onCancel: (id: HouseholdId) => void
   onEdit: (id: HouseholdId, text: string) => void
   /** Saved alerts by document ID, once loaded. */
   saved: ReadonlyMap<string, SavedAlert> | undefined
@@ -197,6 +198,7 @@ export default function AlertBuilder(props: Props) {
               props.onDraft(h)
             }}
             onAbandon={() => props.onAbandon(h.id)}
+            onCancel={() => props.onCancel(h.id)}
             onEdit={(text) => {
               setFollow(false)
               props.onEdit(h.id, text)
