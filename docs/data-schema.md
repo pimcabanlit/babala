@@ -54,6 +54,8 @@ Residents must evacuate to Hillcrest Elementary School gym or the Village Hall.
 Hotline: 0917 555 0100.
 ```
 
+The console's "Use the demo bulletin" and "Use the long demo bulletin" buttons date it from the officer's today (`datedDemoBulletin` in `src/factsheet/sample.ts`): issued today, landfall tomorrow, so an alert approved during the video or judging never says "Last updated" after landfall. The fixtures and tests keep Nov 14.
+
 ## Bulletin (free-form, read in the cloud)
 
 "Read in the cloud" sends the bulletin to the cloud model ("only in cloud", temperature 0), which answers in JSON fitting `READING_SCHEMA` (`src/factsheet/cloud.ts`). Every value is to be copied from the bulletin:

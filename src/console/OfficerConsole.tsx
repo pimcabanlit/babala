@@ -4,7 +4,7 @@ import { approvedAlert, LIMITS, type SavedAlert } from '../alerts/record'
 import { newLedgerId, saveApprovedAlert, withdrawAlert } from '../alerts/store'
 import { withdrawalWrites } from '../ledger/record'
 import type { CloudReading, Unconfirmed } from '../factsheet/cloud'
-import { LONG_BULLETIN, SAMPLE_BULLETIN } from '../factsheet/sample'
+import { LONG_BULLETIN, SAMPLE_BULLETIN, datedDemoBulletin } from '../factsheet/sample'
 import { fromForm, toForm, type FactSheetForm } from '../factsheet/form'
 import { parseBulletin } from '../factsheet/parse'
 import { HOUSEHOLDS, type Household, type HouseholdId } from '../drafting/households'
@@ -464,11 +464,11 @@ export default function OfficerConsole({ session, checks }: { session: OfficerSe
                       >
                         Read bulletin
                       </Button>
-                      <Button variant="text" onClick={() => readBulletin(SAMPLE_BULLETIN)} disabled={busy || reading}>
+                      <Button variant="text" onClick={() => readBulletin(datedDemoBulletin(SAMPLE_BULLETIN))} disabled={busy || reading}>
                         Use the demo bulletin
                       </Button>
                       {/* Laid out like a real bulletin, so plain code misses facts and the cloud reading has work to do. */}
-                      <Button variant="text" onClick={() => readBulletin(LONG_BULLETIN)} disabled={busy || reading}>
+                      <Button variant="text" onClick={() => readBulletin(datedDemoBulletin(LONG_BULLETIN))} disabled={busy || reading}>
                         Use the long demo bulletin
                       </Button>
                       {form && (
