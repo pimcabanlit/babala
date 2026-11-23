@@ -1,6 +1,21 @@
 /** The demo bulletin for the console's "Use the demo bulletin" button. Fictional. */
 export { SAMPLE_BULLETIN } from '../checker/fixtures/hillcrest'
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/**
+ * A demo bulletin dated from the officer's today: issued today, landfall
+ * tomorrow. With the fixed Nov 14 date, every alert approved after that day
+ * said "Last updated" after the storm had already made landfall, in the video
+ * and for judges. The fixtures keep Nov 14 so tests don't depend on the clock.
+ */
+export function datedDemoBulletin(bulletin: string, today: Date = new Date()): string {
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+  const landfall = `${MONTHS[tomorrow.getMonth()].slice(0, 3)} ${tomorrow.getDate()}`
+  const issued = `${today.getDate()} ${MONTHS[today.getMonth()]} ${today.getFullYear()}`
+  return bulletin.replaceAll('Nov 14', landfall).replaceAll('14 November 2026', issued)
+}
+
 /**
  * A longer, free-form bulletin for "Use the long demo bulletin": the same
  * fictional storm and village as the demo bulletin, laid out in sections
