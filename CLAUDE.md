@@ -21,9 +21,9 @@ Core idea: the SDK falls back to the cloud only when the local model is missing.
 
 ## Key documents
 
-The docs in `docs/` are the source of truth. The first plan doc (https://claude.ai/artifact/KqYTL4BvU6PcF7wix61CE2) is kept as history and is no longer updated. If code and docs disagree, raise it, and update the doc in the same change once agreed.
+The docs in `docs/` are the source of truth. If code and docs disagree, raise it, and update the doc in the same change once agreed.
 
-- `docs/build-plan.md`: decisions already made, phases and timeline, video storyboard, submission checklist, risks.
+- `docs/build-plan.md`: decisions already made, phases and timeline, the video as made, submission checklist, risks.
 - `docs/architecture.md`: components, how one alert flows, screens, routing (on-device, cloud or no AI), sign-in and access, offline, cost plan.
 - `docs/data-schema.md`: bulletin format, fact sheet, households, the draft JSON, the checker rules, Firestore documents, Remote Config, a worked example.
 - `docs/firebase-setup.md`: the Firebase setup as it is, how to set it up and check it, laptop measurements, lessons learned, follow-ups. No secrets.
@@ -36,7 +36,7 @@ The docs in `docs/` are the source of truth. The first plan doc (https://claude.
 3. **No secrets in the repo.** Firebase config, reCAPTCHA site key and App Check debug tokens live in `.env.local` (gitignored) and GitHub secrets. Commit `.env.example` only. The rules ban production keys in the repo, submission form and testing instructions.
 4. **Free tier only.** Firebase Spark plan, no billing account, no Blaze upgrade, no quota-sprint accounts. Flag anything that could add cost before adding it.
 5. **Fictional data only.** Fictional storm (not on PAGASA's naming lists) and fictional village (Typhoon Katy over Hillcrest Village, with Zones 1 to 3). The app and demo say "village" and "zone", not "barangay" and "purok", so judges can follow them; the reader and checker still read both. No real agency names, logos or branding. The home page footer says "Demo, not official guidance" (Pim dropped the banner on every page, Nov 14).
-6. **Original work.** No code from Pitch Ledger or any other existing project. Libraries and frameworks are fine; list AI coding tools used in the README.
+6. **Original work.** No code from any earlier project. Libraries and frameworks are fine; list AI coding tools used in the README.
 7. **English first.** The app must work fully in English; Filipino and local languages are added on top.
 
 ## Stack
