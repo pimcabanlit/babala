@@ -313,7 +313,7 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
 
 ### Phase 6 — Video and submission (Nov 25–29)
 
-1. **Video**, made Nov 23–24 ahead of plan: 2:58.7, English, with Pim's voice-over, recorded on the hosted site on the laptop and the iPhone. The script with its timings is the [Babala demo video script](https://claude.ai/artifact/WXP3KKgDxKu5xLaZyKMEJM) doc; the final files are in the project files (`video/rough/babala-cut-with-voice.mp4`, 1080p, for YouTube). Still to do (Pim): upload it to YouTube as public, with the cyclone statistic's source in the description.
+1. **Video**, made Nov 23–24 ahead of plan: 2:58.7, English, with Pim's voice-over, recorded on the hosted site on the laptop and the iPhone. The 1080p file is the one to upload. Still to do (Pim): upload it to YouTube as public, with the cyclone statistic's source in the description.
 
    | Time | Scene as made | What it proves |
    | --- | --- | --- |
@@ -338,7 +338,7 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
    - **Demo data:** Pim cleared the old demo alerts, resident copies and ledger entries (Typhoon Sample, Barangay Halimbawa and its puroks) in the Firebase console on Nov 23 and approved all twelve alerts again from the new demo bulletin, with Zone 2 General translated. Some of those were approved before PR #57 and still say landfall on Nov 14 (Zone 3 General does, for one). Approve them all again from the demo bulletin before judging starts (Dec 10), so the dates and times look current.
    - **Nothing private on screen:** no reCAPTCHA key ID, App Check debug token, `.env.local`, test officer password, email or real user IDs. Crop user IDs in the ledger or sign in as the test officer, and use the code or a diagram, not console pages, for "How it's built".
 
-2. **README and Devpost text**, done Nov 23–24 (README PR #56 and the Nov 24 docs PR; the form text, testing instructions and gallery are in the project files, `submission/`). Cover the value proposition, setup, testing instructions, how Firebase AI Logic is used (with links to the calls), the AI coding tools used, and what was built during the contest (all of it).
+2. **README and Devpost text**, done Nov 23–24 (README PR #56 and PR #58; the form text, testing instructions and gallery are drafted outside the repo). Cover the value proposition, setup, testing instructions, how Firebase AI Logic is used (with links to the calls), the AI coding tools used, and what was built during the contest (all of it).
 3. **Requirements map.** Bring every row of [requirements-map.md](requirements-map.md) to its final status.
 4. **Buffer and device tests** (Nov 28).
 5. **Submit** (Nov 29), against this checklist:
