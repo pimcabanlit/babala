@@ -1,7 +1,47 @@
 # babala
 Typhoon alerts that still work when the signal drops. Built with Firebase AI Logic hybrid inference
+for #BuildHybridAI 2026 (Web, Chrome).
 
-> Work in progress for #BuildHybridAI 2026. Demo only, not official guidance: the storm and village are fictional.
+> Demo only, not official guidance: Typhoon Katy, Hillcrest Village and its zones, and the hotline
+> are fictional.
+
+## Why Babala
+
+When a typhoon hits, the cell signal is often one of the first things to go, and the warning people
+need most is the one they can no longer load. Village officers turn an official storm bulletin into
+words their neighbours act on, often late at night and sometimes with no connection at all.
+
+A language model is a good fit for that rewrite, and a risky one: in testing, every raw output from
+Gemini Nano and a cloud Gemini model (7 of 7) added a claim the bulletin never made or left a
+placeholder. So Babala is built on one idea: **the model writes, code checks, a person approves.**
+
+1. **Bulletin in.** The officer pastes a bulletin. Code reads the signal, landfall time, evacuation
+   place and hotline, and the officer confirms each fact.
+2. **Draft on the laptop.** Gemini Nano drafts a 3-sentence alert for each household type, through
+   the Firebase AI Logic hybrid SDK, streamed as it writes.
+3. **Code checks every figure.** A deterministic TypeScript checker compares each draft with the
+   confirmed facts. Only a draft that passes can be approved.
+4. **Hybrid routing.** The SDK falls back to the cloud when Nano is missing. Babala also falls back
+   when Nano's answer fails the check twice or runs past a 30 s budget.
+5. **A ledger** records which model wrote each draft, what the checker found, and who approved it.
+6. **Translated while online** into Filipino and Cebuano in the cloud, then checked again.
+7. **Residents, even offline.** The alert is saved on residents' phones, so it opens with no signal,
+   and their questions are answered on the device, in the cloud, or by text search of the saved
+   alert.
+
+## Try it
+
+- Home page: https://babala-hybrid.web.app (links to both views)
+- Resident view, no sign-in: https://babala-hybrid.web.app/resident
+- Officer workspace: https://babala-hybrid.web.app/officer. Judges sign in with the shared test
+  officer account; its email and password are in the private testing instructions on the
+  submission form, never in this repo.
+
+On the officer page: *Use the demo bulletin*, confirm the fact sheet, then *Draft all four* for a
+zone. Gemini Nano runs where Chrome supports it (open *System status* in the sidebar and click
+*Prepare on-device model* once); everywhere else the drafts run in the cloud and say so. On the
+resident page, pick a zone and household, wait for "Live", then go offline and reload: the alert
+still opens.
 
 ## Run locally
 

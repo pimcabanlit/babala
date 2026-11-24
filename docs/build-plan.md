@@ -313,17 +313,20 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
 
 ### Phase 6 — Video and submission (Nov 25–29)
 
-1. **Video** (Nov 25–26), 2:45, English, with Pim's voice-over (about 2.5 words a second, so about 400 words in all):
+1. **Video**, made Nov 23–24 ahead of plan: 2:58.7, English, with Pim's voice-over, recorded on the hosted site on the laptop and the iPhone. The script with its timings is the [Babala demo video script](https://claude.ai/artifact/WXP3KKgDxKu5xLaZyKMEJM) doc; the final files are in the project files (`video/rough/babala-cut-with-voice.mp4`, 1080p, for YouTube). Still to do (Pim): upload it to YouTube as public, with the cyclone statistic's source in the description.
 
-   | Time | Shot | What it proves |
+   | Time | Scene as made | What it proves |
    | --- | --- | --- |
-   | 0:00–0:20 | Opens in the dark. Over a map of the Philippines in the western Pacific typhoon belt, one sourced stat on typhoon frequency and "When a typhoon hits, the signal goes first." A phone lights up in a dark room in airplane mode, like a candle, showing a saved Babala alert. Title | The problem and the audience, and the app working with no signal |
-   | 0:20–1:00 | Officer pastes the bulletin and the fact sheet appears. Nano drafts on the laptop (on-device badge). The checker catches a placeholder and an invented "severe", the retry passes. Voice-over: "Firebase AI Logic falls back to the cloud when the local model is missing. Babala also falls back when the local answer is wrong" | On-device AI, facts from the source, and why checking matters |
-   | 1:00–1:15 | Officer approves, the cloud translates to Filipino and Cebuano, the checker confirms the figures | Cloud for what Nano can't do |
-   | 1:15–1:50 | Wi-Fi off: the laptop still drafts and checks. iPhone shows the saved alert, and a question falls back to text search. Back online, the cloud answers | Three routes: on-device, cloud and no AI |
-   | 1:50–2:05 | Ledger: one alert traced from bulletin to household | Trust and accountability |
-   | 2:05–2:30 | How it's built: hybrid modes, App Check, Firestore offline cache, Remote Config. The hybrid benefit as a real count from the ledger: how many drafts ran on the laptop with nothing sent to the cloud | Technical depth, and what hybrid saves |
-   | 2:30–2:45 | "Babala!" turns its "!" upside down into "¡", which becomes a candle flame: "a guide light in times of uncertainty". Name, URL, repo | Where to try it |
+   | 0:00–0:18 | Map of the Philippines, "20 cyclones a year" (source on screen: PAGASA's average), then the real iPhone in the dark showing its saved alert | The problem and the audience, and the app working with no signal |
+   | 0:18–0:45 | The saved alert up close, then the officer's bulletin and the fact sheet read by code | Facts come from the source |
+   | 0:45–1:20 | Gemini Nano drafts on the laptop; the checker blocks an invented "severe", and the retry passes | On-device AI, and why checking matters |
+   | 1:20–1:41 | The officer approves and the alert lands on the phone; the cloud translates into Filipino and Cebuano, and the phone gets both tabs | Cloud for what Nano can't do |
+   | 1:41–2:16 | Signal down: the laptop's offline banner and "Cloud: Offline", Nano still drafts; the phone answers by text search. Signal back: the cloud answers | Three routes: on-device, cloud and no AI |
+   | 2:16–2:26 | Ledger: which model wrote the draft, what the checker said, who approved it | Trust and accountability |
+   | 2:26–2:52 | How it's built: the architecture card, each part lit up as it's named | Technical depth |
+   | 2:52–2:59 | "Babala!", ba·ba·la, "When the signal goes, the warning stays." | The name and the promise |
+
+   Changed from the 2:45 storyboard: no real-time Nano clip and no ledger count of on-device drafts (to stay under 3 minutes), and the end card has no URL or repo, which are in the description and the form instead.
 
    Rules for the video:
    - **Stats need a cited source**, checked before recording, with the source in the YouTube description. No casualty figures, and no dollar comparison of cloud-only against hybrid: on the Spark plan both cost $0, so the ledger count is the honest version.
@@ -332,16 +335,16 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
    - **Shoot on the hosted site** (https://babala-hybrid.web.app), not localhost. Nano, the cloud through App Check and the iPhone offline were all checked there on Nov 13, and it's the URL on the end card.
    - **Deploy last, then prime the phone.** After the final deploy, open the app on the iPhone with a signal and wait for "Live" before airplane mode; phones only get a deploy on their next online visit. The Home Screen app keeps its own storage, separate from Safari: open it from its icon with a signal and pick the zone and household again, or it opens offline with no alerts saved.
    - **Show the offline proof**: record with iPhone screen recording, which works in airplane mode, so the airplane icon and "Offline. Showing the alerts saved on this phone at …" are both on screen. With the laptop's Wi-Fi off, the console's offline banners and waiting saves are expected and worth showing.
-   - **Demo data:** Pim cleared the old demo alerts, resident copies and ledger entries (Typhoon Sample, Barangay Halimbawa and its puroks) in the Firebase console on Nov 23 and approved all twelve alerts again from the new demo bulletin, with Zone 2 General translated. Approve them again before judging starts (Dec 10), so their times look current.
+   - **Demo data:** Pim cleared the old demo alerts, resident copies and ledger entries (Typhoon Sample, Barangay Halimbawa and its puroks) in the Firebase console on Nov 23 and approved all twelve alerts again from the new demo bulletin, with Zone 2 General translated. Some of those were approved before PR #57 and still say landfall on Nov 14 (Zone 3 General does, for one). Approve them all again from the demo bulletin before judging starts (Dec 10), so the dates and times look current.
    - **Nothing private on screen:** no reCAPTCHA key ID, App Check debug token, `.env.local`, test officer password, email or real user IDs. Crop user IDs in the ledger or sign in as the test officer, and use the code or a diagram, not console pages, for "How it's built".
 
-2. **README and Devpost text** (Nov 27). Cover the value proposition, setup, testing instructions, how Firebase AI Logic is used (with links to the calls), the AI coding tools used, and what was built during the contest (all of it).
+2. **README and Devpost text**, done Nov 23–24 (README PR #56 and the Nov 24 docs PR; the form text, testing instructions and gallery are in the project files, `submission/`). Cover the value proposition, setup, testing instructions, how Firebase AI Logic is used (with links to the calls), the AI coding tools used, and what was built during the contest (all of it).
 3. **Requirements map.** Bring every row of [requirements-map.md](requirements-map.md) to its final status.
 4. **Buffer and device tests** (Nov 28).
 5. **Submit** (Nov 29), against this checklist:
    - [ ] Public GitHub repo, with the Apache-2.0 license showing in the About section
-   - [ ] Firebase AI Logic imported and called at runtime, and the README links to those calls
-   - [ ] README covers the value proposition, setup, testing instructions, and the AI coding tools used. It also states that no pre-existing code was reused
+   - [x] Firebase AI Logic imported and called at runtime, and the README links to those calls
+   - [x] README covers the value proposition, setup, testing instructions, and the AI coding tools used. It also states that no pre-existing code was reused
    - [x] App Check enforced (AI Logic and Firestore), with debug-token steps for running locally
    - [ ] Hosted URL that is free, needs no login for residents, gives judges a test officer login, and stays up until Dec 16
    - [ ] Video under 3 minutes, public on YouTube, in English
