@@ -31,6 +31,7 @@ placeholder. So Babala is built on one idea: **the model writes, code checks, a 
 
 ## Try it
 
+- Demo video (2:59): https://youtu.be/bqo5J4z8dFM
 - Home page: https://babala-hybrid.web.app (links to both views)
 - Resident view, no sign-in: https://babala-hybrid.web.app/resident
 - Officer workspace: https://babala-hybrid.web.app/officer. Judges sign in with the shared test
