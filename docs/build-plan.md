@@ -313,7 +313,7 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
 
 ### Phase 6 — Video and submission (Nov 25–29)
 
-1. **Video**, made Nov 23–24 ahead of plan: 2:58.7, English, with Pim's voice-over, recorded on the hosted site on the laptop and the iPhone. The 1080p file is the one to upload. Still to do (Pim): upload it to YouTube as public, with the cyclone statistic's source in the description.
+1. **Video**, made Nov 23–24 ahead of plan: 2:58.7, English, with Pim's voice-over, recorded on the hosted site on the laptop and the iPhone. Uploaded to YouTube on Nov 27 as public: https://youtu.be/bqo5J4z8dFM, with the cyclone statistic's source and chapters in the description.
 
    | Time | Scene as made | What it proves |
    | --- | --- | --- |
@@ -347,7 +347,7 @@ Every state shows an icon and a word, never colour alone. The mockups' grey seco
    - [x] README covers the value proposition, setup, testing instructions, and the AI coding tools used. It also states that no pre-existing code was reused
    - [x] App Check enforced (AI Logic and Firestore), with debug-token steps for running locally
    - [ ] Hosted URL that is free, needs no login for residents, gives judges a test officer login, and stays up until Dec 16
-   - [ ] Video under 3 minutes, public on YouTube, in English
+   - [x] Video under 3 minutes, public on YouTube, in English (https://youtu.be/bqo5J4z8dFM)
    - [ ] Text description: features, how Firebase AI Logic is used, value proposition, and what was built during the contest (all of it)
    - [ ] Platform selected: Web (Chrome)
    - [ ] No keys, secrets or personal data in the repo, form or testing instructions
